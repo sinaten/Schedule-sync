@@ -1,0 +1,28 @@
+:root{--bg:#e9eef0;--ink:#15262e;--mut:#5d6f77;--line:#c7d2d6;--acc:#0e7c86;--amber:#f2b134;--amberbg:#fff3d6;--bad:#a6342b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif}
+main{max-width:46rem;margin:0 auto;padding:2.5rem 1.25rem}
+main.wide{max-width:none}
+h1{font-size:1.75rem;margin:.25rem 0 1rem;letter-spacing:-.01em}
+a{color:var(--acc)}
+a:focus-visible,input:focus-visible{outline:3px solid var(--acc);outline-offset:1px}
+.muted{color:var(--mut)}
+.list{list-style:none;padding:0;margin:0}
+.list li{display:flex;flex-wrap:wrap;gap:.25rem 1rem;align-items:baseline;padding:.9rem 0;border-bottom:1px solid var(--line)}
+.list a{font-weight:600;font-size:1.1rem}
+.tag{background:var(--amberbg);border:1px solid var(--amber);border-radius:99px;padding:0 .6rem;font-size:.85rem}
+.status{margin:0 0 1rem;padding:.5rem .75rem;border-left:4px solid var(--acc);background:#fff}
+.status.wait{border-color:var(--amber);background:var(--amberbg)}
+.status.bad{border-color:var(--bad)}
+.scroll{overflow:auto;max-height:75vh;background:#fff;border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th{position:sticky;top:0;background:var(--ink);color:#fff;text-align:left;font-weight:600;padding:.5rem .75rem;white-space:nowrap}
+td{padding:.25rem .5rem;border-bottom:1px solid var(--line)}
+td.id{color:var(--mut);padding-left:.75rem}
+td.ro{color:var(--mut);background:#f3f6f7;padding:.25rem .75rem}
+td input[type=text],td input[type=number]{width:100%;min-width:7rem;border:1px solid transparent;background:transparent;padding:.3rem .4rem;font:inherit}
+td input[type=text]:hover,td input[type=number]:hover{border-color:var(--line)}
+td input[type=checkbox]{width:1.15rem;height:1.15rem;accent-color:var(--acc)}
+td.pend{background:var(--amberbg)}
+tr.rowp td:first-child{box-shadow:inset 4px 0 var(--amber)}
+@media (prefers-reduced-motion:no-preference){td{transition:background .2s}}
