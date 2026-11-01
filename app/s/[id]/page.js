@@ -1,15 +1,19 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
+const urls = (v) => String(v ?? '').match(/https?:\/\/[^\s,;]+/g) || [];
+const iconFor = (n) => /photo/i.test(n) ? '\u{1F4F7}' : /video/i.test(n) ? '\u{1F3AC}' : /draw/i.test(n) ? '\u{1F4D0}' : '\u{1F517}';
+const Links = ({ name, v }) => urls(v).map((u, i) => <a key={i} href={u} target="_blank" rel="noopener noreferrer" title={u} style={{ textDecoration: 'none', fontSize: 20, marginRight: 6 }}>{iconFor(name)}</a>);
 
 function Cell({ c, v, pending, onSave }) {
   const shown = pending !== undefined ? pending : v;
   const cls = pending !== undefined ? 'pend' : '';
-  if (c.readOnly) return <td className="ro" title="Read-only in Revit">{String(v ?? '')}</td>;
+  const isLink = /link|url/i.test(c.name); if (c.readOnly) return <td className="ro" title="Read-only in Revit">{isLink && urls(v).length ? <Links name={c.name} v={v} /> : String(v ?? '')}</td>;
   if (c.type === 'bool')
     return <td className={cls}><input type="checkbox" aria-label={c.name} checked={!!shown} onChange={(e) => onSave(e.target.checked)} /></td>;
   return (
     <td className={cls}>
-      <input key={String(shown)} defaultValue={shown ?? ''} type={c.type === 'number' ? 'number' : 'text'} step="any" aria-label={c.name}
+    {isLink && <Links name={c.name} v={shown} />}
+      <input style={isLink ? { width: 90 } : undefined} key={String(shown)} defaultValue={shown ?? ''} type={c.type === 'number' ? 'number' : 'text'} step="any" aria-label={c.name}
         onBlur={(e) => {
           const t = e.target.value;
           const n = c.type === 'number' ? (t === '' ? null : Number(t)) : t;
