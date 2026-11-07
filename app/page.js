@@ -1,4 +1,5 @@
 import { db } from '../lib/db';
+import Viewer3D from './Viewer3D';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
@@ -12,6 +13,7 @@ export default async function Home() {
   return (
     <main>
       <h1>Schedules</h1>
+  <Viewer3D />
       {list.length === 0 && <p className="muted">No schedules yet. Run the Revit add-in and choose the schedules to watch.</p>}
       <ul className="list">
         {list.map((s) => (
