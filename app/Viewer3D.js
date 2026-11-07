@@ -81,7 +81,7 @@ export default function Viewer3D() {
         viewer.current.start();
         A.Document.load(
           'urn:' + info.model.urn,
-          (doc) => viewer.current.loadDocumentNode(doc, doc.getRoot().getDefaultGeometry()),
+          (doc) => viewer.current.loadDocumentNode(doc, (info.model.view && doc.getRoot().search({ type: 'geometry' }).find((n) => String(n.name()).toLowerCase() === String(info.model.view).toLowerCase())) || doc.getRoot().getDefaultGeometry()),
           (code, m) => setMsg('Could not open the model: ' + m)
         );
       })
