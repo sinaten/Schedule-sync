@@ -60,7 +60,7 @@ export async function GET() {
       status = mf.status;
       progress = mf.progress || '';
     }
-    const out = { configured: true, model: { name: model.name, urn: model.urn, status, progress } };
+    const out = { configured: true, model: { name: model.name, urn: model.urn, status, progress, view: model.view || '' } };
     if (status === 'success') {
       const v = await token('viewables:read');
       out.token = v.access_token;
@@ -107,7 +107,7 @@ export async function POST(req) {
       });
       if (!job.ok) throw new Error('Could not start conversion (' + job.status + '): ' + (await job.text()).slice(0, 300));
       const sql = await settings();
-      const value = JSON.stringify({ urn, name: body.name || 'Model', uploadedAt: new Date().toISOString() });
+      const value = JSON.stringify({ urn, name: body.name || 'Model', uploadedAt: new Date().toISOString(), view: String(body.view || '') });
       await sql`insert into settings(key, value) values('model', ${value}::jsonb) on conflict (key) do update set value = excluded.value`;
       return Response.json({ ok: true });
     }
