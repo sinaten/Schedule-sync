@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
+import Viewer3D from '../../Viewer3D';
 const urls = (v) => String(v ?? '').match(/https?:\/\/[^\s,;]+/g) || [];
 const iconFor = (n) => /photo/i.test(n) ? '\u{1F4F7}' : /video/i.test(n) ? '\u{1F3AC}' : /draw/i.test(n) ? '\u{1F4D0}' : '\u{1F517}';
 const Links = ({ name, v }) => urls(v).map((u, i) => <a key={i} href={u} target="_blank" rel="noopener noreferrer" title={u} style={{ textDecoration: 'none', fontSize: 20, marginRight: 6 }}>{iconFor(name)}</a>);
@@ -44,6 +45,7 @@ export default function Schedule({ params }) {
     <main className="wide">
       <p><a href="/">All schedules</a></p>
       <h1>{d.name}</h1>
+    <Viewer3D />
       <p className={d.pending.length ? 'status wait' : 'status'}>
         {d.pending.length ? `${d.pending.length} change${d.pending.length > 1 ? 's' : ''} waiting for Revit. The add-in applies them on its next check.` : 'Everything here matches Revit.'}
       </p>
