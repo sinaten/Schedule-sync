@@ -45,6 +45,12 @@ async function settings() {
 }
 
 export async function GET(req) {
+  if (new URL(req.url).searchParams.get('look')) {
+    const lj = new URL(req.url).searchParams.get('job') || '';
+    const lsql = await settings();
+    const [l] = await lsql`select value from settings where key=${'look:' + lj}`;
+    return Response.json(l ? l.value : null);
+  }
   if (!ready()) return Response.json({ configured: false });
   try {
     const sql = await settings();
@@ -76,6 +82,12 @@ export async function POST(req) {
   if (!ready()) return Response.json({ error: 'APS_CLIENT_ID / APS_CLIENT_SECRET are not set in Vercel' }, { status: 400 });
   try {
     const body = await req.json();
+    if (body.action === 'look') {
+      const lsql = await settings();
+      const lv = JSON.stringify(body.look || null);
+      await lsql`insert into settings(key, value) values(${'look:' + String(body.job || '')}, ${lv}::jsonb) on conflict (key) do update set value = excluded.value`;
+      return Response.json({ ok: true });
+    }
     const t = await token('bucket:create bucket:read data:read data:write data:create');
 
     if (body.action === 'start') {
@@ -103,7 +115,7 @@ export async function POST(req) {
       const job = await api('/modelderivative/v2/designdata/job', t, {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-ads-force': 'true' },
-        body: JSON.stringify({ input: { urn }, output: { formats: [{ type: 'svf2', views: ['2d', '3d'] }] } }),
+        body: JSON.stringify({ input: { urn }, output: { formats: [{ type: 'svf2', views: ['2d', '3d'], advanced: { generateMasterViews: true } }] } }),
       });
       if (!job.ok) throw new Error('Could not start conversion (' + job.status + '): ' + (await job.text()).slice(0, 300));
       const sql = await settings();
