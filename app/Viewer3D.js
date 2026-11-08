@@ -156,15 +156,11 @@ export default function Viewer3D({ job = '' }) {
     <section style={wrap}>
       <div style={bar}>
         <strong>3D model{m ? ': ' + m.name : ''}</strong>
-        <label style={{ cursor: busy ? 'default' : 'pointer', background: '#0f8b8d', padding: '4px 10px', borderRadius: 6, opacity: busy ? 0.6 : 1 }}>
-          {m ? 'Replace model' : 'Upload model'}
-          <input type="file" hidden disabled={busy} accept=".rvt,.ifc,.nwd,.nwc,.dwg,.dwfx,.fbx,.obj,.skp,.zip" onChange={(e) => upload(e.target.files[0])} />
-        </label>
       </div>
       <div ref={box} style={{ position: 'relative', height: ready ? 480 : 0 }} />
       {!ready && (
         <p style={{ margin: 0, padding: 16, color: '#546e7a' }}>
-          {!m && 'No 3D model yet. Use “Upload model” to add one.'}
+          {!m && 'No 3D model yet. Publish it from Revit (Schedule Sync > Publish 3D).'}
           {m && m.status === 'failed' && 'Autodesk could not convert this model. Try another file or format (IFC, NWD).'}
           {m && m.status !== 'failed' && m.status !== 'success' && 'Converting model… ' + (m.progress || '') + ' This page updates by itself.'}
         </p>
