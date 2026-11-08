@@ -42,7 +42,9 @@ async function applyLook(vw, job) {
       const byId = {};
       for (const k in map) byId[parseInt(k.slice(-8), 16)] = map[k];
       const dbIds = (ids) => ids.map((i) => byId[i]).filter(Boolean);
-      vw.isolate(dbIds(look.visible));
+      const shown = dbIds(look.visible);
+      vw.isolate(shown);
+      vw.fitToView(shown);
       const T = window.THREE;
       for (const hex in look.colors) {
         const n = parseInt(hex, 16);
