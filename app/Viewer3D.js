@@ -27,7 +27,7 @@ async function post(body) {
   return j;
 }
 
-export default function Viewer3D() {
+export default function Viewer3D({ job = '' }) {
   const box = useRef(null);
   const viewer = useRef(null);
   const shownUrn = useRef(null);
@@ -39,7 +39,7 @@ export default function Viewer3D() {
 
   async function refresh() {
     try {
-      const r = await fetch('/api/aps', { cache: 'no-store' });
+      const r = await fetch('/api/aps?job=' + encodeURIComponent(job), { cache: 'no-store' });
       const j = await r.json();
       setInfo(j);
       statusRef.current = j.model ? j.model.status : 'none';
@@ -111,7 +111,7 @@ export default function Viewer3D() {
         if (!r.ok) throw new Error('Upload failed (' + r.status + ')');
       }
       setMsg('Finishing…');
-      await post({ action: 'finish', key: s.key, uploadKey: s.uploadKey, name: file.name });
+      await post({ action: 'finish', key: s.key, uploadKey: s.uploadKey, name: file.name, job });
       shownUrn.current = null;
       setMsg('Uploaded. Autodesk is converting the model, this can take a few minutes.');
       await refresh();
