@@ -105,6 +105,7 @@ export default function Viewer3D({ job = '' }) {
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [popup, setPopup] = useState(null);
+  const [move, setMove] = useState(false);
 
   async function refresh() {
     try {
@@ -202,6 +203,26 @@ export default function Viewer3D({ job = '' }) {
       </div>
       <div style={{ position: 'relative' }}>
         <div ref={box} style={{ position: 'relative', height: ready ? 480 : 0 }} />
+        {ready && !move && (
+          <div
+            style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 70, touchAction: 'pan-y', zIndex: 5 }}
+            onClick={(e) => {
+              const vw = viewer.current;
+              if (!vw) return;
+              const r = e.currentTarget.getBoundingClientRect();
+              const hit = vw.clientToWorld(e.clientX - r.left, e.clientY - r.top);
+              if (hit && hit.dbId) vw.select([hit.dbId]);
+            }}
+          />
+        )}
+        {ready && (
+          <button
+            onClick={() => setMove(!move)}
+            style={{ position: 'absolute', left: 10, top: 10, zIndex: 10, padding: '12px 16px', fontSize: 16, fontWeight: 700, border: 0, borderRadius: 24, color: '#fff', background: move ? '#e65100' : '#16262e', boxShadow: '0 2px 8px rgba(0,0,0,.4)', cursor: 'pointer' }}
+          >
+            {move ? '\u270B Moving model (tap to scroll page)' : '\u2195 Scrolling page (tap to move model)'}
+          </button>
+        )}
         {popup && (
           <div style={{ maxHeight: 320, overflow: 'auto', background: '#fff', borderTop: '2px solid #16262e', fontSize: 13 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: '#16262e', color: '#fff' }}>
