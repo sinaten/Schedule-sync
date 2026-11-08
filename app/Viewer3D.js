@@ -203,7 +203,7 @@ export default function Viewer3D({ job = '' }) {
       <div style={{ position: 'relative' }}>
         <div ref={box} style={{ position: 'relative', height: ready ? 480 : 0 }} />
         {popup && (
-          <div style={{ position: 'absolute', top: 8, right: 8, width: 'min(340px, 92%)', maxHeight: 440, overflow: 'auto', background: '#fff', border: '1px solid #cfd8dc', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,.25)', zIndex: 10, fontSize: 13 }}>
+          <div style={{ maxHeight: 320, overflow: 'auto', background: '#fff', borderTop: '2px solid #16262e', fontSize: 13 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: '#16262e', color: '#fff' }}>
               <strong>Element {popup.id}</strong>
               <button onClick={() => setPopup(null)} aria-label="Close" style={{ background: 'none', border: 0, color: '#fff', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>{'\u00D7'}</button>
