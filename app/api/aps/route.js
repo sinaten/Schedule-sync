@@ -1,4 +1,4 @@
-import { db } from '../../../lib/db';
+import { db, isAddin, deny } from '../../../lib/db';
 export const dynamic = 'force-dynamic';
 
 // 3D model support through Autodesk Platform Services (APS).
@@ -79,6 +79,7 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
+  if (!isAddin(req)) return deny(); // models are published from Revit only
   if (!ready()) return Response.json({ error: 'APS_CLIENT_ID / APS_CLIENT_SECRET are not set in Vercel' }, { status: 400 });
   try {
     const body = await req.json();
