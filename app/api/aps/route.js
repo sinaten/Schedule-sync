@@ -44,11 +44,11 @@ async function settings() {
   return sql;
 }
 
-export async function GET() {
+export async function GET(req) {
   if (!ready()) return Response.json({ configured: false });
   try {
     const sql = await settings();
-    const [m] = await sql`select value from settings where key='model'`;
+    const job = new URL(req.url).searchParams.get('job') || ''; const [m] = await sql`select value from settings where key=${job ? 'model:' + job : 'model'}`;
     if (!m) return Response.json({ configured: true, model: null });
     const model = m.value;
     const t = await token('data:read');
@@ -108,7 +108,7 @@ export async function POST(req) {
       if (!job.ok) throw new Error('Could not start conversion (' + job.status + '): ' + (await job.text()).slice(0, 300));
       const sql = await settings();
       const value = JSON.stringify({ urn, name: body.name || 'Model', uploadedAt: new Date().toISOString(), view: String(body.view || '') });
-      await sql`insert into settings(key, value) values('model', ${value}::jsonb) on conflict (key) do update set value = excluded.value`;
+      await sql`insert into settings(key, value) values(${body.job ? 'model:' + body.job : 'model'}, ${value}::jsonb) on conflict (key) do update set value = excluded.value`;
       return Response.json({ ok: true });
     }
 
