@@ -1,29 +1,25 @@
 import { db } from '../lib/db';
-import Viewer3D from './Viewer3D';
+import JobList from './JobList';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
-const when = (d) => new Date(d).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+// Each Revit project has a job number (for example "8745 CLT"). The home page lists the jobs; a job page shows its 3D model and schedules.
 export default async function Home() {
   const sql = await db();
-  const list = await sql`select s.id, s.name, s.updated_at,
-    (select count(*) from rows r where r.schedule_id=s.id)::int as n,
-    (select count(*) from edits e where e.schedule_id=s.id and e.status='pending')::int as p
-    from schedules s order by s.name`;
+  const sched = await sql`select coalesce(job,'') as job, count(*)::int as n from schedules group by 1`;
+  const models = await sql`select case when key='model' then '' else substr(key, 7) end as job from settings where key='model' or key like 'model:%'`;
+  const map = new Map();
+  for (const s of sched) map.set(s.job, { slug: s.job || '_none', label: s.job || 'No job number yet', n: s.n, model: false });
+  for (const m of models) {
+    const j = map.get(m.job) || { slug: m.job || '_none', label: m.job || 'No job number yet', n: 0, model: false };
+    j.model = true;
+    map.set(m.job, j);
+  }
+  const jobs = [...map.values()].sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
   return (
     <main>
-      <h1>Schedules</h1>
-  <Viewer3D />
-      {list.length === 0 && <p className="muted">No schedules yet. Run the Revit add-in and choose the schedules to watch.</p>}
-      <ul className="list">
-        {list.map((s) => (
-          <li key={s.id}>
-            <a href={`/s/${encodeURIComponent(s.id)}`}>{s.name}</a>
-            <span className="muted">{s.n} elements · updated {when(s.updated_at)}</span>
-            {s.p > 0 && <span className="tag">{s.p} waiting for Revit</span>}
-          </li>
-        ))}
-      </ul>
+      <h1>Jobs</h1>
+      <JobList jobs={jobs} />
     </main>
   );
 }
