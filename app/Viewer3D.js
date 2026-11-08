@@ -55,6 +55,46 @@ async function applyLook(vw, job) {
   } catch (e) {}
 }
 
+// Clicking a part opens its schedule row(s) in a popup. The popup stays until another part is picked or it is closed with the X.
+async function attachPopup(vw, job, setPopup) {
+  try {
+    const A = window.Autodesk.Viewing;
+    await new Promise((res) => {
+      if (vw.model.getInstanceTree && vw.model.getInstanceTree()) res();
+      else vw.addEventListener(A.OBJECT_TREE_CREATED_EVENT, () => res(), { once: true });
+    });
+    const rev = {};
+    await new Promise((res) => vw.model.getExternalIdMapping((m) => { for (const k in m) rev[m[k]] = parseInt(k.slice(-8), 16); res(); }, () => res()));
+    const tree = vw.model.getInstanceTree();
+    vw.addEventListener(A.SELECTION_CHANGED_EVENT, async (e) => {
+      const sel = e.dbIdArray || [];
+      if (!sel.length) return; // clicking empty space keeps the current popup
+      const cands = [];
+      let d = sel[0];
+      for (let i = 0; i < 8 && d; i++) {
+        if (rev[d] != null) cands.push(String(rev[d]));
+        d = tree.getNodeParentId(d);
+      }
+      if (!cands.length) return;
+      const r = await fetch('/api/job-rows?job=' + encodeURIComponent(job) + '&ids=' + cands.join(','), { cache: 'no-store' });
+      const rows = await r.json();
+      for (const c of cands) {
+        const m = rows.filter((x) => x.element_id === c);
+        if (m.length) return setPopup({ id: c, tables: m });
+      }
+      setPopup({ id: cands[0], tables: [] });
+    });
+  } catch (e) {}
+}
+
+function show(v) {
+  if (typeof v === 'boolean') return v ? '\u2713' : '';
+  const s = String(v ?? '');
+  const urls = s.match(/https?:\/\/[^\s,;]+/g);
+  if (urls) return urls.map((u, i) => <a key={i} href={u} target="_blank" rel="noopener noreferrer" style={{ marginRight: 6, textDecoration: 'none', fontSize: 18 }}>{'\u{1F517}'}</a>);
+  return s;
+}
+
 export default function Viewer3D({ job = '' }) {
   const box = useRef(null);
   const viewer = useRef(null);
@@ -64,6 +104,7 @@ export default function Viewer3D({ job = '' }) {
   const [info, setInfo] = useState(null);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
+  const [popup, setPopup] = useState(null);
 
   async function refresh() {
     try {
@@ -109,7 +150,7 @@ export default function Viewer3D({ job = '' }) {
         viewer.current.start();
         A.Document.load(
           'urn:' + info.model.urn,
-          (doc) => { const node = (info.model.view && doc.getRoot().search({ type: 'geometry' }).find((n) => String(n.name()).toLowerCase() === String(info.model.view).toLowerCase())) || doc.getRoot().search({ type: 'geometry', role: '3d' })[0] || doc.getRoot().getDefaultGeometry(); const vw = viewer.current; vw.loadDocumentNode(doc, node).then(() => applyLook(vw, job)); },
+          (doc) => { const node = (info.model.view && doc.getRoot().search({ type: 'geometry' }).find((n) => String(n.name()).toLowerCase() === String(info.model.view).toLowerCase())) || doc.getRoot().search({ type: 'geometry', role: '3d' })[0] || doc.getRoot().getDefaultGeometry(); const vw = viewer.current; vw.loadDocumentNode(doc, node).then(() => { applyLook(vw, job); attachPopup(vw, job, setPopup); }); },
           (code, m) => setMsg('Could not open the model: ' + m)
         );
       })
@@ -159,7 +200,28 @@ export default function Viewer3D({ job = '' }) {
       <div style={bar}>
         <strong>3D model{m ? ': ' + m.name : ''}</strong>
       </div>
-      <div ref={box} style={{ position: 'relative', height: ready ? 480 : 0 }} />
+      <div style={{ position: 'relative' }}>
+        <div ref={box} style={{ position: 'relative', height: ready ? 480 : 0 }} />
+        {popup && (
+          <div style={{ position: 'absolute', top: 8, right: 8, width: 'min(340px, 92%)', maxHeight: 440, overflow: 'auto', background: '#fff', border: '1px solid #cfd8dc', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,.25)', zIndex: 10, fontSize: 13 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: '#16262e', color: '#fff' }}>
+              <strong>Element {popup.id}</strong>
+              <button onClick={() => setPopup(null)} aria-label="Close" style={{ background: 'none', border: 0, color: '#fff', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>{'\u00D7'}</button>
+            </div>
+            {popup.tables.length === 0 && <p style={{ margin: 0, padding: 10, color: '#546e7a' }}>No schedule row for this part.</p>}
+            {popup.tables.map((tb) => (
+              <div key={tb.id} style={{ padding: '8px 10px', borderTop: '1px solid #eceff1' }}>
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>{tb.name}</div>
+                <table><tbody>
+                  {tb.columns.map((c) => (
+                    <tr key={c.name}><td style={{ color: '#546e7a', paddingRight: 8, verticalAlign: 'top' }}>{c.name}</td><td>{show(tb.vals && tb.vals[c.name])}</td></tr>
+                  ))}
+                </tbody></table>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
       {!ready && (
         <p style={{ margin: 0, padding: 16, color: '#546e7a' }}>
           {!m && 'No 3D model yet. Publish it from Revit (Schedule Sync > Publish 3D).'}
