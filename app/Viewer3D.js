@@ -27,6 +27,32 @@ async function post(body) {
   return j;
 }
 
+// Recreates what the chosen Revit 3D view shows: only its elements, with the colours set in that view.
+async function applyLook(vw, job) {
+  try {
+    const r = await fetch('/api/aps?look=1&job=' + encodeURIComponent(job), { cache: 'no-store' });
+    const look = await r.json();
+    if (!look || !look.visible) return;
+    const A = window.Autodesk.Viewing;
+    await new Promise((res) => {
+      if (vw.model && vw.model.getInstanceTree && vw.model.getInstanceTree()) res();
+      else vw.addEventListener(A.OBJECT_TREE_CREATED_EVENT, () => res(), { once: true });
+    });
+    vw.model.getExternalIdMapping((map) => {
+      const byId = {};
+      for (const k in map) byId[parseInt(k.slice(-8), 16)] = map[k];
+      const dbIds = (ids) => ids.map((i) => byId[i]).filter(Boolean);
+      vw.isolate(dbIds(look.visible));
+      const T = window.THREE;
+      for (const hex in look.colors) {
+        const n = parseInt(hex, 16);
+        const col = new T.Vector4(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1);
+        dbIds(look.colors[hex]).forEach((d) => vw.setThemingColor(d, col, vw.model, true));
+      }
+    }, () => {});
+  } catch (e) {}
+}
+
 export default function Viewer3D({ job = '' }) {
   const box = useRef(null);
   const viewer = useRef(null);
@@ -81,7 +107,7 @@ export default function Viewer3D({ job = '' }) {
         viewer.current.start();
         A.Document.load(
           'urn:' + info.model.urn,
-          (doc) => viewer.current.loadDocumentNode(doc, (info.model.view && doc.getRoot().search({ type: 'geometry' }).find((n) => String(n.name()).toLowerCase() === String(info.model.view).toLowerCase())) || doc.getRoot().search({ type: 'geometry', role: '3d' })[0] || doc.getRoot().getDefaultGeometry()),
+          (doc) => { const node = (info.model.view && doc.getRoot().search({ type: 'geometry' }).find((n) => String(n.name()).toLowerCase() === String(info.model.view).toLowerCase())) || doc.getRoot().search({ type: 'geometry', role: '3d' })[0] || doc.getRoot().getDefaultGeometry(); const vw = viewer.current; vw.loadDocumentNode(doc, node).then(() => applyLook(vw, job)); },
           (code, m) => setMsg('Could not open the model: ' + m)
         );
       })
