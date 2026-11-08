@@ -43,9 +43,9 @@ export default function Schedule({ params }) {
   }
   return (
     <main className="wide">
-      <p><a href="/">All schedules</a></p>
+      <p><a href="/">All jobs</a>{d.job ? <> / <a href={'/j/' + encodeURIComponent(d.job)}>{d.job}</a></> : null}</p>
       <h1>{d.name}</h1>
-    <Viewer3D />
+    <Viewer3D job={d.job || ''} />
       <p className={d.pending.length ? 'status wait' : 'status'}>
         {d.pending.length ? `${d.pending.length} change${d.pending.length > 1 ? 's' : ''} waiting for Revit. The add-in applies them on its next check.` : 'Everything here matches Revit.'}
       </p>
