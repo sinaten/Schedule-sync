@@ -19,11 +19,11 @@ export async function POST(req) {
     await new Promise((r) => setTimeout(r, 800));
     return Response.json({ error: 'Wrong username or password' }, { status: 401 });
   }
-  const token = await makeToken(name);
+  const token = await makeToken(name, 24 * 30);
   return new Response(JSON.stringify({ ok: true }), {
     headers: {
       'content-type': 'application/json',
-      'set-cookie': 'ss=' + token + '; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=' + 7 * 86400,
+      'set-cookie': 'ss=' + token + '; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=' + 30 * 86400,
     },
   });
 }
