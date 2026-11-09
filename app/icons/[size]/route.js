@@ -10,11 +10,15 @@ export async function GET(_, { params }) {
   const u = s / 100;
   return new ImageResponse(
     (
-      <div style={{ width: s, height: s, display: 'flex', background: '#16262e', position: 'relative' }}>
-        <div style={{ position: 'absolute', left: 22 * u, top: 40 * u, width: 56 * u, height: 36 * u, background: '#18c8d8', borderRadius: 4 * u }} />
-        <div style={{ position: 'absolute', left: 22 * u, top: 28 * u, width: 56 * u, height: 14 * u, background: '#ff8a1f', borderRadius: 4 * u }} />
-        <div style={{ position: 'absolute', left: 36 * u, top: 50 * u, width: 28 * u, height: 4 * u, background: '#16262e', borderRadius: 2 * u }} />
-        <div style={{ position: 'absolute', left: 36 * u, top: 60 * u, width: 28 * u, height: 4 * u, background: '#16262e', borderRadius: 2 * u }} />
+      <div style={{ width: s, height: s, display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#16262e', position: 'relative' }}>
+        <div style={{ position: 'absolute', left: 0, top: 0, width: s, height: 5 * u, background: '#ff8a1f', display: 'flex' }} />
+        <div style={{ position: 'absolute', left: 30 * u, top: 12 * u, width: 40 * u, height: 8 * u, background: '#ff8a1f', borderRadius: 2 * u, display: 'flex' }} />
+        <div style={{ position: 'absolute', left: 30 * u, top: 21 * u, width: 40 * u, height: 14 * u, background: '#18c8d8', borderRadius: 2 * u, display: 'flex' }} />
+        <div style={{ position: 'absolute', left: 0, top: 36 * u, width: s, height: 40 * u, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 * u, fontWeight: 900, letterSpacing: -1 * u }}>
+          <span style={{ color: '#18c8d8' }}>S</span>
+          <span style={{ color: '#ff8a1f' }}>T</span>
+        </div>
+        <div style={{ position: 'absolute', left: 0, top: 80 * u, width: s, display: 'flex', justifyContent: 'center', fontSize: 9 * u, letterSpacing: 1 * u, color: '#e6f3f6' }}>SINA TAEIDI</div>
       </div>
     ),
     { width: s, height: s }
