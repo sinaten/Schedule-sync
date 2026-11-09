@@ -41,12 +41,21 @@ export default function Users() {
     setMsg(r.ok ? 'Deleted ' + name : 'Failed (' + r.status + ')');
     await load();
   }
+  async function share(name) {
+    const url = location.origin + '/login';
+    const text = name ? 'You are invited to Schedule Sync.\nOpen: ' + url + '\nUsername: ' + name + '\n(I will send your password separately.)' : 'Schedule Sync: ' + url;
+    try {
+      if (navigator.share) { await navigator.share({ title: 'Schedule Sync invite', text }); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(text); setMsg('Invite copied - paste it in a message'); } catch (e) { prompt('Copy this invite:', text); }
+  }
   if (!d) return <p className="muted">{msg || 'Loading…'}</p>;
   const cell = { padding: '8px 6px', verticalAlign: 'top', borderTop: '1px solid #cfd8dc' };
   const inp = { padding: '8px', fontSize: 15, boxSizing: 'border-box' };
   return (
     <>
       <p className="muted">Owner account: <b>{d.owner}</b> (set in Vercel, always an admin). {msg && <b style={{ marginLeft: 8 }}>{msg}</b>}</p>
+      <p><button style={{ padding: '8px 14px', fontSize: 15 }} onClick={() => share('')}>🔗 Share / copy site link</button></p>
       <div className="scroll">
         <table style={{ width: '100%' }}>
           <thead><tr><th>User</th><th>Role</th><th>Jobs they can open</th><th>New password</th><th></th></tr></thead>
@@ -64,7 +73,7 @@ export default function Users() {
                   <input style={{ ...inp, width: 150 }} type="password" placeholder="leave empty" value={pw[u.username] || ''} onChange={(e) => setPw({ ...pw, [u.username]: e.target.value })} />
                   <button style={{ marginLeft: 6 }} disabled={!pw[u.username]} onClick={async () => { if (await save({ ...u, password: pw[u.username] })) setPw({ ...pw, [u.username]: '' }); }}>Set</button>
                 </td>
-                <td style={cell}><button onClick={() => del(u.username)}>Delete</button></td>
+                <td style={cell}><button onClick={() => share(u.username)} title="Share invite link">🔗 Invite</button> <button onClick={() => del(u.username)}>Delete</button></td>
               </tr>
             ))}
             {d.users.length === 0 && <tr><td colSpan={5} style={cell} className="muted">No other users yet.</td></tr>}
