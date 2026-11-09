@@ -204,7 +204,7 @@ export default function Viewer3D({ job = '' }) {
         <div ref={box} style={{ position: 'relative', height: ready ? 480 : 0 }} />
         {ready && (
           <div
-            style={{ position: 'absolute', right: 0, top: 0, height: 480, width: 44, touchAction: 'pan-y', zIndex: 10, background: 'rgba(22,38,46,.18)', borderLeft: '1px solid rgba(22,38,46,.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16262e', fontSize: 18, lineHeight: 1.1, textAlign: 'center', userSelect: 'none' }}
+            style={{ position: 'absolute', right: 0, top: 230, height: 170, width: 44, touchAction: 'pan-y', zIndex: 10, background: 'rgba(22,38,46,.18)', borderLeft: '1px solid rgba(22,38,46,.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16262e', fontSize: 18, lineHeight: 1.1, textAlign: 'center', userSelect: 'none' }}
           >
             {'\u25B2'}<br />{'\u2195'}<br />{'\u25BC'}
           </div>
