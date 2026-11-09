@@ -1,4 +1,5 @@
 import { db, isAddin, deny } from '../../../lib/db';
+import { currentUser, canJob } from '../../../lib/user';
 export const dynamic = 'force-dynamic';
 
 // 3D model support through Autodesk Platform Services (APS).
@@ -45,6 +46,7 @@ async function settings() {
 }
 
 export async function GET(req) {
+  if (!canJob(await currentUser(), new URL(req.url).searchParams.get('job') || '')) return Response.json({ error: 'No access' }, { status: 403 });
   if (new URL(req.url).searchParams.get('look')) {
     const lj = new URL(req.url).searchParams.get('job') || '';
     const lsql = await settings();
