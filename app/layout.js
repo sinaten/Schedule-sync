@@ -1,6 +1,13 @@
 import './globals.css';
 import { currentUser, isAdmin } from '../lib/user';
-export const metadata = { title: 'Schedule Sync', robots: { index: false, follow: false } };
+export const metadata = {
+  title: 'Schedule Sync',
+  robots: { index: false, follow: false },
+  icons: { icon: '/icons/192', apple: '/icons/180' },
+  appleWebApp: { capable: true, title: 'Schedule Sync', statusBarStyle: 'black-translucent' },
+};
+export const viewport = { themeColor: '#16262e', width: 'device-width', initialScale: 1 };
+const REGISTER_SW = "if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));";
 export const dynamic = 'force-dynamic';
 export default async function Layout({ children }) {
   const u = await currentUser();
@@ -18,6 +25,7 @@ export default async function Layout({ children }) {
           </nav>
         )}
         {children}
+        <script dangerouslySetInnerHTML={{ __html: REGISTER_SW }} />
       </body>
     </html>
   );
