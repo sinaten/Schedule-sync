@@ -26,8 +26,8 @@ export default function Login() {
     <main style={{ maxWidth: 380 }}>
       <h1>Sign in</h1>
       <form onSubmit={submit}>
-        <label>Username<input style={box} value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" autoCapitalize="none" autoFocus /></label>
-        <label>Password<input style={box} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" /></label>
+        <label>Username<input name="username" id="username" style={box} value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" autoCapitalize="none" autoFocus /></label>
+        <label>Password<input name="password" id="password" style={box} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" /></label>
         <button type="submit" disabled={busy || !username || !password} style={{ padding: '12px 22px', fontSize: 16 }}>{busy ? 'Signing in…' : 'Sign in'}</button>
         {err && <p className="status bad">{err}</p>}
       </form>
