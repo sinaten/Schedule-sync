@@ -56,8 +56,10 @@ export default function Scan() {
   }
 
   useEffect(() => {
+    const prev = document.documentElement.style.background;
+    document.documentElement.style.background = '#141413';
     start();
-    return stop;
+    return () => { document.documentElement.style.background = prev; stop(); };
   }, []);
 
   const origin = typeof window === 'undefined' ? '' : window.location.origin;
@@ -75,6 +77,7 @@ export default function Scan() {
             <svg width="260" height="260" viewBox="0 0 260 260" fill="none" stroke="#D97757" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M8 70V32a24 24 0 0 1 24-24h38M190 8h38a24 24 0 0 1 24 24v38M252 190v38a24 24 0 0 1-24 24h-38M70 252H32a24 24 0 0 1-24-24v-38" /></svg>
             <p>{state === 'error' ? msg : 'Point the camera at the QR code'}</p>
             {state === 'error' && <button type="button" className="sc-btn" onClick={start}>Try again</button>}
+            <a className="sc-btn" href="/capture">Can&apos;t scan? Continue manually</a>
           </div>
         </>
       )}
@@ -88,6 +91,7 @@ export default function Scan() {
           <div className="sc-actions">
             {internal && <a className="sc-btn sc-primary" href={internal}>Open</a>}
             <button type="button" className="sc-btn" onClick={start}>Scan again</button>
+            <a className="sc-btn" href="/capture">Can&apos;t scan? Continue manually</a>
           </div>
         </div>
       )}
