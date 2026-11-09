@@ -27,12 +27,13 @@ function Cell({ c, v, pending, onSave }) {
 export default function Schedule({ params }) {
   const id = decodeURIComponent(params.id);
   const [d, setD] = useState(null);
+  const [denied, setDenied] = useState(false);
   const load = useCallback(async () => {
     const r = await fetch('/api/schedules/' + encodeURIComponent(id));
-    if (r.ok) setD(await r.json());
+    if (r.ok) setD(await r.json()); else if (r.status === 403 || r.status === 401) setDenied(true);
   }, [id]);
   useEffect(() => { load(); const t = setInterval(load, 15000); return () => clearInterval(t); }, [load]);
-  if (!d) return <main><p className="muted">Loading schedule…</p></main>;
+  if (!d) return <main><p className="muted">{denied ? 'You do not have access to this schedule.' : 'Loading schedule…'}</p></main>;
 
   const pend = {};
   d.pending.forEach((e) => (pend[e.element_id + '|' + e.col] = e.value));
@@ -58,7 +59,7 @@ export default function Schedule({ params }) {
               <tr key={r.element_id} className={rowsPending.has(r.element_id) ? 'rowp' : ''}>
                 <td className="id">{r.element_id}</td>
                 {d.columns.map((c) => (
-                  <Cell key={c.name} c={c} v={r.vals?.[c.name]} pending={pend[r.element_id + '|' + c.name]} onSave={(val) => save(r.element_id, c.name, val)} />
+                  <Cell key={c.name} c={d.canEdit === false ? { ...c, readOnly: true } : c} v={r.vals?.[c.name]} pending={pend[r.element_id + '|' + c.name]} onSave={(val) => save(r.element_id, c.name, val)} />
                 ))}
               </tr>
             ))}
