@@ -17,3 +17,4 @@ Receives Revit schedules from the add-in, shows them as editable tables (columns
 - `POST /api/addin/ack`: `{ applied:[id], failed:[{id, note}] }`
 
 Numbers are sent and received in the units shown in the schedule.
+
