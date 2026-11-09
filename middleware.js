@@ -14,7 +14,8 @@ export async function middleware(req) {
     if (process.env.SITE_PASSWORD && d.slice(d.indexOf(':') + 1) === process.env.SITE_PASSWORD) return;
     return new Response('Password required', { status: 401, headers: { 'WWW-Authenticate': 'Basic realm="Schedule Sync"' } });
   }
-  if (path === '/login' || path === '/api/login' || path === '/api/logout' || path === '/robots.txt') return;
+  if (path === '/login' || path === '/api/login' || path === '/api/logout' || path === '/robots.txt' ||
+    path === '/manifest.webmanifest' || path === '/sw.js' || path.startsWith('/icons/')) return;
   const session = await readToken(req.cookies.get('ss')?.value);
   if (session) return;
   if (path.startsWith('/api/')) return Response.json({ error: 'Login required' }, { status: 401 });
