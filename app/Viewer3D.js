@@ -201,7 +201,7 @@ export default function Viewer3D({ job = '' }) {
         <strong>3D model{m ? ': ' + m.name : ''}</strong>
       </div>
       <div style={{ position: 'relative' }}>
-        <div ref={box} style={{ position: 'relative', height: ready ? 480 : 0 }} />
+        <div ref={box} style={{ position: 'relative', height: ready ? 480 : 0, touchAction: 'none' }} />
         {ready && (
           <div
             style={{ position: 'absolute', right: 0, top: 230, height: 170, width: 44, touchAction: 'pan-y', zIndex: 10, background: 'rgba(22,38,46,.18)', borderLeft: '1px solid rgba(22,38,46,.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16262e', fontSize: 18, lineHeight: 1.1, textAlign: 'center', userSelect: 'none' }}
