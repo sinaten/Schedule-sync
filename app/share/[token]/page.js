@@ -14,7 +14,7 @@ export default async function Share({ params }) {
   if (!s) notFound();
   const visits = await sql`select id, username, created_at from visits where section_id = ${s.id} order by created_at desc`;
   const ids = visits.map((v) => v.id);
-  const media = ids.length ? await sql`select visit_id, pathname, kind, size from media where visit_id = any(${ids}) order by created_at` : [];
+  const media = ids.length ? await sql`select visit_id, pathname, kind, size from media where visit_id = any(${ids}) and kind <> 'scan' order by created_at` : [];
   const by = {};
   for (const m of media) (by[m.visit_id] ||= []).push(m);
   const url = (p) => '/share/' + params.token + '/f?p=' + encodeURIComponent(p);
