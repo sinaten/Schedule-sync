@@ -9,10 +9,10 @@ const when = (d) => new Date(d).toISOString().replace('T', ' ').slice(0, 16) + '
 
 // Photos and videos of one job, grouped by section (newest visit first). The caller must already have checked access to the job.
 // Admins and editors can delete anything; other users only the visits they captured themselves.
-export default async function MediaGrid({ job }) {
+export default async function MediaGrid({ job, section }) {
   const u = await currentUser();
   const sql = await visitsDb();
-  const visits = await sql`select id, section_id, section_name, username, lat, lng, created_at from visits where job = ${job} order by created_at desc limit 200`;
+  const visits = await sql`select id, section_id, section_name, username, lat, lng, created_at from visits where job = ${job} and (${section || null}::text is null or section_id = ${section || null}) order by created_at desc limit 200`;
   const ids = visits.map((v) => v.id);
   const media = ids.length ? await sql`select id, visit_id, pathname, kind, size from media where visit_id = any(${ids}) order by created_at` : [];
   const by = {};
