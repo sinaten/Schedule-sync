@@ -71,7 +71,7 @@ export default function Projects() {
           </label>
           <div className="scroll">
             <table style={{ width: '100%' }}>
-              <thead><tr><th style={{ width: 40 }}>#</th><th>Section name</th><th>QR code</th><th></th></tr></thead>
+              <thead><tr><th style={{ width: 40 }}>#</th><th>Section name</th><th>QR code</th><th>Photos &amp; videos</th><th></th></tr></thead>
               <tbody>
                 {list.map((s, i) => (
                   <tr key={s.id}>
@@ -88,10 +88,13 @@ export default function Projects() {
                         </div>
                       )}
                     </td>
+                    <td style={cell}>
+                      <a href={'/media?job=' + encodeURIComponent(job) + '&section=' + encodeURIComponent(s.id)} style={{ fontSize: 15 }}>{s.files ? 'Open folder (' + s.files + ')' : 'Open folder'}</a>
+                    </td>
                     <td style={cell}><button style={btn} onClick={() => { if (confirm('Delete section ' + s.name + '? Its QR code will stop working.')) api('DELETE', null, '?id=' + encodeURIComponent(s.id)); }}>Delete</button></td>
                   </tr>
                 ))}
-                {list.length === 0 && <tr><td colSpan={4} style={cell} className="muted">No sections yet. Add the first one below.</td></tr>}
+                {list.length === 0 && <tr><td colSpan={5} style={cell} className="muted">No sections yet. Add the first one below.</td></tr>}
               </tbody>
             </table>
           </div>
