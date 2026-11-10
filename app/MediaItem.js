@@ -58,7 +58,7 @@ export default function MediaItem({ url, kind, label, size = 100, id, share, can
   }
   const send = () => { try { navigator.share({ url: full }); } catch (x) { /* cancelled */ } };
 
-  const isPhoto = kind === 'photo';
+  const isPhoto = kind === 'photo' || kind === 'scan';
   const btn = { font: 'inherit', fontSize: 16, padding: '12px 14px', borderRadius: 10, border: '1px solid #d9d6cc', background: '#fff', color: '#141413', cursor: 'pointer', width: '100%' };
   return (
     <>
@@ -75,6 +75,7 @@ export default function MediaItem({ url, kind, label, size = 100, id, share, can
             <span style={{ opacity: 0.7 }}>{label}</span>
           </span>
         )}
+        {kind === 'scan' && <span style={{ position: 'absolute', bottom: 4, right: 4, padding: '1px 6px', borderRadius: 8, background: 'rgba(20,20,19,.8)', color: '#fff', fontSize: 11 }}>QR scan</span>}
         {sheet && <span style={{ position: 'absolute', inset: 0, border: '3px solid #2f7df6', borderRadius: 8, background: 'rgba(47,125,246,.18)' }} />}
         {sheet && <span style={{ position: 'absolute', top: 5, left: 5, width: 22, height: 22, borderRadius: 11, background: '#2f7df6', color: '#fff', fontSize: 14, lineHeight: '22px' }}>&#10003;</span>}
         {link && !sheet && <span style={{ position: 'absolute', bottom: 4, left: 4, width: 20, height: 20, borderRadius: 10, background: 'rgba(20,20,19,.75)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" /></svg></span>}
