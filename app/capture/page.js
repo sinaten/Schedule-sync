@@ -195,7 +195,7 @@ export default function Capture() {
       </button>
       <div className="cp-label"><b>{title}</b><span>{subText}</span></div>
       {!fixed && (
-        <div style={{ position: 'absolute', left: 0, right: 0, top: 'calc(env(safe-area-inset-top) + 92px)', display: 'flex', gap: 8, padding: '0 16px', zIndex: 3 }}>
+        <div style={{ position: 'absolute', left: 0, right: 0, top: 'calc(max(env(safe-area-inset-top), 20px) + 134px)', display: 'flex', gap: 8, padding: '0 16px', zIndex: 3 }}>
           <select value={job} onChange={(e) => { setJob(e.target.value); setSectionId(''); }} style={sel} aria-label="Job">
             <option value="">Job…</option>
             {opts.jobs.map((j) => <option key={j} value={j}>{j}</option>)}
@@ -211,7 +211,12 @@ export default function Capture() {
       <style>{`@keyframes cpPulse{0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,.7)}50%{box-shadow:0 0 0 14px rgba(231,76,60,0)}}.cp-photo:active,.cp-vid:active{transform:scale(.88)}.cp-photo,.cp-vid{transition:transform .1s,background .15s}`}</style>
       {snap && <div style={{ position: 'absolute', inset: 0, background: '#fff', opacity: 0.55, zIndex: 4, pointerEvents: 'none' }} />}
       {rec && <div style={{ position: 'absolute', left: 0, right: 0, top: 'calc(env(safe-area-inset-top) + 56px)', display: 'flex', justifyContent: 'center', zIndex: 4, pointerEvents: 'none' }}><span style={{ background: '#c0392b', color: '#fff', padding: '4px 12px', borderRadius: 14, fontSize: 14, fontWeight: 600 }}>● REC {String(Math.floor(secs / 60)).padStart(2, '0')}:{String(secs % 60).padStart(2, '0')}</span></div>}
-      {busy > 0 && <div style={{ position: 'absolute', left: 0, right: 0, top: 'env(safe-area-inset-top)', height: 3, zIndex: 5, pointerEvents: 'none', background: 'rgba(255,255,255,.15)' }}><div style={{ height: 3, width: Math.max(prog, 6) + '%', background: '#D97757', borderRadius: 2, transition: 'width .25s ease-out' }} /></div>}
+      {busy > 0 && (
+        <div style={{ position: 'absolute', left: 0, right: 0, top: 'calc(max(env(safe-area-inset-top), 20px) + 112px)', padding: '0 24px', display: 'flex', alignItems: 'center', gap: 8, zIndex: 3, pointerEvents: 'none' }}>
+          <div style={{ flex: 1, height: 9, borderRadius: 5, background: 'rgba(255,255,255,.28)', overflow: 'hidden' }}><div style={{ height: 9, width: Math.max(prog, 3) + '%', background: '#D97757', borderRadius: 5, transition: 'width .25s ease-out' }} /></div>
+          <span style={{ width: 34, textAlign: 'right', color: '#fff', fontSize: 12, fontWeight: 600, textShadow: '0 0 3px rgba(0,0,0,.9)' }}>{Math.round(prog)}%</span>
+        </div>
+      )}
       <div className="cp-bar">
         <span className="cp-sp" />
         <button type="button" className="cp-photo" aria-label="Take photo" onClick={takePhoto} style={snap ? { background: '#D97757' } : undefined}>
