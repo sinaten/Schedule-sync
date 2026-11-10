@@ -1,6 +1,7 @@
 import { currentUser, canJob, canEdit } from '../../../lib/user';
 import { del } from '@vercel/blob';
-import { visitsDb, safe, stamp, canManage, withinWindow } from '../../../lib/visits';
+import { visitsDb, safe, stamp, canManage } from '../../../lib/visits';
+import { getRules, limitFor, within } from '../../../lib/mediarules';
 export const dynamic = 'force-dynamic';
 
 const need = () => Response.json({ error: 'Login required' }, { status: 401 });
@@ -55,7 +56,7 @@ export async function DELETE(req) {
   if (!v) return Response.json({ error: 'Not found' }, { status: 404 });
   if (!canManage(u, v)) return Response.json({ error: 'Not allowed' }, { status: 403 });
   const files = await sql`select pathname, kind, created_at from media where visit_id = ${id}`;
-  if (!canEdit(u) && files.some((f) => !withinWindow(f.created_at))) return Response.json({ error: 'The time allowed for deleting this folder has passed' }, { status: 403 });
+  if (files.some((f) => !within(f.created_at, limitFor(u, await getRules(), 'delete')))) return Response.json({ error: 'The time allowed for deleting this folder has passed' }, { status: 403 });
   if (!canEdit(u) && files.some((f) => f.kind === 'scan')) return Response.json({ error: 'This folder holds a scan photo; only an admin or editor can delete it' }, { status: 403 });
   try { if (files.length) await del(files.map((f) => f.pathname)); } catch (e) { return Response.json({ error: 'Could not delete the files: ' + (e && e.message) }, { status: 500 }); }
   await sql`delete from media where visit_id = ${id}`;
