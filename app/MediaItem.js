@@ -105,7 +105,7 @@ export default function MediaItem({ url, kind, label, size = 100, id, share, can
               <video src={url} controls autoPlay playsInline preload="metadata" style={{ maxWidth: '100vw', maxHeight: '86vh', background: '#000' }} />
             )}
           </div>
-          <a href={url} download onClick={(e) => e.stopPropagation()}
+          <a href={url + (url.includes('?') ? '&' : '?') + 'dl=1'} download onClick={(e) => e.stopPropagation()}
             style={{ position: 'absolute', bottom: 'calc(env(safe-area-inset-bottom) + 14px)', left: 0, right: 0, textAlign: 'center', color: '#fff', fontSize: 15 }}>Download</a>
         </div>
       )}
