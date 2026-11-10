@@ -1,5 +1,6 @@
 import { currentUser, canJob } from '../../../lib/user';
-import { visitsDb, safe, stamp } from '../../../lib/visits';
+import { del } from '@vercel/blob';
+import { visitsDb, safe, stamp, canManage } from '../../../lib/visits';
 export const dynamic = 'force-dynamic';
 
 const need = () => Response.json({ error: 'Login required' }, { status: 401 });
@@ -42,4 +43,20 @@ export async function POST(req) {
   const folder = [safe(job), safe(sname), stamp() + '_' + safe(u.name || 'user') + '_' + id.slice(0, 4)].join('/');
   await sql`insert into visits(id, job, section_id, section_name, folder, username, lat, lng, acc) values(${id}, ${job}, ${sid}, ${sname}, ${folder}, ${u.name || ''}, ${num(b.lat)}, ${num(b.lng)}, ${num(b.acc)})`;
   return Response.json({ id, folder, job, sectionName: sname });
+}
+
+// Delete a whole visit folder with all its photos and videos (admins and editors: any; others: only their own).
+export async function DELETE(req) {
+  const u = await currentUser();
+  if (!u) return need();
+  const id = new URL(req.url).searchParams.get('id') || '';
+  const sql = await visitsDb();
+  const [v] = await sql`select id, job, username from visits where id = ${id}`;
+  if (!v) return Response.json({ error: 'Not found' }, { status: 404 });
+  if (!canManage(u, v)) return Response.json({ error: 'Not allowed' }, { status: 403 });
+  const files = await sql`select pathname from media where visit_id = ${id}`;
+  try { if (files.length) await del(files.map((f) => f.pathname)); } catch (e) { return Response.json({ error: 'Could not delete the files: ' + (e && e.message) }, { status: 500 }); }
+  await sql`delete from media where visit_id = ${id}`;
+  await sql`delete from visits where id = ${id}`;
+  return Response.json({ ok: true, deleted: files.length });
 }
