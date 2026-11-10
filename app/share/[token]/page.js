@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { visitsDb } from '../../../lib/visits';
 import MediaItem from '../../MediaItem';
+import LocalTime from '../../LocalTime';
 export const dynamic = 'force-dynamic';
 
 const mb = (n) => (Number(n) / 1048576).toFixed(1) + ' MB';
@@ -25,7 +26,7 @@ export default async function Share({ params }) {
       {!shown.length && <p className="muted">No photos or videos yet.</p>}
       {shown.map((v) => (
         <div key={v.id} style={{ marginBottom: 14 }}>
-          <p className="muted" style={{ margin: '0 0 6px', fontSize: 13 }}>{when(v.created_at)}{v.username ? ' · ' + v.username : ''}</p>
+          <p className="muted" style={{ margin: '0 0 6px', fontSize: 13 }}><LocalTime iso={new Date(v.created_at).toISOString()} />{v.username ? ' · ' + v.username : ''}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {by[v.id].map((m) => <MediaItem key={m.pathname} url={url(m.pathname)} kind={m.kind} label={mb(m.size)} size={120} />)}
           </div>
