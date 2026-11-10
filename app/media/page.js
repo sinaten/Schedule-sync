@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { currentUser, canJob, canEdit } from '../../lib/user';
 import { visitsDb } from '../../lib/visits';
 import Folders from '../Folders';
+import { getRules, limitFor } from '../../lib/mediarules';
 export const dynamic = 'force-dynamic';
 
 // /media : gallery. Projects -> section folders -> visit folders -> photos / videos.
@@ -21,8 +22,9 @@ export default async function Media({ searchParams }) {
   const sql = await visitsDb();
   const edit = canEdit(u);
   const me = (u && u.name) || null;
-  const rows = await sql`select j.job, (select count(*)::int from media m join visits v on v.id = m.visit_id where v.job = j.job and (${edit}::boolean or (v.username = ${me} and m.kind <> 'scan'))) as files from (select job from sections union select job from visits) j order by j.job`;
-  const jobs = rows.filter((r) => canJob(u, r.job));
+  const vm = limitFor(u, await getRules(), 'view');
+  const rows = await sql`select j.job, (select count(*)::int from media m join visits v on v.id = m.visit_id where v.job = j.job and (${edit}::boolean or (v.username = ${me} and m.kind <> 'scan') and (${vm}::int is null or m.created_at > now() - make_interval(mins => ${vm}::int))) as files from (select job from sections union select job from visits) j order by j.job`;
+  const jobs = rows.filter((r) => canJob(u, r.job) && (edit || r.files > 0));
   return (
     <main>
       <h1>Photos &amp; videos</h1>
