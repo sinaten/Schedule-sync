@@ -20,6 +20,7 @@ function split(min) {
 export default function MediaRules() {
   const [v, setV] = useState(null);
   const [msg, setMsg] = useState('');
+  const [open, setOpen] = useState(false);
   useEffect(() => {
     fetch('/api/admin/media-rules', { cache: 'no-store' }).then((r) => r.json()).then((j) => {
       const o = {};
@@ -33,30 +34,38 @@ export default function MediaRules() {
     for (const [k] of ROWS) body[k] = v[k].unit === 'unlimited' ? null : Math.max(0, Number(v[k].n) || 0) * UNIT[v[k].unit];
     const r = await fetch('/api/admin/media-rules', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
     const j = await r.json().catch(() => ({}));
-    setMsg(r.ok ? 'Saved' : j.error || 'Failed');
+    if (r.ok) { setMsg(''); setOpen(false); } else setMsg(j.error || 'Failed');
   }
-  if (!v) return <p className="muted">{msg || 'Loading…'}</p>;
+  if (!v) return <p className="muted" style={{ fontSize: 13 }}>{msg || 'Loading…'}</p>;
   const set = (k, p) => setV({ ...v, [k]: { ...v[k], ...p } });
+  const pill = { font: 'inherit', fontSize: 13, padding: '5px 12px', borderRadius: 999, border: '1px solid #d5dce0', background: '#fff', color: '#45565e', cursor: 'pointer' };
+  const field = { padding: '5px 8px', fontSize: 13, borderRadius: 8, border: '1px solid #d5dce0', background: '#fff' };
   return (
-    <div style={{ border: '1px solid #e1e5e8', borderRadius: 12, padding: '14px 16px', marginBottom: 20, maxWidth: 560 }}>
-      <b>Time limits (counted from the upload)</b>
-      <p className="muted" style={{ margin: '4px 0 12px', fontSize: 13 }}>Admins are never limited. After the time is over the photo disappears from that person's pages.</p>
-      {ROWS.map(([k, label]) => (
-        <div key={k} style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 14, marginBottom: 4 }}>{label}</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <select value={v[k].unit} onChange={(e) => set(k, { unit: e.target.value })} style={{ padding: 8, fontSize: 15 }}>
-              <option value="unlimited">No limit</option>
-              <option value="minutes">Minutes</option>
-              <option value="hours">Hours</option>
-              <option value="days">Days</option>
-            </select>
-            {v[k].unit !== 'unlimited' && <input type="number" min="0" value={v[k].n} onChange={(e) => set(k, { n: e.target.value })} style={{ padding: 8, fontSize: 15, width: 90 }} />}
+    <div style={{ marginBottom: 14 }}>
+      <button type="button" style={pill} onClick={() => setOpen(!open)} aria-expanded={open}>{'Time limits ' + (open ? '▴' : '▾')}</button>
+      {open && (
+        <div style={{ marginTop: 8, border: '1px solid #e6eaed', borderRadius: 12, padding: '10px 14px', maxWidth: 440, background: '#fafbfc' }}>
+          {ROWS.map(([k, label]) => (
+            <div key={k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '5px 0', fontSize: 13 }}>
+              <span style={{ color: '#45565e' }}>{label.replace(/ for$/, '')}</span>
+              <span style={{ display: 'flex', gap: 6, flex: '0 0 auto' }}>
+                {v[k].unit !== 'unlimited' && <input type="number" min="0" value={v[k].n} onChange={(e) => set(k, { n: e.target.value })} style={{ ...field, width: 56 }} />}
+                <select value={v[k].unit} onChange={(e) => set(k, { unit: e.target.value })} style={field}>
+                  <option value="unlimited">No limit</option>
+                  <option value="minutes">Minutes</option>
+                  <option value="hours">Hours</option>
+                  <option value="days">Days</option>
+                </select>
+              </span>
+            </div>
+          ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+            <button type="button" onClick={save} style={{ ...pill, background: '#16262e', color: '#fff', border: 0 }}>Save</button>
+            <span style={{ fontSize: 12, color: '#8a979d' }}>Admins are never limited.</span>
+            {msg && <b style={{ fontSize: 12, color: '#b00020' }}>{msg}</b>}
           </div>
         </div>
-      ))}
-      <button type="button" onClick={save} style={{ padding: '9px 18px', fontSize: 15 }}>Save</button>
-      {msg && <b style={{ marginLeft: 12 }}>{msg}</b>}
+      )}
     </div>
   );
 }
