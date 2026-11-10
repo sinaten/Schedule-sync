@@ -1,6 +1,7 @@
 import { currentUser, canJob, canEdit } from '../../../lib/user';
 import { del } from '@vercel/blob';
-import { visitsDb, canManage, withinWindow } from '../../../lib/visits';
+import { visitsDb, canManage } from '../../../lib/visits';
+import { getRules, limitFor, within } from '../../../lib/mediarules';
 export const dynamic = 'force-dynamic';
 
 // Register an uploaded file in the database (called by the phone after the upload to Blob finished).
@@ -28,7 +29,7 @@ export async function DELETE(req) {
   const [m] = await sql`select m.id, m.pathname, m.kind, m.created_at, v.job, v.username from media m join visits v on v.id = m.visit_id where m.id = ${id}`;
   if (!m) return Response.json({ error: 'Not found' }, { status: 404 });
   if (!canManage(u, m)) return Response.json({ error: 'Not allowed' }, { status: 403 });
-  if (!canEdit(u) && !withinWindow(m.created_at)) return Response.json({ error: 'The time allowed for deleting this file has passed' }, { status: 403 });
+  if (!within(m.created_at, limitFor(u, await getRules(), 'delete'))) return Response.json({ error: 'The time allowed for deleting this file has passed' }, { status: 403 });
   if (m.kind === 'scan' && !canEdit(u)) return Response.json({ error: 'The scan photo can only be deleted by an admin or editor' }, { status: 403 });
   try { await del(m.pathname); } catch (e) { return Response.json({ error: 'Could not delete the file: ' + (e && e.message) }, { status: 500 }); }
   await sql`delete from media where id = ${id}`;
