@@ -1,4 +1,5 @@
-import { visitsDb, canManage, withinWindow } from '../lib/visits';
+import { visitsDb, canManage } from '../lib/visits';
+import { getRules, limitFor, within } from '../lib/mediarules';
 import { currentUser, canEdit } from '../lib/user';
 import ShareButton from './ShareButton';
 import DeleteButton from './DeleteButton';
@@ -41,6 +42,10 @@ export default async function Folders({ job, section, visit, base }) {
   // Admins / editors see everything. Other users see only their own visits, and never the QR scan photo.
   const edit = canEdit(u);
   const me = (u && u.name) || null;
+  // Time limits set by the admin (minutes after upload; null = no limit). Admins are never limited.
+  const rules = await getRules();
+  const vm = limitFor(u, rules, 'view');
+  const dm = limitFor(u, rules, 'delete');
   const link = (p) => {
     const q = ['job=' + encodeURIComponent(job)];
     if (p && p.section) q.push('section=' + encodeURIComponent(p.section));
@@ -52,11 +57,12 @@ export default async function Folders({ job, section, visit, base }) {
   if (visit) {
     const [v] = await sql`select id, section_id, section_name, username, lat, lng, created_at from visits where id = ${visit} and job = ${job}`;
     if (!v || !canManage(u, { job, username: v.username })) return <p className="muted">Folder not found.</p>;
-    const files = await sql`select id, pathname, kind, size, share, created_at from media where visit_id = ${v.id} and (${edit}::boolean or kind <> 'scan') order by created_at`;
+    const files = await sql`select id, pathname, kind, size, share, created_at from media where visit_id = ${v.id} and (${edit}::boolean or kind <> 'scan') and (${vm}::int is null or created_at > now() - make_interval(mins => ${vm}::int)) order by created_at`;
+    if (!edit && !files.length) return <p className="muted">Folder not found.</p>;
     const can = canManage(u, { job, username: v.username });
     // Regular users: no date / time / map anywhere, and delete only for a limited time after uploading. Admins and editors keep everything.
-    const delOk = (m) => edit || (can && m.kind !== 'scan' && withinWindow(m.created_at));
-    const folderDel = can && files.length > 0 && (edit || (!files.some((f) => f.kind === 'scan') && files.every((f) => withinWindow(f.created_at))));
+    const delOk = (m) => can && (m.kind !== 'scan' || edit) && within(m.created_at, dm);
+    const folderDel = can && files.length > 0 && (edit || !files.some((f) => f.kind === 'scan')) && files.every((f) => within(f.created_at, dm));
     let num = 0;
     if (!edit) { const [c] = await sql`select count(*)::int as n from visits where job = ${job} and coalesce(section_id, '') = ${v.section_id || ''} and username = ${me} and created_at <= ${v.created_at}`; num = c ? c.n : 1; }
     const upAt = files.length ? files[files.length - 1].created_at : null;
@@ -91,7 +97,7 @@ export default async function Folders({ job, section, visit, base }) {
 
   if (section) {
     const sid = section === 'none' ? '' : section;
-    const vs = await sql`select v.id, v.username, v.section_name, v.created_at, count(m.id)::int as files from visits v join media m on m.visit_id = v.id and (${edit}::boolean or m.kind <> 'scan') where v.job = ${job} and (${edit}::boolean or v.username = ${me}) and coalesce(v.section_id, '') = ${sid} group by v.id, v.username, v.section_name, v.created_at order by v.created_at desc`;
+    const vs = await sql`select v.id, v.username, v.section_name, v.created_at, count(m.id)::int as files from visits v join media m on m.visit_id = v.id and (${edit}::boolean or m.kind <> 'scan') and (${vm}::int is null or m.created_at > now() - make_interval(mins => ${vm}::int)) where v.job = ${job} and (${edit}::boolean or v.username = ${me}) and coalesce(v.section_id, '') = ${sid} group by v.id, v.username, v.section_name, v.created_at order by v.created_at desc`;
     let name = vs.length && vs[0].section_name ? vs[0].section_name : '';
     if (!name && sid) { const [s] = await sql`select name from sections where id = ${sid} and job = ${job}`; name = s ? s.name : ''; }
     return (
@@ -110,15 +116,16 @@ export default async function Folders({ job, section, visit, base }) {
     );
   }
 
-  const ss = await sql`select s.id as sid, s.name, (select count(*)::int from media m join visits v on v.id = m.visit_id where v.section_id = s.id and (${edit}::boolean or (v.username = ${me} and m.kind <> 'scan'))) as files from sections s where s.job = ${job} order by s.name`;
-  const [un] = await sql`select count(m.id)::int as files from visits v join media m on m.visit_id = v.id where v.job = ${job} and v.section_id is null and (${edit}::boolean or (v.username = ${me} and m.kind <> 'scan'))`;
+  const ss = await sql`select s.id as sid, s.name, (select count(*)::int from media m join visits v on v.id = m.visit_id where v.section_id = s.id and (${edit}::boolean or (v.username = ${me} and m.kind <> 'scan')) and (${vm}::int is null or m.created_at > now() - make_interval(mins => ${vm}::int))) as files from sections s where s.job = ${job} order by s.name`;
+  const [un] = await sql`select count(m.id)::int as files from visits v join media m on m.visit_id = v.id where v.job = ${job} and v.section_id is null and (${edit}::boolean or (v.username = ${me} and m.kind <> 'scan')) and (${vm}::int is null or m.created_at > now() - make_interval(mins => ${vm}::int))`;
   if (un && un.files) ss.push({ sid: '', name: 'Unassigned', files: un.files });
+  const shown = edit ? ss : ss.filter((s) => s.files > 0);
   return (
     <div>
       <Crumbs items={[{ label: job }]} />
-      {!ss.length && <p className="muted">No sections yet.</p>}
+      {!shown.length && <p className="muted">{edit ? 'No sections yet.' : 'No photos or videos yet.'}</p>}
       <div style={wrap}>
-        {ss.map((s) => (
+        {shown.map((s) => (
           <Folder key={s.sid || 'none'} href={link({ section: s.sid || 'none' })} sub={cnt(s.files)}>{s.name || 'Unassigned'}</Folder>
         ))}
       </div>
