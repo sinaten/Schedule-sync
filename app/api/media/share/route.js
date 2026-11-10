@@ -1,4 +1,4 @@
-import { currentUser, canJob } from '../../../../lib/user';
+import { currentUser, canEdit } from '../../../../lib/user';
 import { visitsDb, canManage } from '../../../../lib/visits';
 export const dynamic = 'force-dynamic';
 
@@ -7,8 +7,8 @@ async function load(id) {
   const u = await currentUser();
   if (!u) return { res: Response.json({ error: 'Login required' }, { status: 401 }) };
   const sql = await visitsDb();
-  const [m] = await sql`select m.id, m.share, v.job, v.username from media m join visits v on v.id = m.visit_id where m.id = ${String(id || '')}`;
-  if (!m || !canJob(u, m.job)) return { res: Response.json({ error: 'Not found' }, { status: 404 }) };
+  const [m] = await sql`select m.id, m.share, m.kind, v.job, v.username from media m join visits v on v.id = m.visit_id where m.id = ${String(id || '')}`;
+  if (!m || !canManage(u, m) || (m.kind === 'scan' && !canEdit(u))) return { res: Response.json({ error: 'Not found' }, { status: 404 }) };
   return { u, sql, m };
 }
 
