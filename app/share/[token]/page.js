@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { visitsDb } from '../../../lib/visits';
+import MediaItem from '../../MediaItem';
 export const dynamic = 'force-dynamic';
 
 const mb = (n) => (Number(n) / 1048576).toFixed(1) + ' MB';
@@ -26,18 +27,7 @@ export default async function Share({ params }) {
         <div key={v.id} style={{ marginBottom: 14 }}>
           <p className="muted" style={{ margin: '0 0 6px', fontSize: 13 }}>{when(v.created_at)}{v.username ? ' · ' + v.username : ''}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {by[v.id].map((m) =>
-              m.kind === 'photo' ? (
-                <a key={m.pathname} href={url(m.pathname)} target="_blank" rel="noreferrer">
-                  <img src={url(m.pathname)} alt="" loading="lazy" style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 8, background: '#eee' }} />
-                </a>
-              ) : (
-                <a key={m.pathname} href={url(m.pathname)} target="_blank" rel="noreferrer"
-                  style={{ width: 120, height: 120, borderRadius: 8, background: '#16262e', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', fontSize: 13, textDecoration: 'none' }}>
-                  <span>Video</span><span style={{ opacity: 0.7 }}>{mb(m.size)}</span>
-                </a>
-              )
-            )}
+            {by[v.id].map((m) => <MediaItem key={m.pathname} url={url(m.pathname)} kind={m.kind} label={mb(m.size)} size={120} />)}
           </div>
         </div>
       ))}
