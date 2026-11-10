@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Users from './Users';
 import Projects from './Projects';
+import Settings from './Settings';
 
 export default function AdminTabs() {
   const [tab, setTab] = useState('users');
@@ -10,8 +11,8 @@ export default function AdminTabs() {
   );
   return (
     <>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>{t('users', 'Users')}{t('projects', 'Projects')}</div>
-      {tab === 'users' ? <Users /> : <Projects />}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>{t('users', 'Users')}{t('projects', 'Projects')}{t('settings', 'Settings')}</div>
+      {tab === 'users' ? <Users /> : tab === 'projects' ? <Projects /> : <Settings />}
     </>
   );
 }
