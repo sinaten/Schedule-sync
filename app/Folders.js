@@ -15,13 +15,28 @@ const meters = (a, b, c, d) => {
   return 2 * R * Math.asin(Math.sqrt(h));
 };
 const cnt = (n) => n + (n === 1 ? ' file' : ' files');
+// Admin / editor distance check: green within 10 m of the QR location, orange within 100 m, red further away.
+const GREEN = '#2e9d57', ORANGE = '#f08c1a', RED = '#d93025';
+const col = (d) => (d <= 10 ? GREEN : d <= 100 ? ORANGE : RED);
+const one = (d) => ({ g: d <= 10 ? 1 : 0, o: d > 10 && d <= 100 ? 1 : 0, r: d > 100 ? 1 : 0 });
 
-function Folder({ href, children, sub }) {
+function Folder({ href, children, sub, pct }) {
+  const tot = pct ? pct.g + pct.o + pct.r : 0;
   return (
     <a href={href} style={{ width: 140, textDecoration: 'none', color: 'inherit', textAlign: 'center', display: 'block' }}>
       <svg width="72" height="58" viewBox="0 0 64 52" aria-hidden="true"><path d="M2 8a4 4 0 0 1 4-4h16l6 6h30a4 4 0 0 1 4 4v30a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z" fill="#F2B63A" /></svg>
       <div style={{ fontSize: 14, fontWeight: 600, wordBreak: 'break-word' }}>{children}</div>
       <div className="muted" style={{ fontSize: 12 }}>{sub}</div>
+      {tot > 0 && (
+        <div style={{ margin: '5px auto 0', width: 96 }}>
+          <div style={{ display: 'flex', height: 6, borderRadius: 3, overflow: 'hidden', background: '#e6eaed' }}>
+            {pct.g > 0 && <span style={{ width: (pct.g / tot) * 100 + '%', background: GREEN }} />}
+            {pct.o > 0 && <span style={{ width: (pct.o / tot) * 100 + '%', background: ORANGE }} />}
+            {pct.r > 0 && <span style={{ width: (pct.r / tot) * 100 + '%', background: RED }} />}
+          </div>
+          <div style={{ fontSize: 12, marginTop: 3, color: GREEN, fontWeight: 600 }}>{Math.round((pct.g / tot) * 100)}% green</div>
+        </div>
+      )}
     </a>
   );
 }
@@ -77,6 +92,7 @@ export default async function Folders({ job, section, visit, base }) {
       const [sl] = await sql`select lat, lng from sections where id = ${v.section_id}`;
       if (sl && sl.lat != null && sl.lng != null) dist = meters(Number(sl.lat), Number(sl.lng), Number(v.lat), Number(v.lng));
     }
+    const frame = dist == null ? null : col(dist);
     const tile = { width: 100, height: 100, borderRadius: 8, overflow: 'hidden', position: 'relative' };
     return (
       <div>
@@ -94,11 +110,17 @@ export default async function Folders({ job, section, visit, base }) {
             {folderDel && <DeleteButton kind="visit" id={v.id} label="Delete folder" />}
           </p>
         )}
+        {edit && (
+          <p className="muted" style={{ margin: '0 0 10px', fontSize: 12 }}>
+            {dist == null ? 'No QR location set for this section, so the photos are not checked.' : (<>Frame: <b style={{ color: GREEN }}>green</b> within 10 m of the QR &middot; <b style={{ color: ORANGE }}>orange</b> within 100 m &middot; <b style={{ color: RED }}>red</b> further away</>)}
+          </p>
+        )}
         {!files.length && <p className="muted">This folder is empty.</p>}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {files.map((m) => (
             <div key={m.id} style={tile}>
               <MediaItem url={fileUrl(m.pathname)} kind={m.kind} label={mb(m.size)} size={100} id={m.id} share={m.share} canStop={can} />
+              {frame && <span style={{ position: 'absolute', inset: 0, border: '4px solid ' + frame, borderRadius: 8, pointerEvents: 'none', zIndex: 2 }} />}
               {delOk(m) && <DeleteButton kind="media" id={m.id} overlay />}
             </div>
           ))}
@@ -110,6 +132,11 @@ export default async function Folders({ job, section, visit, base }) {
   if (section) {
     const sid = section === 'none' ? '' : section;
     const vs = await sql`select v.id, v.username, v.section_name, v.created_at, count(m.id)::int as files from visits v join media m on m.visit_id = v.id and (${edit}::boolean or m.kind <> 'scan') and (${vm}::int is null or m.created_at > now() - make_interval(mins => ${vm}::int)) where v.job = ${job} and (${edit}::boolean or v.username = ${me}) and coalesce(v.section_id, '') = ${sid} group by v.id, v.username, v.section_name, v.created_at order by v.created_at desc`;
+    const dmap = {};
+    if (edit && sid) {
+      const dr = await sql`select v.id, 2 * 6371000 * asin(sqrt(least(1, power(sin(radians(v.lat::float8 - s.lat::float8) / 2), 2) + cos(radians(s.lat::float8)) * cos(radians(v.lat::float8)) * power(sin(radians(v.lng::float8 - s.lng::float8) / 2), 2)))) as d from visits v join sections s on s.id = v.section_id where v.job = ${job} and v.section_id = ${sid} and s.lat is not null and s.lng is not null and v.lat is not null and v.lng is not null`;
+      for (const r of dr) dmap[r.id] = Number(r.d);
+    }
     let name = vs.length && vs[0].section_name ? vs[0].section_name : '';
     if (!name && sid) { const [s] = await sql`select name from sections where id = ${sid} and job = ${job}`; name = s ? s.name : ''; }
     return (
@@ -119,7 +146,7 @@ export default async function Folders({ job, section, visit, base }) {
         {!vs.length && <p className="muted">No photos or videos yet.</p>}
         <div style={{ ...wrap, marginTop: 12 }}>
           {vs.map((v, i) => (
-            <Folder key={v.id} href={link({ section, visit: v.id })} sub={(edit && v.username ? v.username + ' · ' : '') + cnt(v.files)}>
+            <Folder key={v.id} href={link({ section, visit: v.id })} sub={(edit && v.username ? v.username + ' · ' : '') + cnt(v.files) + (dmap[v.id] != null ? ' · ' + Math.round(dmap[v.id]) + ' m' : '')} pct={dmap[v.id] != null ? one(dmap[v.id]) : null}>
               {edit ? <LocalTime iso={iso(v.created_at)} short /> : 'Folder ' + (vs.length - i)}
             </Folder>
           ))}
@@ -131,6 +158,11 @@ export default async function Folders({ job, section, visit, base }) {
   const ss = await sql`select s.id as sid, s.name, (select count(*)::int from media m join visits v on v.id = m.visit_id where v.section_id = s.id and (${edit}::boolean or (v.username = ${me} and m.kind <> 'scan')) and (${vm}::int is null or m.created_at > now() - make_interval(mins => ${vm}::int))) as files from sections s where s.job = ${job} order by s.name`;
   const [un] = await sql`select count(m.id)::int as files from visits v join media m on m.visit_id = v.id where v.job = ${job} and v.section_id is null and (${edit}::boolean or (v.username = ${me} and m.kind <> 'scan')) and (${vm}::int is null or m.created_at > now() - make_interval(mins => ${vm}::int))`;
   if (un && un.files) ss.push({ sid: '', name: 'Unassigned', files: un.files });
+  const pk = {};
+  if (edit) {
+    const br = await sql`select sid, count(*) filter (where d <= 10)::int as g, count(*) filter (where d > 10 and d <= 100)::int as o, count(*) filter (where d > 100)::int as r from (select v.section_id as sid, 2 * 6371000 * asin(sqrt(least(1, power(sin(radians(v.lat::float8 - s.lat::float8) / 2), 2) + cos(radians(s.lat::float8)) * cos(radians(v.lat::float8)) * power(sin(radians(v.lng::float8 - s.lng::float8) / 2), 2)))) as d from media m join visits v on v.id = m.visit_id join sections s on s.id = v.section_id where v.job = ${job} and s.lat is not null and s.lng is not null and v.lat is not null and v.lng is not null and (${vm}::int is null or m.created_at > now() - make_interval(mins => ${vm}::int))) t group by sid`;
+    for (const r of br) pk[r.sid] = r;
+  }
   const shown = edit ? ss : ss.filter((s) => s.files > 0);
   return (
     <div>
@@ -138,7 +170,7 @@ export default async function Folders({ job, section, visit, base }) {
       {!shown.length && <p className="muted">{edit ? 'No sections yet.' : 'No photos or videos yet.'}</p>}
       <div style={wrap}>
         {shown.map((s) => (
-          <Folder key={s.sid || 'none'} href={link({ section: s.sid || 'none' })} sub={cnt(s.files)}>{s.name || 'Unassigned'}</Folder>
+          <Folder key={s.sid || 'none'} href={link({ section: s.sid || 'none' })} sub={cnt(s.files)} pct={edit ? pk[s.sid] : null}>{s.name || 'Unassigned'}</Folder>
         ))}
       </div>
     </div>
