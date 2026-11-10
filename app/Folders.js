@@ -96,11 +96,13 @@ export default async function Folders({ job, section, visit, base }) {
     );
   }
 
-  const ss = await sql`select coalesce(v.section_id, '') as sid, max(v.section_name) as name, count(m.id)::int as files from visits v join media m on m.visit_id = v.id where v.job = ${job} group by coalesce(v.section_id, '') order by max(v.section_name)`;
+  const ss = await sql`select s.id as sid, s.name, (select count(*)::int from media m join visits v on v.id = m.visit_id where v.section_id = s.id) as files from sections s where s.job = ${job} order by s.name`;
+  const [un] = await sql`select count(m.id)::int as files from visits v join media m on m.visit_id = v.id where v.job = ${job} and v.section_id is null`;
+  if (un && un.files) ss.push({ sid: '', name: 'Unassigned', files: un.files });
   return (
     <div>
       <Crumbs items={[{ label: job }]} />
-      {!ss.length && <p className="muted">No photos or videos yet.</p>}
+      {!ss.length && <p className="muted">No sections yet.</p>}
       <div style={wrap}>
         {ss.map((s) => (
           <Folder key={s.sid || 'none'} href={link({ section: s.sid || 'none' })} sub={cnt(s.files)}>{s.name || 'Unassigned'}</Folder>
