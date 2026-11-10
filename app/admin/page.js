@@ -42,7 +42,7 @@ export default async function Admin({ searchParams }) {
   return (
     <main className="wide">
       <h1>Admin</h1>
-      <AdminTabs initialTab={tab} media={tab === 'media' ? <MediaPanel job={String(searchParams.job || '')} section={String(searchParams.section || '')} /> : null} />
+      <AdminTabs initialTab={tab} media={<MediaPanel job={String(searchParams.job || '')} section={String(searchParams.section || '')} />} />
     </main>
   );
 }
