@@ -42,10 +42,12 @@ export default function Projects() {
     const w = window.open('', '_blank');
     if (!w) { setMsg('Allow pop-ups to print the QR sheet'); return; }
     w.document.write('<p style="font:16px system-ui">Preparing…</p>');
+    const cfg = await fetch('/api/admin/qr-config').then((x) => x.json()).catch(() => ({}));
+    const cm = cfg.sizeCm || 6;
     const items = [];
     for (const s of list) items.push({ s, img: qr[s.id] || (await makeQr(s.id)) });
     w.document.open();
-    w.document.write('<!doctype html><title>QR codes - ' + esc(job) + '</title><style>body{margin:0;font-family:system-ui,sans-serif}.g{display:grid;grid-template-columns:repeat(2,1fr);gap:10mm;padding:12mm}.c{break-inside:avoid;text-align:center;border:1px solid #bbb;border-radius:8px;padding:8mm}.c img{width:100%;max-width:70mm}.j{font-size:12pt;color:#555}.n{font-size:16pt;font-weight:700;margin-top:2mm}@page{margin:8mm}</style><div class="g">' +
+    w.document.write('<!doctype html><title>QR codes - ' + esc(job) + '</title><style>body{margin:0;font-family:system-ui,sans-serif}.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(' + (cm + 2) + 'cm,1fr));gap:10mm;padding:12mm}.c{break-inside:avoid;text-align:center;border:1px solid #bbb;border-radius:8px;padding:8mm}.c img{width:' + cm + 'cm;height:' + cm + 'cm}.j{font-size:12pt;color:#555}.n{font-size:16pt;font-weight:700;margin-top:2mm}@page{margin:8mm}</style><div class="g">' +
       items.map((x) => '<div class="c"><img src="' + x.img + '"><div class="j">' + esc(job) + '</div><div class="n">' + esc(x.s.name) + '</div></div>').join('') +
       '</div><script>setTimeout(function(){window.print()},400)<\/script>');
     w.document.close();
