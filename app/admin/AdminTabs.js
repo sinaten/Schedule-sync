@@ -6,6 +6,7 @@ import Settings from './Settings';
 import MediaRules from './MediaRules';
 import LocationRules from './LocationRules';
 import Analysis from './Analysis';
+import AccessRules from './AccessRules';
 
 export default function AdminTabs({ initialTab, media }) {
   const [tab, setTab] = useState(['users', 'projects', 'media', 'analysis', 'settings'].includes(initialTab) ? initialTab : 'users');
@@ -15,7 +16,7 @@ export default function AdminTabs({ initialTab, media }) {
   return (
     <>
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>{t('users', 'Users')}{t('projects', 'Projects')}{t('media', 'Photos & videos')}{t('analysis', 'Analysis')}{t('settings', 'Settings')}</div>
-      {tab === 'users' ? <Users /> : tab === 'projects' ? <Projects /> : tab === 'media' ? media : tab === 'analysis' ? <Analysis /> : <><Settings /><div style={{ marginTop: 28 }}><MediaRules /></div><LocationRules /></>}
+      {tab === 'users' ? <Users /> : tab === 'projects' ? <Projects /> : tab === 'media' ? media : tab === 'analysis' ? <Analysis /> : <><Settings /><div style={{ marginTop: 28 }}><MediaRules /></div><LocationRules /><AccessRules /></>}
     </>
   );
 }
