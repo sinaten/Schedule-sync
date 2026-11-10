@@ -27,6 +27,14 @@ export default function Capture() {
   const [busy, setBusy] = useState(0);
   const [saved, setSaved] = useState(0);
   const [rec, setRec] = useState(false);
+  const [snap, setSnap] = useState(false);
+  const [secs, setSecs] = useState(0);
+  useEffect(() => {
+    if (!rec) { setSecs(0); return; }
+    const t0 = Date.now();
+    const iv = setInterval(() => setSecs(Math.floor((Date.now() - t0) / 1000)), 500);
+    return () => clearInterval(iv);
+  }, [rec]);
 
   const flash = (m, ms = 2200) => { setNote(m); setTimeout(() => setNote(''), ms); };
 
@@ -109,6 +117,8 @@ export default function Capture() {
   async function takePhoto() {
     const v = videoRef.current;
     if (needJob() || !v || !v.videoWidth) return;
+    setSnap(true); setTimeout(() => setSnap(false), 250);
+    try { if (navigator.vibrate) navigator.vibrate(30); } catch (e) { /* optional */ }
     try {
       const visit = await ensureVisit();
       const c = document.createElement('canvas');
@@ -138,6 +148,7 @@ export default function Capture() {
       mr.start();
       recRef.current = mr;
       setRec(true);
+      try { if (navigator.vibrate) navigator.vibrate(60); } catch (e) { /* optional */ }
     } catch (e) { flash(e.message || 'Error', 4000); }
   }
 
@@ -164,12 +175,15 @@ export default function Capture() {
       )}
       {err && <p className="cp-err">{err}</p>}
       {note && <p className="cp-note">{note}</p>}
+      <style>{`@keyframes cpPulse{0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,.7)}50%{box-shadow:0 0 0 14px rgba(231,76,60,0)}}.cp-photo:active,.cp-vid:active{transform:scale(.88)}.cp-photo,.cp-vid{transition:transform .1s,background .15s}`}</style>
+      {snap && <div style={{ position: 'absolute', inset: 0, background: '#fff', opacity: 0.55, zIndex: 4, pointerEvents: 'none' }} />}
+      {rec && <div style={{ position: 'absolute', left: 0, right: 0, top: 'calc(env(safe-area-inset-top) + 56px)', display: 'flex', justifyContent: 'center', zIndex: 4, pointerEvents: 'none' }}><span style={{ background: '#c0392b', color: '#fff', padding: '4px 12px', borderRadius: 14, fontSize: 14, fontWeight: 600 }}>● REC {String(Math.floor(secs / 60)).padStart(2, '0')}:{String(secs % 60).padStart(2, '0')}</span></div>}
       <div className="cp-bar">
         <span className="cp-sp" />
-        <button type="button" className="cp-photo" aria-label="Take photo" onClick={takePhoto}>
+        <button type="button" className="cp-photo" aria-label="Take photo" onClick={takePhoto} style={snap ? { background: '#D97757' } : undefined}>
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#D97757" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4.5 8h2.6l1.4-2h7l1.4 2h2.6a1 1 0 0 1 1 1v8.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" /><circle cx="12" cy="13" r="3.4" /></svg>
         </button>
-        <button type="button" className="cp-vid" aria-label={rec ? 'Stop recording' : 'Record video'} onClick={toggleVideo} style={rec ? { background: '#c0392b', borderColor: '#c0392b' } : undefined}>
+        <button type="button" className="cp-vid" aria-label={rec ? 'Stop recording' : 'Record video'} onClick={toggleVideo} style={rec ? { background: '#e74c3c', borderColor: '#e74c3c', animation: 'cpPulse 1.2s infinite' } : undefined}>
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={rec ? '#fff' : '#D97757'} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3.5" y="7" width="12" height="10" rx="2" /><path d="M15.5 11l5-3v8l-5-3" /></svg>
         </button>
       </div>
