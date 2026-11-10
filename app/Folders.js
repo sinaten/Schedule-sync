@@ -1,4 +1,4 @@
-import { visitsDb, canManage } from '../lib/visits';
+import { visitsDb, canManage, withinWindow } from '../lib/visits';
 import { currentUser, canEdit } from '../lib/user';
 import ShareButton from './ShareButton';
 import DeleteButton from './DeleteButton';
@@ -52,25 +52,36 @@ export default async function Folders({ job, section, visit, base }) {
   if (visit) {
     const [v] = await sql`select id, section_id, section_name, username, lat, lng, created_at from visits where id = ${visit} and job = ${job}`;
     if (!v || !canManage(u, { job, username: v.username })) return <p className="muted">Folder not found.</p>;
-    const files = await sql`select id, pathname, kind, size, share from media where visit_id = ${v.id} and (${edit}::boolean or kind <> 'scan') order by created_at`;
+    const files = await sql`select id, pathname, kind, size, share, created_at from media where visit_id = ${v.id} and (${edit}::boolean or kind <> 'scan') order by created_at`;
     const can = canManage(u, { job, username: v.username });
+    // Regular users: no date / time / map anywhere, and delete only for a limited time after uploading. Admins and editors keep everything.
+    const delOk = (m) => edit || (can && m.kind !== 'scan' && withinWindow(m.created_at));
+    const folderDel = can && files.length > 0 && (edit || (!files.some((f) => f.kind === 'scan') && files.every((f) => withinWindow(f.created_at))));
+    let num = 0;
+    if (!edit) { const [c] = await sql`select count(*)::int as n from visits where job = ${job} and coalesce(section_id, '') = ${v.section_id || ''} and username = ${me} and created_at <= ${v.created_at}`; num = c ? c.n : 1; }
+    const upAt = files.length ? files[files.length - 1].created_at : null;
     const tile = { width: 100, height: 100, borderRadius: 8, overflow: 'hidden', position: 'relative' };
     return (
       <div>
-        <Crumbs items={[{ label: job, href: link() }, { label: v.section_name || 'Unassigned', href: link({ section: v.section_id || 'none' }) }, { label: <LocalTime iso={iso(v.created_at)} short /> }]} />
-        <p className="muted" style={{ margin: '0 0 12px', fontSize: 13, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span>
-            <LocalTime iso={iso(v.created_at)} />{v.username ? ' · ' + v.username : ''}
-            {v.lat != null && v.lng != null && (<> &middot; <a href={'https://maps.google.com/?q=' + v.lat + ',' + v.lng} target="_blank" rel="noreferrer">map</a></>)}
-          </span>
-          {can && files.length > 0 && (canEdit(u) || !files.some((f) => f.kind === 'scan')) && <DeleteButton kind="visit" id={v.id} label="Delete folder" />}
-        </p>
+        <Crumbs items={[{ label: job, href: link() }, { label: v.section_name || 'Unassigned', href: link({ section: v.section_id || 'none' }) }, { label: edit ? <LocalTime iso={iso(v.created_at)} short /> : 'Folder ' + num }]} />
+        {(edit || folderDel) && (
+          <p className="muted" style={{ margin: '0 0 12px', fontSize: 13, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            {edit && (
+              <span>
+                Started <LocalTime iso={iso(v.created_at)} />{v.username ? ' · ' + v.username : ''}
+                {upAt && (<> &middot; uploaded <LocalTime iso={iso(upAt)} /></>)}
+                {v.lat != null && v.lng != null && (<> &middot; <a href={'https://maps.google.com/?q=' + v.lat + ',' + v.lng} target="_blank" rel="noreferrer">map</a></>)}
+              </span>
+            )}
+            {folderDel && <DeleteButton kind="visit" id={v.id} label="Delete folder" />}
+          </p>
+        )}
         {!files.length && <p className="muted">This folder is empty.</p>}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {files.map((m) => (
             <div key={m.id} style={tile}>
               <MediaItem url={fileUrl(m.pathname)} kind={m.kind} label={mb(m.size)} size={100} id={m.id} share={m.share} canStop={can} />
-              {can && (m.kind !== 'scan' || canEdit(u)) && <DeleteButton kind="media" id={m.id} overlay />}
+              {delOk(m) && <DeleteButton kind="media" id={m.id} overlay />}
             </div>
           ))}
         </div>
@@ -89,9 +100,9 @@ export default async function Folders({ job, section, visit, base }) {
         {sid && edit && <ShareButton sectionId={sid} />}
         {!vs.length && <p className="muted">No photos or videos yet.</p>}
         <div style={{ ...wrap, marginTop: 12 }}>
-          {vs.map((v) => (
-            <Folder key={v.id} href={link({ section, visit: v.id })} sub={(v.username ? v.username + ' · ' : '') + cnt(v.files)}>
-              <LocalTime iso={iso(v.created_at)} short />
+          {vs.map((v, i) => (
+            <Folder key={v.id} href={link({ section, visit: v.id })} sub={(edit && v.username ? v.username + ' · ' : '') + cnt(v.files)}>
+              {edit ? <LocalTime iso={iso(v.created_at)} short /> : 'Folder ' + (vs.length - i)}
             </Folder>
           ))}
         </div>
