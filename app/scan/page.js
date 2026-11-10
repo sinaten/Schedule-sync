@@ -50,7 +50,17 @@ export default function Scan() {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
       let tick = 0;
-      const done = (value) => { stop(); setText(value); setState('found'); };
+            // Proof photo: the camera frame at the moment the QR was recognized. The capture screen uploads it into the new folder.
+      const grab = (value) => {
+        try {
+          const c = document.createElement('canvas');
+          c.width = v.videoWidth; c.height = v.videoHeight;
+          c.getContext('2d').drawImage(v, 0, 0);
+          const mm = /\/q\/([^/?#]+)/.exec(value);
+          if (mm) sessionStorage.setItem('scanproof', JSON.stringify({ sid: mm[1], t: Date.now(), data: c.toDataURL('image/jpeg', 0.8) }));
+        } catch (e) { /* optional */ }
+      };
+      const done = (value) => { grab(value); stop(); setText(value); setState('found'); };
       const loop = async () => {
         if (!streamRef.current) return;
         if (v.videoWidth) {
