@@ -1,28 +1,20 @@
 import { notFound } from 'next/navigation';
 import { currentUser, canJob } from '../../lib/user';
 import { visitsDb } from '../../lib/visits';
-import MediaGrid from '../MediaGrid';
+import Folders from '../Folders';
 export const dynamic = 'force-dynamic';
 
-// /media?job=<job>[&section=<id>] : photos and videos of a job (or one section). Without a job: the list of jobs that have any.
+// /media : gallery. Projects -> section folders -> visit folders -> photos / videos.
 export default async function Media({ searchParams }) {
   const u = await currentUser();
   const job = String(searchParams.job || '');
-  const section = String(searchParams.section || '');
   if (job) {
     if (!canJob(u, job)) notFound();
-    const sql = await visitsDb();
-    let name = '';
-    if (section) {
-      const [s] = await sql`select name from sections where id = ${section} and job = ${job}`;
-      if (!s) notFound();
-      name = s.name;
-    }
     return (
       <main>
-        <p><a href={'/j/' + encodeURIComponent(job)}>&larr; {job}</a></p>
-        <h1>Photos &amp; videos{name ? ' – ' + name : ''}</h1>
-        <MediaGrid job={job} section={section || undefined} />
+        <p><a href="/media">&larr; All projects</a></p>
+        <h1>Photos &amp; videos</h1>
+        <Folders job={job} section={String(searchParams.section || '')} visit={String(searchParams.visit || '')} base="/media" />
       </main>
     );
   }
@@ -33,11 +25,15 @@ export default async function Media({ searchParams }) {
     <main>
       <h1>Photos &amp; videos</h1>
       {!jobs.length && <p className="muted">Nothing saved yet.</p>}
-      <ul>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18 }}>
         {jobs.map((r) => (
-          <li key={r.job}><a href={'/media?job=' + encodeURIComponent(r.job)}>{r.job}</a> <span className="muted">({r.files})</span></li>
+          <a key={r.job} href={'/media?job=' + encodeURIComponent(r.job)} style={{ width: 140, textDecoration: 'none', color: 'inherit', textAlign: 'center', display: 'block' }}>
+            <svg width="72" height="58" viewBox="0 0 64 52" aria-hidden="true"><path d="M2 8a4 4 0 0 1 4-4h16l6 6h30a4 4 0 0 1 4 4v30a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z" fill="#F2B63A" /></svg>
+            <div style={{ fontSize: 14, fontWeight: 600, wordBreak: 'break-word' }}>{r.job}</div>
+            <div className="muted" style={{ fontSize: 12 }}>{r.files} {r.files === 1 ? 'file' : 'files'}</div>
+          </a>
         ))}
-      </ul>
+      </div>
     </main>
   );
 }
