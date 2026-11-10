@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { currentUser, canJob } from '../../lib/user';
+import { currentUser, canJob, canEdit } from '../../lib/user';
 import { visitsDb } from '../../lib/visits';
 import Folders from '../Folders';
 export const dynamic = 'force-dynamic';
@@ -19,7 +19,9 @@ export default async function Media({ searchParams }) {
     );
   }
   const sql = await visitsDb();
-  const rows = await sql`select j.job, (select count(*)::int from media m join visits v on v.id = m.visit_id where v.job = j.job) as files from (select job from sections union select job from visits) j order by j.job`;
+  const edit = canEdit(u);
+  const me = (u && u.name) || null;
+  const rows = await sql`select j.job, (select count(*)::int from media m join visits v on v.id = m.visit_id where v.job = j.job and (${edit}::boolean or (v.username = ${me} and m.kind <> 'scan'))) as files from (select job from sections union select job from visits) j order by j.job`;
   const jobs = rows.filter((r) => canJob(u, r.job));
   return (
     <main>
