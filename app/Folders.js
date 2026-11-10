@@ -38,6 +38,9 @@ function Crumbs({ items }) {
 export default async function Folders({ job, section, visit, base }) {
   const u = await currentUser();
   const sql = await visitsDb();
+  // Admins / editors see everything. Other users see only their own visits, and never the QR scan photo.
+  const edit = canEdit(u);
+  const me = (u && u.name) || null;
   const link = (p) => {
     const q = ['job=' + encodeURIComponent(job)];
     if (p && p.section) q.push('section=' + encodeURIComponent(p.section));
@@ -48,8 +51,8 @@ export default async function Folders({ job, section, visit, base }) {
 
   if (visit) {
     const [v] = await sql`select id, section_id, section_name, username, lat, lng, created_at from visits where id = ${visit} and job = ${job}`;
-    if (!v) return <p className="muted">Folder not found.</p>;
-    const files = await sql`select id, pathname, kind, size, share from media where visit_id = ${v.id} order by created_at`;
+    if (!v || !canManage(u, { job, username: v.username })) return <p className="muted">Folder not found.</p>;
+    const files = await sql`select id, pathname, kind, size, share from media where visit_id = ${v.id} and (${edit}::boolean or kind <> 'scan') order by created_at`;
     const can = canManage(u, { job, username: v.username });
     const tile = { width: 100, height: 100, borderRadius: 8, overflow: 'hidden', position: 'relative' };
     return (
@@ -77,13 +80,13 @@ export default async function Folders({ job, section, visit, base }) {
 
   if (section) {
     const sid = section === 'none' ? '' : section;
-    const vs = await sql`select v.id, v.username, v.section_name, v.created_at, count(m.id)::int as files from visits v join media m on m.visit_id = v.id where v.job = ${job} and coalesce(v.section_id, '') = ${sid} group by v.id, v.username, v.section_name, v.created_at order by v.created_at desc`;
+    const vs = await sql`select v.id, v.username, v.section_name, v.created_at, count(m.id)::int as files from visits v join media m on m.visit_id = v.id and (${edit}::boolean or m.kind <> 'scan') where v.job = ${job} and (${edit}::boolean or v.username = ${me}) and coalesce(v.section_id, '') = ${sid} group by v.id, v.username, v.section_name, v.created_at order by v.created_at desc`;
     let name = vs.length && vs[0].section_name ? vs[0].section_name : '';
     if (!name && sid) { const [s] = await sql`select name from sections where id = ${sid} and job = ${job}`; name = s ? s.name : ''; }
     return (
       <div>
         <Crumbs items={[{ label: job, href: link() }, { label: name || 'Unassigned' }]} />
-        {sid && <ShareButton sectionId={sid} />}
+        {sid && edit && <ShareButton sectionId={sid} />}
         {!vs.length && <p className="muted">No photos or videos yet.</p>}
         <div style={{ ...wrap, marginTop: 12 }}>
           {vs.map((v) => (
@@ -96,8 +99,8 @@ export default async function Folders({ job, section, visit, base }) {
     );
   }
 
-  const ss = await sql`select s.id as sid, s.name, (select count(*)::int from media m join visits v on v.id = m.visit_id where v.section_id = s.id) as files from sections s where s.job = ${job} order by s.name`;
-  const [un] = await sql`select count(m.id)::int as files from visits v join media m on m.visit_id = v.id where v.job = ${job} and v.section_id is null`;
+  const ss = await sql`select s.id as sid, s.name, (select count(*)::int from media m join visits v on v.id = m.visit_id where v.section_id = s.id and (${edit}::boolean or (v.username = ${me} and m.kind <> 'scan'))) as files from sections s where s.job = ${job} order by s.name`;
+  const [un] = await sql`select count(m.id)::int as files from visits v join media m on m.visit_id = v.id where v.job = ${job} and v.section_id is null and (${edit}::boolean or (v.username = ${me} and m.kind <> 'scan'))`;
   if (un && un.files) ss.push({ sid: '', name: 'Unassigned', files: un.files });
   return (
     <div>
