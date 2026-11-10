@@ -18,3 +18,4 @@ Receives Revit schedules from the add-in, shows them as editable tables (columns
 
 Numbers are sent and received in the units shown in the schedule.
 
+
