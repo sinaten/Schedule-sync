@@ -17,6 +17,9 @@ export default function Capture() {
   const seq = useRef(0);
   const posRef = useRef(null);
   const proofRef = useRef(null);
+  const ups = useRef({});
+  const [prog, setProg] = useState(0);
+  const syncProg = () => { const v = Object.values(ups.current); setProg(v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0); };
   const [err, setErr] = useState('');
   const [note, setNote] = useState('');
   const [fixed, setFixed] = useState(false);
@@ -110,8 +113,10 @@ export default function Capture() {
 
   async function save(blob, kind, ext, visit) {
     setBusy((b) => b + 1);
+    let n = 0;
     try {
-      const n = ++seq.current;
+      n = ++seq.current;
+      ups.current[n] = 0; syncProg();
       const path = visit.folder + '/' + String(n).padStart(3, '0') + '-' + kind + '.' + ext;
       const res = await upload(path, blob, {
         access: 'private',
@@ -119,6 +124,7 @@ export default function Capture() {
         clientPayload: JSON.stringify({ visitId: visit.id }),
         contentType: blob.type || undefined,
         multipart: kind === 'video',
+        onUploadProgress: (p) => { ups.current[n] = p.percentage; syncProg(); },
       });
       const r = await jsonPost('/api/media', { visitId: visit.id, pathname: res.pathname, kind, size: blob.size, contentType: blob.type });
       if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Could not register the file');
@@ -127,6 +133,7 @@ export default function Capture() {
     } catch (e) {
       flash('Not saved: ' + (e && e.message ? e.message : 'error'), 5000);
     } finally {
+      if (n) { delete ups.current[n]; syncProg(); }
       setBusy((b) => b - 1);
     }
   }
@@ -204,6 +211,7 @@ export default function Capture() {
       <style>{`@keyframes cpPulse{0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,.7)}50%{box-shadow:0 0 0 14px rgba(231,76,60,0)}}.cp-photo:active,.cp-vid:active{transform:scale(.88)}.cp-photo,.cp-vid{transition:transform .1s,background .15s}`}</style>
       {snap && <div style={{ position: 'absolute', inset: 0, background: '#fff', opacity: 0.55, zIndex: 4, pointerEvents: 'none' }} />}
       {rec && <div style={{ position: 'absolute', left: 0, right: 0, top: 'calc(env(safe-area-inset-top) + 56px)', display: 'flex', justifyContent: 'center', zIndex: 4, pointerEvents: 'none' }}><span style={{ background: '#c0392b', color: '#fff', padding: '4px 12px', borderRadius: 14, fontSize: 14, fontWeight: 600 }}>● REC {String(Math.floor(secs / 60)).padStart(2, '0')}:{String(secs % 60).padStart(2, '0')}</span></div>}
+      {busy > 0 && <div style={{ position: 'absolute', left: 0, right: 0, top: 'env(safe-area-inset-top)', height: 3, zIndex: 5, pointerEvents: 'none', background: 'rgba(255,255,255,.15)' }}><div style={{ height: 3, width: Math.max(prog, 6) + '%', background: '#D97757', borderRadius: 2, transition: 'width .25s ease-out' }} /></div>}
       <div className="cp-bar">
         <span className="cp-sp" />
         <button type="button" className="cp-photo" aria-label="Take photo" onClick={takePhoto} style={snap ? { background: '#D97757' } : undefined}>
