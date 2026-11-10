@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation';
 import { currentUser, isAdmin } from '../../lib/user';
 import { visitsDb } from '../../lib/visits';
 import Folders from '../Folders';
-import MediaRules from './MediaRules';
 import AdminTabs from './AdminTabs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -18,7 +17,6 @@ async function MediaPanel({ job, section, visit }) {
   if (!jobs.length) return <p className="muted">No projects yet.</p>;
   return (
     <>
-      <MediaRules />
       <p className="muted" style={{ margin: '0 0 6px' }}>Project</p>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}>
         {jobs.map((j) => <a key={j} href={'/admin?tab=media&job=' + encodeURIComponent(j)} style={pill(j === cur)}>{j}</a>)}
