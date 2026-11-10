@@ -92,7 +92,7 @@ export default async function Folders({ job, section, visit, base }) {
       const [sl] = await sql`select lat, lng from sections where id = ${v.section_id}`;
       if (sl && sl.lat != null && sl.lng != null) dist = meters(Number(sl.lat), Number(sl.lng), Number(v.lat), Number(v.lng));
     }
-    const frame = dist == null ? null : col(dist);
+    const frame = !edit ? null : dist == null ? '#9aa5ab' : col(dist);
     const tile = { width: 100, height: 100, borderRadius: 8, overflow: 'hidden', position: 'relative' };
     return (
       <div>
@@ -112,7 +112,7 @@ export default async function Folders({ job, section, visit, base }) {
         )}
         {edit && (
           <p className="muted" style={{ margin: '0 0 10px', fontSize: 12 }}>
-            {dist == null ? 'No QR location set for this section, so the photos are not checked.' : (<>Frame: <b style={{ color: GREEN }}>green</b> within 10 m of the QR &middot; <b style={{ color: ORANGE }}>orange</b> within 100 m &middot; <b style={{ color: RED }}>red</b> further away</>)}
+            {dist == null ? 'Gray frame: no QR location (or no GPS) saved, so the distance cannot be checked.' : (<>Frame: <b style={{ color: GREEN }}>green</b> within 10 m of the QR &middot; <b style={{ color: ORANGE }}>orange</b> within 100 m &middot; <b style={{ color: RED }}>red</b> further away</>)}
           </p>
         )}
         {!files.length && <p className="muted">This folder is empty.</p>}
