@@ -18,6 +18,16 @@ export default function Projects() {
     if (!String(text || '').trim()) return;
     if (await api('PUT', { id: s.id, location: text })) setLocText((x) => ({ ...x, [s.id]: '' }));
   };
+  // Stand at the QR and save where you are right now (phone GPS).
+  const here = (s) => {
+    if (!navigator.geolocation) { setMsg('This device has no location'); return; }
+    setMsg('Getting your location…');
+    navigator.geolocation.getCurrentPosition(
+      (p) => { api('PUT', { id: s.id, location: { lat: p.coords.latitude, lng: p.coords.longitude } }).then((ok) => ok && setMsg('Saved your location (±' + Math.round(p.coords.accuracy) + ' m)')); },
+      (e) => setMsg(e && e.code === 1 ? 'Location is blocked. Allow it for this site.' : 'Could not get the location. Try outside.'),
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+    );
+  };
   const copyLoc = (s) => { navigator.clipboard.writeText(Number(s.lat).toFixed(6) + ', ' + Number(s.lng).toFixed(6)).then(() => setMsg('Copied'), () => setMsg('Could not copy')); };
 
   const load = useCallback(async () => {
@@ -101,6 +111,7 @@ export default function Projects() {
                         ? <div style={{ fontSize: 13, marginBottom: 6 }}>{Number(s.lat).toFixed(6)}, {Number(s.lng).toFixed(6)}</div>
                         : <div className="muted" style={{ fontSize: 13, marginBottom: 6 }}>Not set</div>}
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <button style={btn} onClick={() => here(s)}>Here</button>
                         <button style={btn} onClick={() => setPick(s)}>Map</button>
                         {s.lat != null && s.lng != null && <button style={btn} onClick={() => copyLoc(s)}>Copy</button>}
                         {s.lat != null && s.lng != null && <a style={{ ...btn, textDecoration: 'none', color: 'inherit', border: '1px solid #767676', borderRadius: 4, display: 'inline-block' }} href={'https://www.google.com/maps?q=' + s.lat + ',' + s.lng} target="_blank" rel="noreferrer">Open</a>}
