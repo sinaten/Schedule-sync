@@ -1,4 +1,4 @@
-import { get } from '@vercel/blob';
+import { serveBlob } from '../../../../lib/blobserve';
 import { visitsDb } from '../../../../lib/visits';
 export const dynamic = 'force-dynamic';
 
@@ -8,13 +8,5 @@ export async function GET(req, { params }) {
   const sql = await visitsDb();
   const [m] = await sql`select m.pathname from media m join visits v on v.id = m.visit_id join sections s on s.id = v.section_id where s.share = ${String(params.token || '')} and m.pathname = ${p}`;
   if (!m) return new Response('Not found', { status: 404 });
-  const r = await get(m.pathname, { access: 'private' });
-  if (!r || r.statusCode !== 200) return new Response('Not found', { status: 404 });
-  return new Response(r.stream, {
-    headers: {
-      'Content-Type': r.blob.contentType || 'application/octet-stream',
-      'X-Content-Type-Options': 'nosniff',
-      'Cache-Control': 'private, no-cache',
-    },
-  });
+  return serveBlob(req, m.pathname);
 }
