@@ -137,11 +137,18 @@ export default function Capture() {
       const mime = ['video/mp4', 'video/webm;codecs=vp9', 'video/webm'].find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
       if (!mime) { flash('Video recording is not supported on this phone', 4000); return; }
       const visit = await ensureVisit();
-      const mr = new MediaRecorder(streamRef.current, { mimeType: mime });
+      let mic = null;
+      let rs = streamRef.current;
+      try {
+        mic = await navigator.mediaDevices.getUserMedia({ audio: true });
+        rs = new MediaStream([...streamRef.current.getVideoTracks(), ...mic.getAudioTracks()]);
+      } catch (e) { flash('Microphone not allowed: video will have no sound', 4000); }
+      const mr = new MediaRecorder(rs, { mimeType: mime });
       chunks.current = [];
       mr.ondataavailable = (e) => { if (e.data && e.data.size) chunks.current.push(e.data); };
       mr.onstop = () => {
         setRec(false);
+        if (mic) mic.getTracks().forEach((x) => x.stop());
         const type = mime.split(';')[0];
         save(new Blob(chunks.current, { type }), 'video', type === 'video/mp4' ? 'mp4' : 'webm', visit);
       };
