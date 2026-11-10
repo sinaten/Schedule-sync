@@ -87,7 +87,7 @@ export default async function Folders({ job, section, visit, base }) {
               <span>
                 Started <LocalTime iso={iso(v.created_at)} />{v.username ? ' · ' + v.username : ''}
                 {upAt && (<> &middot; uploaded <LocalTime iso={iso(upAt)} /></>)}
-                {v.lat != null && v.lng != null && (<> &middot; <a href={'https://maps.google.com/?q=' + v.lat + ',' + v.lng} target="_blank" rel="noreferrer"map</a></>)}
+                {v.lat != null && v.lng != null && (<> &middot; <a href={'https://maps.google.com/?q=' + v.lat + ',' + v.lng} target="_blank" rel="noreferrer">map</a></>)}
                 {dist != null && (<> &middot; <b style={{ color: dist > 150 ? '#b00020' : 'inherit' }}>{Math.round(dist)} m from the QR location</b></>)}
               </span>
             )}
