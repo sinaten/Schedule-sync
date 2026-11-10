@@ -7,7 +7,7 @@ export const metadata = {
   icons: { icon: '/icons/192', apple: '/icons/180' },
   appleWebApp: { capable: true, title: 'Schedule Sync', statusBarStyle: 'black-translucent' },
 };
-export const viewport = { themeColor: '#16262e', width: 'device-width', initialScale: 1, viewportFit: 'cover' };
+export const viewport = { themeColor: '#16262e', width: 'device-width', initialScale: 1, viewportFit: 'cover', maximumScale: 1, userScalable: false };
 const REGISTER_SW = "if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));";
 export const dynamic = 'force-dynamic';
 export default async function Layout({ children }) {
