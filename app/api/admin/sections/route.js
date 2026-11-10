@@ -1,5 +1,6 @@
 import { db } from '../../../../lib/db';
 import { currentUser, isAdmin } from '../../../../lib/user';
+import { visitsDb } from '../../../../lib/visits';
 export const dynamic = 'force-dynamic';
 
 const no = () => Response.json({ error: 'Admins only' }, { status: 403 });
@@ -13,7 +14,8 @@ async function sections() {
 export async function GET() {
   if (!isAdmin(await currentUser())) return no();
   const sql = await sections();
-  const rows = await sql`select id, job, name, pos from sections order by job, pos, created_at`;
+  await visitsDb();
+  const rows = await sql`select s.id, s.job, s.name, s.pos, (select count(*)::int from media m join visits v on v.id = m.visit_id where v.section_id = s.id) as files from sections s order by s.job, s.pos, s.created_at`;
   const j = await sql`select distinct job from schedules where job is not null union select substr(key, 7) from settings where key like 'model:%' union select job from sections order by 1`;
   return Response.json({ sections: rows, jobs: j.map((x) => x.job).filter(Boolean) });
 }
