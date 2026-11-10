@@ -56,7 +56,8 @@ export async function DELETE(req) {
   if (!v) return Response.json({ error: 'Not found' }, { status: 404 });
   if (!canManage(u, v)) return Response.json({ error: 'Not allowed' }, { status: 403 });
   const files = await sql`select pathname, kind, created_at from media where visit_id = ${id}`;
-  if (files.some((f) => !within(f.created_at, limitFor(u, await getRules(), 'delete')))) return Response.json({ error: 'The time allowed for deleting this folder has passed' }, { status: 403 });
+  const dm = limitFor(u, await getRules(), 'delete');
+  if (files.some((f) => !within(f.created_at, dm))) return Response.json({ error: 'The time allowed for deleting this folder has passed' }, { status: 403 });
   if (!canEdit(u) && files.some((f) => f.kind === 'scan')) return Response.json({ error: 'This folder holds a scan photo; only an admin or editor can delete it' }, { status: 403 });
   try { if (files.length) await del(files.map((f) => f.pathname)); } catch (e) { return Response.json({ error: 'Could not delete the files: ' + (e && e.message) }, { status: 500 }); }
   await sql`delete from media where visit_id = ${id}`;
