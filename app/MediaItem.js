@@ -23,7 +23,7 @@ export default function MediaItem({ url, kind, label, size = 100, id, share, can
   }, [open, sheet]);
 
   const canShare = !!id;
-  const full = link ? location.origin + link : '';
+  const full = link ? (typeof location !== 'undefined' ? location.origin : '') + link : '';
   const openSheet = () => { setMsg(''); setSheet(true); };
   const down = (e) => {
     if (!canShare) return;
