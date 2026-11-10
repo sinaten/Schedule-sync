@@ -1,5 +1,6 @@
 import { visitsDb, canManage } from '../lib/visits';
 import { getRules, limitFor, within } from '../lib/mediarules';
+import { getLoc } from '../lib/locrules';
 import { currentUser, canEdit } from '../lib/user';
 import ShareButton from './ShareButton';
 import DeleteButton from './DeleteButton';
@@ -17,8 +18,8 @@ const meters = (a, b, c, d) => {
 const cnt = (n) => n + (n === 1 ? ' file' : ' files');
 // Admin / editor distance check: green within 10 m of the QR location, orange within 100 m, red further away.
 const GREEN = '#2e9d57', ORANGE = '#f08c1a', RED = '#d93025';
-const col = (d) => (d <= 10 ? GREEN : d <= 100 ? ORANGE : RED);
-const one = (d) => ({ g: d <= 10 ? 1 : 0, o: d > 10 && d <= 100 ? 1 : 0, r: d > 100 ? 1 : 0 });
+const col = (d, lr) => (d <= lr.green ? GREEN : d <= lr.orange ? ORANGE : RED);
+const one = (d, lr) => ({ g: d <= lr.green ? 1 : 0, o: d > lr.green && d <= lr.orange ? 1 : 0, r: d > lr.orange ? 1 : 0 });
 
 function Folder({ href, children, sub, pct }) {
   const tot = pct ? pct.g + pct.o + pct.r : 0;
@@ -64,6 +65,7 @@ export default async function Folders({ job, section, visit, base }) {
   const me = (u && u.name) || null;
   // Time limits set by the admin (minutes after upload; null = no limit). Admins are never limited.
   const rules = await getRules();
+  const lr = await getLoc();
   const vm = limitFor(u, rules, 'view');
   const dm = limitFor(u, rules, 'delete');
   const link = (p) => {
@@ -92,7 +94,7 @@ export default async function Folders({ job, section, visit, base }) {
       const [sl] = await sql`select lat, lng from sections where id = ${v.section_id}`;
       if (sl && sl.lat != null && sl.lng != null) dist = meters(Number(sl.lat), Number(sl.lng), Number(v.lat), Number(v.lng));
     }
-    const frame = !edit ? null : dist == null ? '#9aa5ab' : col(dist);
+    const frame = !edit ? null : dist == null ? '#9aa5ab' : col(dist, lr);
     const tile = { width: 100, height: 100, borderRadius: 8, overflow: 'hidden', position: 'relative' };
     return (
       <div>
@@ -112,7 +114,7 @@ export default async function Folders({ job, section, visit, base }) {
         )}
         {edit && (
           <p className="muted" style={{ margin: '0 0 10px', fontSize: 12 }}>
-            {dist == null ? 'Gray frame: no QR location (or no GPS) saved, so the distance cannot be checked.' : (<>Frame: <b style={{ color: GREEN }}>green</b> within 10 m of the QR &middot; <b style={{ color: ORANGE }}>orange</b> within 100 m &middot; <b style={{ color: RED }}>red</b> further away</>)}
+            {dist == null ? 'Gray frame: no QR location (or no GPS) saved, so the distance cannot be checked.' : (<>Frame: <b style={{ color: GREEN }}>green</b> within {lr.green} m of the QR &middot; <b style={{ color: ORANGE }}>orange</b> within {lr.orange} m &middot; <b style={{ color: RED }}>red</b> further away</>)}
           </p>
         )}
         {!files.length && <p className="muted">This folder is empty.</p>}
@@ -146,7 +148,7 @@ export default async function Folders({ job, section, visit, base }) {
         {!vs.length && <p className="muted">No photos or videos yet.</p>}
         <div style={{ ...wrap, marginTop: 12 }}>
           {vs.map((v, i) => (
-            <Folder key={v.id} href={link({ section, visit: v.id })} sub={(edit && v.username ? v.username + ' · ' : '') + cnt(v.files) + (dmap[v.id] != null ? ' · ' + Math.round(dmap[v.id]) + ' m' : '')} pct={dmap[v.id] != null ? one(dmap[v.id]) : null}>
+            <Folder key={v.id} href={link({ section, visit: v.id })} sub={(edit && v.username ? v.username + ' · ' : '') + cnt(v.files) + (dmap[v.id] != null ? ' · ' + Math.round(dmap[v.id]) + ' m' : '')} pct={dmap[v.id] != null ? one(dmap[v.id], lr) : null}>
               {edit ? <LocalTime iso={iso(v.created_at)} short /> : 'Folder ' + (vs.length - i)}
             </Folder>
           ))}
@@ -160,7 +162,7 @@ export default async function Folders({ job, section, visit, base }) {
   if (un && un.files) ss.push({ sid: '', name: 'Unassigned', files: un.files });
   const pk = {};
   if (edit) {
-    const br = await sql`select sid, count(*) filter (where d <= 10)::int as g, count(*) filter (where d > 10 and d <= 100)::int as o, count(*) filter (where d > 100)::int as r from (select v.section_id as sid, 2 * 6371000 * asin(sqrt(least(1, power(sin(radians(v.lat::float8 - s.lat::float8) / 2), 2) + cos(radians(s.lat::float8)) * cos(radians(v.lat::float8)) * power(sin(radians(v.lng::float8 - s.lng::float8) / 2), 2)))) as d from media m join visits v on v.id = m.visit_id join sections s on s.id = v.section_id where v.job = ${job} and s.lat is not null and s.lng is not null and v.lat is not null and v.lng is not null and (${vm}::int is null or m.created_at > now() - make_interval(mins => ${vm}::int))) t group by sid`;
+    const br = await sql`select sid, count(*) filter (where d <= ${lr.green})::int as g, count(*) filter (where d > ${lr.green} and d <= ${lr.orange})::int as o, count(*) filter (where d > ${lr.orange})::int as r from (select v.section_id as sid, 2 * 6371000 * asin(sqrt(least(1, power(sin(radians(v.lat::float8 - s.lat::float8) / 2), 2) + cos(radians(s.lat::float8)) * cos(radians(v.lat::float8)) * power(sin(radians(v.lng::float8 - s.lng::float8) / 2), 2)))) as d from media m join visits v on v.id = m.visit_id join sections s on s.id = v.section_id where v.job = ${job} and s.lat is not null and s.lng is not null and v.lat is not null and v.lng is not null and (${vm}::int is null or m.created_at > now() - make_interval(mins => ${vm}::int))) t group by sid`;
     for (const r of br) pk[r.sid] = r;
   }
   const shown = edit ? ss : ss.filter((s) => s.files > 0);
