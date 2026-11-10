@@ -1,12 +1,13 @@
-import { currentUser, canEdit } from '../../../../lib/user';
+import { currentUser } from '../../../../lib/user';
+import { getAccess, canSee } from '../../../../lib/access';
 import { db } from '../../../../lib/db';
 import { visitsDb } from '../../../../lib/visits';
 import { getLoc } from '../../../../lib/locrules';
 export const dynamic = 'force-dynamic';
 
-// Admin and editor: per person, how many of their photos / videos were taken near the QR location (green / orange / red) or could not be checked.
+// Admin (and whoever the admin allows in Settings > Access): per person, how many of their photos / videos were taken near the QR location (green / orange / red) or could not be checked.
 export async function GET() {
-  if (!canEdit(await currentUser())) return Response.json({ error: 'Admins and editors only' }, { status: 403 });
+  if (!canSee(await currentUser(), 'analysis', await getAccess())) return Response.json({ error: 'Not allowed' }, { status: 403 });
   const lr = await getLoc();
   const sql = await visitsDb();
   const users = await sql`select username, role from users`;
