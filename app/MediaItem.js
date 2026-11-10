@@ -8,6 +8,7 @@ export default function MediaItem({ url, kind, label, size = 100, id, share, can
   const [sheet, setSheet] = useState(false);
   const [link, setLink] = useState(share ? '/share/file/' + share : '');
   const [msg, setMsg] = useState('');
+  const [hover, setHover] = useState(false);
   const timer = useRef(0);
   const held = useRef(false);
   const start = useRef([0, 0]);
@@ -61,6 +62,7 @@ export default function MediaItem({ url, kind, label, size = 100, id, share, can
   const btn = { font: 'inherit', fontSize: 16, padding: '12px 14px', borderRadius: 10, border: '1px solid #d9d6cc', background: '#fff', color: '#141413', cursor: 'pointer', width: '100%' };
   return (
     <>
+      <span style={{ position: 'relative', display: 'block', width: size, height: size }} onPointerEnter={(e) => { if (e.pointerType === 'mouse') setHover(true); }} onPointerLeave={() => setHover(false)}>
       <button type="button" onClick={click} onPointerDown={down} onPointerMove={move} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}
         onContextMenu={(e) => { if (canShare) { e.preventDefault(); stop(); held.current = true; openSheet(); } }}
         aria-label={isPhoto ? 'Open photo' : 'Play video'}
@@ -77,6 +79,13 @@ export default function MediaItem({ url, kind, label, size = 100, id, share, can
         {sheet && <span style={{ position: 'absolute', top: 5, left: 5, width: 22, height: 22, borderRadius: 11, background: '#2f7df6', color: '#fff', fontSize: 14, lineHeight: '22px' }}>&#10003;</span>}
         {link && !sheet && <span style={{ position: 'absolute', bottom: 4, left: 4, width: 20, height: 20, borderRadius: 10, background: 'rgba(20,20,19,.75)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" /></svg></span>}
       </button>
+      {hover && canShare && (
+        <button type="button" aria-label="Share link" title="Share link" onClick={(e) => { e.stopPropagation(); openSheet(); }}
+          style={{ position: 'absolute', top: 4, left: 4, width: 28, height: 28, borderRadius: 14, border: 0, background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#141413" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" /></svg>
+        </button>
+      )}
+      </span>
       {open && (
         <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.94)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <button type="button" aria-label="Close" onClick={() => setOpen(false)}
