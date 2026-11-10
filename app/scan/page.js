@@ -22,7 +22,7 @@ export default function Scan() {
     setMsg('');
     try {
       const jsQR = (await import('jsqr')).default;
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
       streamRef.current = stream;
       const v = videoRef.current;
       v.srcObject = stream;
@@ -32,7 +32,7 @@ export default function Scan() {
       const tick = () => {
         if (!streamRef.current) return;
         if (v.videoWidth) {
-          const w = 480;
+          const w = Math.min(v.videoWidth, 960);
           const h = Math.round((v.videoHeight / v.videoWidth) * w);
           canvas.width = w;
           canvas.height = h;
@@ -64,6 +64,12 @@ export default function Scan() {
 
   const origin = typeof window === 'undefined' ? '' : window.location.origin;
   const internal = text.startsWith('/') && !text.startsWith('//') ? text : origin && text.startsWith(origin + '/') ? text.slice(origin.length) : '';
+
+  useEffect(() => {
+    if (state !== 'found' || !internal) return;
+    const t = setTimeout(() => { location.href = internal; }, 700);
+    return () => clearTimeout(t);
+  }, [state, internal]);
 
   return (
     <div className="sc-wrap">
