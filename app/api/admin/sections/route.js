@@ -15,7 +15,7 @@ export async function GET() {
   if (!isAdmin(await currentUser())) return no();
   const sql = await sections();
   await visitsDb();
-  const rows = await sql`select s.id, s.job, s.name, s.pos, (select count(*)::int from media m join visits v on v.id = m.visit_id where v.section_id = s.id) as files from sections s order by s.job, s.pos, s.created_at`;
+  const rows = await sql`select s.id, s.job, s.name, s.pos, s.lat, s.lng, (select count(*)::int from media m join visits v on v.id = m.visit_id where v.section_id = s.id) as files from sections s order by s.job, s.pos, s.created_at`;
   const j = await sql`select distinct job from schedules where job is not null union select substr(key, 7) from settings where key like 'model:%' union select job from sections order by 1`;
   return Response.json({ sections: rows, jobs: j.map((x) => x.job).filter(Boolean) });
 }
@@ -37,9 +37,37 @@ export async function POST(req) {
   return Response.json({ ok: true });
 }
 
+// Reads "40.0123, -83.0456", a Google Maps link (@lat,lng) or { lat, lng }.
+function parseLoc(x) {
+  let lat, lng;
+  if (x && typeof x === 'object') { lat = Number(x.lat); lng = Number(x.lng); }
+  else {
+    const s = String(x);
+    const m = /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/.exec(s) || /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/.exec(s) || /(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)/.exec(s);
+    if (!m) return null;
+    lat = Number(m[1]); lng = Number(m[2]);
+  }
+  if (!(Math.abs(lat) <= 90 && Math.abs(lng) <= 180)) return null;
+  return { lat, lng };
+}
+
 export async function PUT(req) {
   if (!isAdmin(await currentUser())) return no();
   const b = await req.json().catch(() => ({}));
+  if ('location' in b) {
+    const sid = String(b.id || '');
+    if (!sid) return Response.json({ error: 'Section is required' }, { status: 400 });
+    const q = await sections();
+    await visitsDb();
+    if (b.location === null || b.location === '') {
+      await q`update sections set lat = null, lng = null where id = ${sid}`;
+      return Response.json({ ok: true });
+    }
+    const p = parseLoc(b.location);
+    if (!p) return Response.json({ error: 'Could not read the coordinates. Paste them like 40.0123, -83.0456' }, { status: 400 });
+    await q`update sections set lat = ${p.lat}, lng = ${p.lng} where id = ${sid}`;
+    return Response.json({ ok: true });
+  }
   const id = String(b.id || '');
   const name = String(b.name || '').trim().slice(0, 120);
   if (!id || !name) return Response.json({ error: 'Name is required' }, { status: 400 });
