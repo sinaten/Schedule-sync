@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { currentUser, isAdmin } from '../../lib/user';
-import Users from './Users';
+import AdminTabs from './AdminTabs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
@@ -13,7 +13,7 @@ export default async function Admin() {
   return (
     <main className="wide">
       <h1>Admin</h1>
-      <Users />
+      <AdminTabs />
     </main>
   );
 }
