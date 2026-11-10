@@ -1,35 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 
-// unsharp mask on grayscale: helps jsQR with slightly out-of-focus camera frames
-function sharpen(id, r, k) {
-  const W = id.width, H = id.height, s = id.data, gray = new Float32Array(W * H);
-  for (let i = 0; i < W * H; i++) gray[i] = s[i * 4] * 0.299 + s[i * 4 + 1] * 0.587 + s[i * 4 + 2] * 0.114;
-  const tmp = new Float32Array(W * H), bl = new Float32Array(W * H);
-  for (let y = 0; y < H; y++) {
-    let acc = 0;
-    for (let x = -r; x <= r; x++) acc += gray[y * W + Math.min(W - 1, Math.max(0, x))];
-    for (let x = 0; x < W; x++) {
-      tmp[y * W + x] = acc / (2 * r + 1);
-      acc += gray[y * W + Math.min(W - 1, x + r + 1)] - gray[y * W + Math.max(0, x - r)];
-    }
-  }
-  for (let x = 0; x < W; x++) {
-    let acc = 0;
-    for (let y = -r; y <= r; y++) acc += tmp[Math.min(H - 1, Math.max(0, y)) * W + x];
-    for (let y = 0; y < H; y++) {
-      bl[y * W + x] = acc / (2 * r + 1);
-      acc += tmp[Math.min(H - 1, y + r + 1) * W + x] - tmp[Math.max(0, y - r) * W + x];
-    }
-  }
-  const o = new Uint8ClampedArray(W * H * 4);
-  for (let i = 0; i < W * H; i++) {
-    const v = Math.max(0, Math.min(255, gray[i] + k * (gray[i] - bl[i])));
-    o[i * 4] = o[i * 4 + 1] = o[i * 4 + 2] = v;
-    o[i * 4 + 3] = 255;
-  }
-  return o;
-}
+import { makeDecoder } from '../../lib/qrdecode';
 
 export default function Scan() {
   const videoRef = useRef(null);
@@ -48,15 +20,24 @@ export default function Scan() {
   async function start() {
     setState('scanning'); setText(''); setErr('');
     try {
-      const jsQR = (await import('jsqr')).default;
+      const decode = await makeDecoder();
       let detector = null;
       try {
         if (typeof window !== 'undefined' && 'BarcodeDetector' in window) detector = new window.BarcodeDetector({ formats: ['qr_code'] });
       } catch (e) { detector = null; }
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: false,
-      });
+      const base = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+      let stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, ...base }, audio: false });
+      try {
+        const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+        const back = devs.filter(d => /back|rear|environment/i.test(d.label) && !/ultra|wide|tele|front/i.test(d.label));
+        const want = back.find(d => /^back camera$/i.test(d.label.trim())) || back[0];
+        const cur = stream.getVideoTracks()[0].getSettings().deviceId;
+        if (want && want.deviceId !== cur) {
+          const s2 = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: want.deviceId }, ...base }, audio: false });
+          stream.getTracks().forEach(t => t.stop());
+          stream = s2;
+        }
+      } catch (e) { /* keep default camera */ }
       streamRef.current = stream;
       try {
         const track = stream.getVideoTracks()[0];
@@ -74,7 +55,7 @@ export default function Scan() {
         if (!streamRef.current) return;
         if (v.videoWidth) {
           tick++;
-          const w = Math.min(v.videoWidth, 1280);
+          const w = Math.min(v.videoWidth, 1024);
           const h = Math.round(v.videoHeight / v.videoWidth * w);
           canvas.width = w; canvas.height = h;
           ctx.drawImage(v, 0, 0, w, h);
@@ -84,13 +65,8 @@ export default function Scan() {
               if (found && found.length && found[0].rawValue) { done(found[0].rawValue); return; }
             }
           } catch (e) { detector = null; }
-          const id = ctx.getImageData(0, 0, w, h);
-          let r = jsQR(id.data, w, h);
-          if (!r && tick % 2 === 0) {
-            const k = tick % 4 === 0 ? [10, 4] : [6, 3];
-            r = jsQR(sharpen(id, k[0], k[1]), w, h);
-          }
-          if (r && r.data) { done(r.data); return; }
+          const r = decode(ctx.getImageData(0, 0, w, h), tick);
+          if (r && r.text) { done(r.text); return; }
         }
         timer.current = setTimeout(loop, 100);
       };
