@@ -122,6 +122,15 @@ export default function MapPicker({ title, lat, lng, onSave, onClose }) {
       else setErr('Address not found');
     } catch (e) { setErr('Search failed'); }
   }
+  function locate() {
+    if (!navigator.geolocation) { setErr('This device has no location'); return; }
+    setErr('');
+    navigator.geolocation.getCurrentPosition(
+      (p) => { if (api.current.goto) api.current.goto(p.coords.latitude, p.coords.longitude, true); },
+      (e) => setErr(e && e.code === 1 ? 'Location is blocked. Allow it for this site.' : 'Could not get the location'),
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+    );
+  }
   async function save() {
     setBusy(true);
     const ok = await onSave(pos);
@@ -165,6 +174,7 @@ export default function MapPicker({ title, lat, lng, onSave, onClose }) {
         <div ref={el} style={{ flex: 1, background: '#eef1f3', minHeight: 0 }} />
         <div style={{ padding: '10px 12px', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid #e1e5e8', paddingBottom: small ? 'max(10px, env(safe-area-inset-bottom))' : 10 }}>
           <span style={{ flex: 1, fontSize: 14, minWidth: 160 }}>{err ? <b style={{ color: '#b00020' }}>{err}</b> : pos ? pos.lat.toFixed(6) + ', ' + pos.lng.toFixed(6) : 'Click the map to drop a pin'}</span>
+          <button type="button" style={b} onClick={locate}>My location</button>
           <button type="button" style={b} onClick={onClose}>Cancel</button>
           <button type="button" style={{ ...b, background: '#16262e', color: '#fff', border: 0 }} disabled={!pos || busy} onClick={save}>{busy ? 'Saving…' : 'Save location'}</button>
         </div>
