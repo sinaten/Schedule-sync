@@ -1,5 +1,5 @@
 import { visitsDb, canManage } from '../lib/visits';
-import { currentUser } from '../lib/user';
+import { currentUser, canEdit } from '../lib/user';
 import ShareButton from './ShareButton';
 import DeleteButton from './DeleteButton';
 import MediaItem from './MediaItem';
@@ -60,14 +60,14 @@ export default async function Folders({ job, section, visit, base }) {
             <LocalTime iso={iso(v.created_at)} />{v.username ? ' · ' + v.username : ''}
             {v.lat != null && v.lng != null && (<> &middot; <a href={'https://maps.google.com/?q=' + v.lat + ',' + v.lng} target="_blank" rel="noreferrer">map</a></>)}
           </span>
-          {can && files.length > 0 && <DeleteButton kind="visit" id={v.id} label="Delete folder" />}
+          {can && files.length > 0 && (canEdit(u) || !files.some((f) => f.kind === 'scan')) && <DeleteButton kind="visit" id={v.id} label="Delete folder" />}
         </p>
         {!files.length && <p className="muted">This folder is empty.</p>}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {files.map((m) => (
             <div key={m.id} style={tile}>
               <MediaItem url={fileUrl(m.pathname)} kind={m.kind} label={mb(m.size)} size={100} id={m.id} share={m.share} canStop={can} />
-              {can && <DeleteButton kind="media" id={m.id} overlay />}
+              {can && (m.kind !== 'scan' || canEdit(u)) && <DeleteButton kind="media" id={m.id} overlay />}
             </div>
           ))}
         </div>
