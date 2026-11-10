@@ -16,6 +16,7 @@ export default function Capture() {
   const visitRef = useRef(null);
   const seq = useRef(0);
   const posRef = useRef(null);
+  const proofRef = useRef(null);
   const [err, setErr] = useState('');
   const [note, setNote] = useState('');
   const [fixed, setFixed] = useState(false);
@@ -47,7 +48,7 @@ export default function Capture() {
         if (s) {
           const r = await fetch('/api/visits?section=' + encodeURIComponent(s));
           const j = await r.json();
-          if (r.ok) { setFixed(true); setSectionId(s); setJob(j.section.job); setTitle(j.section.job); setSub(j.section.name); }
+          if (r.ok) { setFixed(true); setSectionId(s); setJob(j.section.job); setTitle(j.section.job); setSub(j.section.name); proofRef.current = sendProof(s); }
           else setErr(j.error || 'Section not found');
         } else {
           const r = await fetch('/api/visits');
@@ -78,7 +79,25 @@ export default function Capture() {
     };
   }, []);
 
+  // Anti-cheat: the scanner keeps the camera frame it saw when it recognized the QR. It is saved first in the new folder as "scan" proof.
+  async function sendProof(sid) {
+    let p = null;
+    try { p = JSON.parse(sessionStorage.getItem('scanproof') || 'null'); sessionStorage.removeItem('scanproof'); } catch (e) { return; }
+    if (!p || p.sid !== sid || Date.now() - p.t > 120000) return;
+    try {
+      for (let i = 0; i < 6 && !posRef.current; i++) await new Promise((r) => setTimeout(r, 250));
+      const blob = await (await fetch(p.data)).blob();
+      const r = await jsonPost('/api/visits', { sectionId: sid, ...(posRef.current || {}) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'Could not start the visit');
+      visitRef.current = { ...j, key: sid };
+      seq.current = 0;
+      await save(blob, 'scan', 'jpg', visitRef.current);
+    } catch (e) { flash('Scan photo not saved: ' + (e && e.message ? e.message : 'error'), 5000); }
+  }
+
   async function ensureVisit() {
+    if (proofRef.current) { try { await proofRef.current; } catch (e) { /* ignore */ } }
     const key = fixed ? sectionId : job + '|' + sectionId;
     if (visitRef.current && visitRef.current.key === key) return visitRef.current;
     const r = await jsonPost('/api/visits', { sectionId: sectionId || undefined, job: job || undefined, ...(posRef.current || {}) });
