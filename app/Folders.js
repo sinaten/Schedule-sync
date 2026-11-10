@@ -9,6 +9,11 @@ import LocalTime from './LocalTime';
 const fileUrl = (p) => '/api/media/file?p=' + encodeURIComponent(p);
 const mb = (n) => (Number(n) / 1048576).toFixed(1) + ' MB';
 const iso = (d) => new Date(d).toISOString();
+const meters = (a, b, c, d) => {
+  const R = 6371000, r = (x) => (x * Math.PI) / 180;
+  const h = Math.sin(r(c - a) / 2) ** 2 + Math.cos(r(a)) * Math.cos(r(c)) * Math.sin(r(d - b) / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+};
 const cnt = (n) => n + (n === 1 ? ' file' : ' files');
 
 function Folder({ href, children, sub }) {
@@ -66,6 +71,12 @@ export default async function Folders({ job, section, visit, base }) {
     let num = 0;
     if (!edit) { const [c] = await sql`select count(*)::int as n from visits where job = ${job} and coalesce(section_id, '') = ${v.section_id || ''} and username = ${me} and created_at <= ${v.created_at}`; num = c ? c.n : 1; }
     const upAt = files.length ? files[files.length - 1].created_at : null;
+    // Admins / editors: how far the phone was from the QR location saved for this section.
+    let dist = null;
+    if (edit && v.section_id && v.lat != null && v.lng != null) {
+      const [sl] = await sql`select lat, lng from sections where id = ${v.section_id}`;
+      if (sl && sl.lat != null && sl.lng != null) dist = meters(Number(sl.lat), Number(sl.lng), Number(v.lat), Number(v.lng));
+    }
     const tile = { width: 100, height: 100, borderRadius: 8, overflow: 'hidden', position: 'relative' };
     return (
       <div>
@@ -76,7 +87,8 @@ export default async function Folders({ job, section, visit, base }) {
               <span>
                 Started <LocalTime iso={iso(v.created_at)} />{v.username ? ' · ' + v.username : ''}
                 {upAt && (<> &middot; uploaded <LocalTime iso={iso(upAt)} /></>)}
-                {v.lat != null && v.lng != null && (<> &middot; <a href={'https://maps.google.com/?q=' + v.lat + ',' + v.lng} target="_blank" rel="noreferrer">map</a></>)}
+                {v.lat != null && v.lng != null && (<> &middot; <a href={'https://maps.google.com/?q=' + v.lat + ',' + v.lng} target="_blank" rel="noreferrer"map</a></>)}
+                {dist != null && (<> &middot; <b style={{ color: dist > 150 ? '#b00020' : 'inherit' }}>{Math.round(dist)} m from the QR location</b></>)}
               </span>
             )}
             {folderDel && <DeleteButton kind="visit" id={v.id} label="Delete folder" />}
