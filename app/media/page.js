@@ -19,12 +19,12 @@ export default async function Media({ searchParams }) {
     );
   }
   const sql = await visitsDb();
-  const rows = await sql`select v.job, count(m.id)::int as files from visits v join media m on m.visit_id = v.id group by v.job order by v.job`;
+  const rows = await sql`select j.job, (select count(*)::int from media m join visits v on v.id = m.visit_id where v.job = j.job) as files from (select job from sections union select job from visits) j order by j.job`;
   const jobs = rows.filter((r) => canJob(u, r.job));
   return (
     <main>
       <h1>Photos &amp; videos</h1>
-      {!jobs.length && <p className="muted">Nothing saved yet.</p>}
+      {!jobs.length && <p className="muted">No projects yet.</p>}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18 }}>
         {jobs.map((r) => (
           <a key={r.job} href={'/media?job=' + encodeURIComponent(r.job)} style={{ width: 140, textDecoration: 'none', color: 'inherit', textAlign: 'center', display: 'block' }}>
