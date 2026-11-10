@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 // One photo / video tile. Tap: full-screen viewer (close button, video player, download).
 // Press and hold (or right-click): select the file and get a "Share link" sheet, like Dropbox.
@@ -87,7 +88,7 @@ export default function MediaItem({ url, kind, label, size = 100, id, share, can
         </button>
       )}
       </span>
-      {open && (
+      {open && createPortal(
         <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.94)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <button type="button" aria-label="Close" onClick={() => setOpen(false)}
             style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 12px)', right: 14, width: 46, height: 46, borderRadius: '50%', border: 0, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}>
@@ -109,11 +110,16 @@ export default function MediaItem({ url, kind, label, size = 100, id, share, can
           <a href={url + (url.includes('?') ? '&' : '?') + 'dl=1'} download onClick={(e) => e.stopPropagation()}
             style={{ position: 'absolute', bottom: 'calc(env(safe-area-inset-bottom) + 14px)', left: 0, right: 0, textAlign: 'center', color: '#fff', fontSize: 15 }}>Download</a>
         </div>
-      )}
-      {sheet && (
+      , document.body)}
+      {sheet && createPortal(
         <div onClick={() => setSheet(false)} style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'flex-end' }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', background: '#faf9f5', borderRadius: '16px 16px 0 0', padding: '16px 16px calc(env(safe-area-inset-bottom) + 16px)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <b style={{ fontSize: 16 }}>1 {isPhoto ? 'photo' : 'video'} selected</b>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', background: '#faf9f5', borderRadius: '16px 16px 0 0', padding: '16px 16px calc(env(safe-area-inset-bottom) + 16px)', display: 'flex', flexDirection: 'column', gap: 10, maxHeight: '85vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <b style={{ fontSize: 16 }}>1 {isPhoto ? 'photo' : 'video'} selected</b>
+              <button type="button" aria-label="Close" onClick={() => setSheet(false)} style={{ width: 36, height: 36, borderRadius: 18, border: 0, background: '#ebe9e0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#141413" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
+            </div>
             {!link && <button type="button" style={{ ...btn, background: '#141413', color: '#fff', border: 0 }} onClick={makeLink}>Create share link</button>}
             {link && (
               <>
@@ -129,7 +135,7 @@ export default function MediaItem({ url, kind, label, size = 100, id, share, can
             <button type="button" style={btn} onClick={() => setSheet(false)}>Done</button>
           </div>
         </div>
-      )}
+      , document.body)}
     </>
   );
 }
