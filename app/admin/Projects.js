@@ -89,7 +89,7 @@ export default function Projects() {
                       )}
                     </td>
                     <td style={cell}>
-                      <a href={'/media?job=' + encodeURIComponent(job) + '&section=' + encodeURIComponent(s.id)} style={{ fontSize: 15 }}>{s.files ? 'Open folder (' + s.files + ')' : 'Open folder'}</a>
+                      <a href={'/admin?tab=media&job=' + encodeURIComponent(job) + '&section=' + encodeURIComponent(s.id)} style={{ fontSize: 15 }}>{s.files ? 'Open folder (' + s.files + ')' : 'Open folder'}</a>
                     </td>
                     <td style={cell}><button style={btn} onClick={() => { if (confirm('Delete section ' + s.name + '? Its QR code will stop working.')) api('DELETE', null, '?id=' + encodeURIComponent(s.id)); }}>Delete</button></td>
                   </tr>
