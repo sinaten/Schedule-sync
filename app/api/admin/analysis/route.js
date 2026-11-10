@@ -1,12 +1,12 @@
-import { currentUser, isAdmin } from '../../../../lib/user';
+import { currentUser, canEdit } from '../../../../lib/user';
 import { db } from '../../../../lib/db';
 import { visitsDb } from '../../../../lib/visits';
 import { getLoc } from '../../../../lib/locrules';
 export const dynamic = 'force-dynamic';
 
-// Admin: per person, how many of their photos / videos were taken near the QR location (green / orange / red) or could not be checked.
+// Admin and editor: per person, how many of their photos / videos were taken near the QR location (green / orange / red) or could not be checked.
 export async function GET() {
-  if (!isAdmin(await currentUser())) return Response.json({ error: 'Admins only' }, { status: 403 });
+  if (!canEdit(await currentUser())) return Response.json({ error: 'Admins and editors only' }, { status: 403 });
   const lr = await getLoc();
   const sql = await visitsDb();
   const users = await sql`select username, role from users`;
