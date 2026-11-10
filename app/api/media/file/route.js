@@ -1,4 +1,4 @@
-import { get } from '@vercel/blob';
+import { serveBlob } from '../../../../lib/blobserve';
 import { currentUser, canJob } from '../../../../lib/user';
 import { visitsDb } from '../../../../lib/visits';
 export const dynamic = 'force-dynamic';
@@ -11,13 +11,5 @@ export async function GET(req) {
   const sql = await visitsDb();
   const [m] = await sql`select m.pathname, v.job from media m join visits v on v.id = m.visit_id where m.pathname = ${p}`;
   if (!m || !canJob(u, m.job)) return new Response('Not found', { status: 404 });
-  const r = await get(m.pathname, { access: 'private' });
-  if (!r || r.statusCode !== 200) return new Response('Not found', { status: 404 });
-  return new Response(r.stream, {
-    headers: {
-      'Content-Type': r.blob.contentType || 'application/octet-stream',
-      'X-Content-Type-Options': 'nosniff',
-      'Cache-Control': 'private, no-cache',
-    },
-  });
+  return serveBlob(req, m.pathname);
 }
