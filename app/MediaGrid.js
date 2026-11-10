@@ -2,6 +2,7 @@ import { visitsDb, canManage } from '../lib/visits';
 import { currentUser } from '../lib/user';
 import ShareButton from './ShareButton';
 import DeleteButton from './DeleteButton';
+import MediaItem from './MediaItem';
 
 const fileUrl = (p) => '/api/media/file?p=' + encodeURIComponent(p);
 const mb = (n) => (Number(n) / 1048576).toFixed(1) + ' MB';
@@ -47,16 +48,7 @@ export default async function MediaGrid({ job, section }) {
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {by[v.id].map((m) => (
                       <div key={m.id} style={tile}>
-                        {m.kind === 'photo' ? (
-                          <a href={fileUrl(m.pathname)} target="_blank" rel="noreferrer">
-                            <img src={fileUrl(m.pathname)} alt="" loading="lazy" style={{ width: 100, height: 100, objectFit: 'cover', background: '#eee', display: 'block' }} />
-                          </a>
-                        ) : (
-                          <a href={fileUrl(m.pathname)} target="_blank" rel="noreferrer"
-                            style={{ width: 100, height: 100, background: '#16262e', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', fontSize: 13, textDecoration: 'none' }}>
-                            <span>Video</span><span style={{ opacity: 0.7 }}>{mb(m.size)}</span>
-                          </a>
-                        )}
+                        <MediaItem url={fileUrl(m.pathname)} kind={m.kind} label={mb(m.size)} size={100} />
                         {can && <DeleteButton kind="media" id={m.id} overlay />}
                       </div>
                     ))}
