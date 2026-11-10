@@ -4,14 +4,34 @@ import { useEffect, useState, useCallback } from 'react';
 const ROLE_HELP = { admin: 'Sees everything and manages users', editor: 'Sees chosen jobs and can edit tables', viewer: 'Sees chosen jobs, read only' };
 
 function JobPicker({ all, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
   const set = new Set(value);
   const toggle = (j) => { const n = new Set(set); n.has(j) ? n.delete(j) : n.add(j); onChange([...n]); };
   if (!all.length) return <span className="muted">No jobs yet</span>;
+  const shown = all.filter((j) => j.toLowerCase().includes(q.trim().toLowerCase()));
+  const n = value.length;
+  const summary = n === 0 ? 'None selected' : n <= 2 ? value.join(', ') : n + ' of ' + all.length + ' selected';
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px' }}>
-      {all.map((j) => (
-        <label key={j} style={{ whiteSpace: 'nowrap' }}><input type="checkbox" checked={set.has(j)} onChange={() => toggle(j)} /> {j}</label>
-      ))}
+    <div style={{ minWidth: 200, maxWidth: 320 }}>
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 10px', fontSize: 15, background: '#fff', border: '1px solid #cfd8dc', borderRadius: 8, cursor: 'pointer', textAlign: 'left' }}>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{summary}</span>
+        <span aria-hidden="true" style={{ flex: 'none', transition: 'transform .15s', transform: open ? 'rotate(180deg)' : 'none' }}>▾</span>
+      </button>
+      {open && (
+        <div style={{ marginTop: 4, border: '1px solid #cfd8dc', borderRadius: 8, background: '#fff', overflow: 'hidden' }}>
+          <input type="search" placeholder="Search…" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: '100%', padding: '9px 10px', fontSize: 15, border: 0, borderBottom: '1px solid #e3e8ea', boxSizing: 'border-box', outline: 'none' }} />
+          <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+            {shown.map((j) => (
+              <label key={j} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderBottom: '1px solid #f0f3f4', cursor: 'pointer' }}>
+                <input type="checkbox" checked={set.has(j)} onChange={() => toggle(j)} style={{ width: 18, height: 18 }} />
+                <span>{j}</span>
+              </label>
+            ))}
+            {shown.length === 0 && <div className="muted" style={{ padding: 12 }}>No match</div>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
