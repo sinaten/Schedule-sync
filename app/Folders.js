@@ -49,7 +49,7 @@ export default async function Folders({ job, section, visit, base }) {
   if (visit) {
     const [v] = await sql`select id, section_id, section_name, username, lat, lng, created_at from visits where id = ${visit} and job = ${job}`;
     if (!v) return <p className="muted">Folder not found.</p>;
-    const files = await sql`select id, pathname, kind, size from media where visit_id = ${v.id} order by created_at`;
+    const files = await sql`select id, pathname, kind, size, share from media where visit_id = ${v.id} order by created_at`;
     const can = canManage(u, { job, username: v.username });
     const tile = { width: 100, height: 100, borderRadius: 8, overflow: 'hidden', position: 'relative' };
     return (
@@ -66,7 +66,7 @@ export default async function Folders({ job, section, visit, base }) {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {files.map((m) => (
             <div key={m.id} style={tile}>
-              <MediaItem url={fileUrl(m.pathname)} kind={m.kind} label={mb(m.size)} size={100} />
+              <MediaItem url={fileUrl(m.pathname)} kind={m.kind} label={mb(m.size)} size={100} id={m.id} share={m.share} canStop={can} />
               {can && <DeleteButton kind="media" id={m.id} overlay />}
             </div>
           ))}
