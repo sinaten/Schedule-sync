@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
+import MapPicker from './MapPicker';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -11,6 +12,13 @@ export default function Projects() {
   const [names, setNames] = useState({});
   const [shown, setShown] = useState({});
   const [qr, setQr] = useState({});
+  const [pick, setPick] = useState(null);
+  const [locText, setLocText] = useState({});
+  const submitLoc = async (s, text) => {
+    if (!String(text || '').trim()) return;
+    if (await api('PUT', { id: s.id, location: text })) setLocText((x) => ({ ...x, [s.id]: '' }));
+  };
+  const copyLoc = (s) => { navigator.clipboard.writeText(Number(s.lat).toFixed(6) + ', ' + Number(s.lng).toFixed(6)).then(() => setMsg('Copied'), () => setMsg('Could not copy')); };
 
   const load = useCallback(async () => {
     const r = await fetch('/api/admin/sections', { cache: 'no-store' });
@@ -71,7 +79,7 @@ export default function Projects() {
           </label>
           <div className="scroll">
             <table style={{ width: '100%' }}>
-              <thead><tr><th style={{ width: 40 }}>#</th><th>Section name</th><th>QR code</th><th>Photos &amp; videos</th><th></th></tr></thead>
+              <thead><tr><th style={{ width: 40 }}>#</th><th>Section name</th><th>QR code</th><th>Location</th><th>Photos &amp; videos</th><th></th></tr></thead>
               <tbody>
                 {list.map((s, i) => (
                   <tr key={s.id}>
@@ -89,12 +97,28 @@ export default function Projects() {
                       )}
                     </td>
                     <td style={cell}>
+                      {s.lat != null && s.lng != null
+                        ? <div style={{ fontSize: 13, marginBottom: 6 }}>{Number(s.lat).toFixed(6)}, {Number(s.lng).toFixed(6)}</div>
+                        : <div className="muted" style={{ fontSize: 13, marginBottom: 6 }}>Not set</div>}
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <button style={btn} onClick={() => setPick(s)}>Map</button>
+                        {s.lat != null && s.lng != null && <button style={btn} onClick={() => copyLoc(s)}>Copy</button>}
+                        {s.lat != null && s.lng != null && <a style={{ ...btn, textDecoration: 'none', color: 'inherit', border: '1px solid #767676', borderRadius: 4, display: 'inline-block' }} href={'https://www.google.com/maps?q=' + s.lat + ',' + s.lng} target="_blank" rel="noreferrer">Open</a>}
+                        {s.lat != null && s.lng != null && <button style={btn} onClick={() => api('PUT', { id: s.id, location: null })}>Clear</button>}
+                      </div>
+                      <input style={{ ...inp, width: '100%', minWidth: 150, marginTop: 6, fontSize: 13 }} placeholder="Paste coordinates" value={locText[s.id] ?? ''}
+                        onChange={(e) => setLocText({ ...locText, [s.id]: e.target.value })}
+                        onPaste={(e) => { e.preventDefault(); submitLoc(s, e.clipboardData.getData('text')); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') submitLoc(s, locText[s.id]); }}
+                        onBlur={() => submitLoc(s, locText[s.id])} />
+                    </td>
+                    <td style={cell}>
                       <a href={'/admin?tab=media&job=' + encodeURIComponent(job) + '&section=' + encodeURIComponent(s.id)} style={{ fontSize: 15 }}>{s.files ? 'Open folder (' + s.files + ')' : 'Open folder'}</a>
                     </td>
                     <td style={cell}><button style={btn} onClick={() => { if (confirm('Delete section ' + s.name + '? Its QR code will stop working.')) api('DELETE', null, '?id=' + encodeURIComponent(s.id)); }}>Delete</button></td>
                   </tr>
                 ))}
-                {list.length === 0 && <tr><td colSpan={5} style={cell} className="muted">No sections yet. Add the first one below.</td></tr>}
+                {list.length === 0 && <tr><td colSpan={6} style={cell} className="muted">No sections yet. Add the first one below.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -106,6 +130,7 @@ export default function Projects() {
           <p className="muted" style={{ fontSize: 14 }}>In the print window choose “Save as PDF” to get a file you can send.</p>
         </>
       )}
+      {pick && <MapPicker title={'Location of ' + pick.name} lat={pick.lat} lng={pick.lng} onSave={(p) => api('PUT', { id: pick.id, location: p })} onClose={() => setPick(null)} />}
     </>
   );
 }
