@@ -13,6 +13,7 @@ export default function MobileShell({ name, role, admin }) {
   const [job, setJob] = useState('');
   const [online, setOnline] = useState(null);
   const [phase, setPhase] = useState('idle');
+  const [pct, setPct] = useState(0);
   const [toast, setToast] = useState('');
   const flash = (m) => { setToast(m); setTimeout(() => setToast(''), 6000); };
   useEffect(() => {
@@ -33,7 +34,8 @@ export default function MobileShell({ name, role, admin }) {
     const t = setInterval(async () => {
       try {
         const j = await fetch('/api/refresh-model?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json());
-        if (j.state === 'done') { location.reload(); return; }
+        if (typeof j.pct === 'number') setPct(j.pct);
+        if (j.state === 'done') { setPct(100); setPhase('done'); setTimeout(() => location.reload(), 3000); return; }
         if (j.state === 'error') { setPhase('idle'); flash(j.msg || 'Revit could not publish the model.'); return; }
       } catch (e) {}
       if (Date.now() - t0 > 8 * 60 * 1000) { setPhase('idle'); flash('Revit did not answer. Check that it is open.'); }
@@ -41,13 +43,14 @@ export default function MobileShell({ name, role, admin }) {
     return () => clearInterval(t);
   }, [phase, job]);
   async function refreshModel() {
-    if (!job || phase === 'running') return;
+    if (!job || phase !== 'idle') return;
     try {
       const r = await fetch('/api/refresh-model', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job }) });
       const j = await r.json().catch(() => ({}));
       if (j.offline) { setOnline(false); flash('Turn on your laptop and open Revit, then try again.'); return; }
       if (!r.ok) { flash(j.error || 'Could not start the refresh.'); return; }
       setOnline(true);
+      setPct(0);
       setPhase('running');
     } catch (e) { flash('No connection to the website.'); }
   }
@@ -85,8 +88,15 @@ export default function MobileShell({ name, role, admin }) {
       </header>
       <div className="ms-spacer" />
       <nav className="ms-bot" aria-label="Quick actions">
-        <button type="button" className={'ms-sm' + (phase === 'running' ? ' ms-spin' : '')} aria-label="Refresh 3D model from Revit" onClick={refreshModel} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer', opacity: job ? 1 : 0.4 }}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={online === false ? '#d64545' : '#2e9e5b'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><g className="ms-ar"><path d="M1.66 10.18A10.5 10.5 0 0 1 21.52 7.56" /><path d="M22.46 3.47L21.52 7.56L17.77 5.66" /><path d="M22.34 13.82A10.5 10.5 0 0 1 2.48 16.44" /><path d="M1.54 20.53L2.48 16.44L6.23 18.34" /></g><path d="M6.4 12.9L12 8l5.6 4.9M7.8 12v5.8h8.4V12" /></svg>
+        <button type="button" className="ms-sm" aria-label="Refresh 3D model from Revit" onClick={refreshModel} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer', opacity: job ? 1 : 0.4 }}>
+          {phase === 'idle' ? (
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={online === false ? '#d64545' : '#2e9e5b'} strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><g><path d="M1.66 8.24A11.0 11.0 0 0 1 21.01 5.69" /><path d="M21.27 2.70L21.01 5.69L18.11 4.91" /><path d="M22.34 15.76A11.0 11.0 0 0 1 2.99 18.31" /><path d="M2.73 21.30L2.99 18.31L5.89 19.09" /></g><path d="M6.4 11.8L12 6.2l5.6 5.6M7.8 11v6.6h8.4V11" /></svg>
+          ) : (
+            <>
+              <svg width="42" height="42" viewBox="0 0 42 42" style={{ position: 'absolute', inset: 0 }} aria-hidden="true"><circle cx="21" cy="21" r="19" fill="none" stroke="#e3efe6" strokeWidth="2.5" /><circle cx="21" cy="21" r="19" fill="none" stroke="#2e9e5b" strokeWidth="2.5" strokeLinecap="round" strokeDasharray={(2 * Math.PI * 19 * Math.max(0, Math.min(100, pct))) / 100 + ' ' + 2 * Math.PI * 19} transform="rotate(-90 21 21)" style={{ transition: 'stroke-dasharray .5s ease' }} /></svg>
+              <span style={{ position: 'relative', fontSize: 12, fontWeight: 700, color: '#2e9e5b', lineHeight: 1 }}>{Math.round(pct)}</span>
+            </>
+          )}
         </button>
         {toast && <div className="ms-toast">{toast}</div>}
         <span className="ms-sm" aria-hidden="true" />
