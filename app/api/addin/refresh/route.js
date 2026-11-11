@@ -9,7 +9,7 @@ export async function GET(req) {
   const sql = await db();
   await put(sql, 'ping:' + job, { at: Date.now() });
   const [r] = await sql`select value from settings where key = ${'refresh:' + job}`;
-  return Response.json({ requested: !!r && r.value && r.value.state === 'requested' });
+  return Response.json({ requested: !!r && !!r.value && r.value.state === 'requested', mode: (r && r.value && r.value.mode) || 'full' });
 }
 export async function POST(req) {
   if (!isAddin(req)) return deny();
