@@ -35,7 +35,14 @@ export default function MobileShell({ name, role, admin }) {
       try {
         const j = await fetch('/api/refresh-model?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json());
         if (typeof j.pct === 'number') setPct(j.pct);
-        if (j.state === 'done') { setPct(100); setPhase('done'); setTimeout(() => location.reload(), 3000); return; }
+        if (j.state === 'done') {
+          setPct(100);
+          setPhase('done');
+          // colours only: the open model is recoloured in place; a full publish needs a fresh page
+          if (j.mode === 'quick') { window.dispatchEvent(new Event('ss-reload-look')); setTimeout(() => setPhase('idle'), 2500); }
+          else setTimeout(() => location.reload(), 3000);
+          return;
+        }
         if (j.state === 'error') { setPhase('idle'); flash(j.msg || 'Revit could not publish the model.'); return; }
       } catch (e) {}
       if (Date.now() - t0 > 8 * 60 * 1000) { setPhase('idle'); flash('Revit did not answer. Check that it is open.'); }
