@@ -106,6 +106,18 @@ export default function Viewer3D({ job = '' }) {
   const [busy, setBusy] = useState(false);
   const [popup, setPopup] = useState(null);
 
+  async function toggle(tb, col, value) {
+    setPopup((p) => p && { ...p, tables: p.tables.map((t) => (t.id === tb.id ? { ...t, vals: { ...t.vals, [col]: value } } : t)) });
+    try {
+      const r = await fetch('/api/schedules/' + encodeURIComponent(tb.id) + '/edits', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ elementId: tb.element_id, col, value }) });
+      if (!r.ok) throw new Error('not allowed');
+      setMsg('');
+    } catch (e) {
+      setPopup((p) => p && { ...p, tables: p.tables.map((t) => (t.id === tb.id ? { ...t, vals: { ...t.vals, [col]: !value } } : t)) });
+      setMsg('You cannot change ' + col);
+    }
+  }
+
   async function refresh() {
     try {
       const r = await fetch('/api/aps?job=' + encodeURIComponent(job), { cache: 'no-store' });
@@ -221,7 +233,7 @@ export default function Viewer3D({ job = '' }) {
                 <div style={{ fontWeight: 600, marginBottom: 4 }}>{tb.name}</div>
                 <table><tbody>
                   {tb.columns.map((c) => (
-                    <tr key={c.name}><td style={{ color: '#546e7a', paddingRight: 8, verticalAlign: 'top' }}>{c.name}</td><td>{show(tb.vals && tb.vals[c.name])}</td></tr>
+                    <tr key={c.name}><td style={{ color: '#546e7a', paddingRight: 8, verticalAlign: 'top' }}>{c.name}</td><td>{(tb.editable || []).includes(c.name) ? <input type="checkbox" aria-label={c.name} style={{ width: 22, height: 22 }} checked={tb.vals && tb.vals[c.name] === true} onChange={(e) => toggle(tb, c.name, e.target.checked)} /> : show(tb.vals && tb.vals[c.name])}</td></tr>
                   ))}
                 </tbody></table>
               </div>
