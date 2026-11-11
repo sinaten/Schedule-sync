@@ -86,7 +86,7 @@ export default function MobileShell({ name, role, admin }) {
       <div className="ms-spacer" />
       <nav className="ms-bot" aria-label="Quick actions">
         <button type="button" className={'ms-sm' + (phase === 'running' ? ' ms-spin' : '')} aria-label="Refresh 3D model from Revit" onClick={refreshModel} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer', opacity: job ? 1 : 0.4 }}>
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={online === false ? '#d64545' : '#2e9e5b'} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><g className="ms-ar"><path d="M4.2 10.5A8 8 0 0 1 18.6 7" /><path d="M19.2 3.6v3.6h-3.6" /><path d="M19.8 13.5A8 8 0 0 1 5.4 17" /><path d="M4.8 20.4v-3.6h3.6" /></g><path d="M8.6 12.8l3.4-2.9 3.4 2.9M9.6 12v3.4h4.8V12" /></svg>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={online === false ? '#d64545' : '#2e9e5b'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><g className="ms-ar"><path d="M1.66 10.18A10.5 10.5 0 0 1 21.52 7.56" /><path d="M22.46 3.47L21.52 7.56L17.77 5.66" /><path d="M22.34 13.82A10.5 10.5 0 0 1 2.48 16.44" /><path d="M1.54 20.53L2.48 16.44L6.23 18.34" /></g><path d="M6.4 12.9L12 8l5.6 4.9M7.8 12v5.8h8.4V12" /></svg>
         </button>
         {toast && <div className="ms-toast">{toast}</div>}
         <span className="ms-sm" aria-hidden="true" />
