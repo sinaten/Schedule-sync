@@ -27,6 +27,33 @@ async function post(body) {
   return j;
 }
 
+// Glass look: a colour key like "ff0000_70" means 70 % transparent in Revit. The viewer's theming colour cannot be see-through, so the material of those parts is cloned with an opacity.
+function setAlpha(vw, ids, a) {
+  try {
+    const fl = vw.model.getFragmentList();
+    const tree = vw.model.getInstanceTree();
+    const mm = vw.impl.matman();
+    const cache = {};
+    ids.forEach((d) => tree.enumNodeFragments(d, (f) => {
+      const base = fl.getMaterial(f);
+      if (!base) return;
+      const key = 'ss-' + base.uuid + '-' + a;
+      let m = cache[key];
+      if (!m) {
+        m = base.clone();
+        m.transparent = true;
+        m.opacity = a;
+        m.depthWrite = false;
+        m.needsUpdate = true;
+        try { mm.addMaterial(key, m, true); } catch (e) {}
+        cache[key] = m;
+      }
+      fl.setMaterial(f, m);
+    }, true));
+    vw.impl.invalidate(true, true, true);
+  } catch (e) {}
+}
+
 // Recreates what the chosen Revit 3D view shows: only its elements, with the colours set in that view.
 async function applyLook(vw, job) {
   try {
@@ -47,9 +74,12 @@ async function applyLook(vw, job) {
       vw.fitToView(shown);
       const T = window.THREE;
       for (const hex in look.colors) {
-        const n = parseInt(hex, 16);
+        const [h, tr] = hex.split('_');
+        const n = parseInt(h, 16);
         const col = new T.Vector4(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1);
-        dbIds(look.colors[hex]).forEach((d) => vw.setThemingColor(d, col, vw.model, true));
+        const ids = dbIds(look.colors[hex]);
+        ids.forEach((d) => vw.setThemingColor(d, col, vw.model, true));
+        if (tr && Number(tr) > 0) setAlpha(vw, ids, Math.max(0.05, 1 - Number(tr) / 100));
       }
     }, () => {});
   } catch (e) {}
