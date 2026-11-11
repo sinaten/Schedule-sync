@@ -38,6 +38,8 @@ export default function Schedule({ params }) {
   const pend = {};
   d.pending.forEach((e) => (pend[e.element_id + '|' + e.col] = e.value));
   const rowsPending = new Set(d.pending.map((e) => e.element_id));
+  // d.editCols: this person may change only these Yes/No columns (set in Revit, SINA-TAEIDI > Site access); everything else is locked. null = the old rule.
+  const colFor = (c) => (d.editCols ? (d.editCols.includes(c.name) && c.type === 'bool' && !c.readOnly ? c : { ...c, readOnly: true }) : d.canEdit === false ? { ...c, readOnly: true } : c);
   async function save(eid, col, value) {
     setD((x) => ({ ...x, pending: [...x.pending.filter((e) => !(e.element_id === eid && e.col === col)), { element_id: eid, col, value }] }));
     await fetch(`/api/schedules/${encodeURIComponent(id)}/edits`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ elementId: eid, col, value }) });
@@ -59,7 +61,7 @@ export default function Schedule({ params }) {
               <tr key={r.element_id} className={rowsPending.has(r.element_id) ? 'rowp' : ''}>
                 <td className="id">{r.element_id}</td>
                 {d.columns.map((c) => (
-                  <Cell key={c.name} c={d.canEdit === false ? { ...c, readOnly: true } : c} v={r.vals?.[c.name]} pending={pend[r.element_id + '|' + c.name]} onSave={(val) => save(r.element_id, c.name, val)} />
+                  <Cell key={c.name} c={colFor(c)} v={r.vals?.[c.name]} pending={pend[r.element_id + '|' + c.name]} onSave={(val) => save(r.element_id, c.name, val)} />
                 ))}
               </tr>
             ))}
