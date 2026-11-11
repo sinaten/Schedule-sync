@@ -16,6 +16,7 @@ export async function POST(req) {
   const { job, state, msg, pct } = await req.json();
   if (!job) return Response.json({ error: 'job' }, { status: 400 });
   const sql = await db();
-  await put(sql, 'refresh:' + job, { state: String(state || ''), msg: String(msg || ''), pct: Number.isFinite(Number(pct)) && Number(pct) >= 0 ? Number(pct) : null, at: Date.now() });
+  const [old] = await sql`select value from settings where key = ${'refresh:' + job}`;
+  await put(sql, 'refresh:' + job, { mode: (old && old.value && old.value.mode) || 'full', state: String(state || ''), msg: String(msg || ''), pct: Number.isFinite(Number(pct)) && Number(pct) >= 0 ? Number(pct) : null, at: Date.now() });
   return Response.json({ ok: true });
 }
