@@ -106,6 +106,14 @@ export default function Viewer3D({ job = '' }) {
   const [busy, setBusy] = useState(false);
   const [popup, setPopup] = useState(null);
   const [draft, setDraft] = useState({});
+  const saveRef = useRef(null);
+  saveRef.current = () => saveDraft();
+  useEffect(() => { window.dispatchEvent(new CustomEvent('ss-draft', { detail: Object.keys(draft).length })); }, [draft]);
+  useEffect(() => {
+    const f = () => saveRef.current && saveRef.current();
+    window.addEventListener('ss-save', f);
+    return () => window.removeEventListener('ss-save', f);
+  }, []);
 
   async function toggle(tb, col, value) {
     setPopup((p) => p && { ...p, tables: p.tables.map((t) => (t.id === tb.id ? { ...t, vals: { ...t.vals, [col]: value } } : t)) });
