@@ -2,6 +2,7 @@ import { db } from '../../../../../lib/db';
 import { currentUser, canJob, canEdit } from '../../../../../lib/user';
 import { getColPerms, allowedCols } from '../../../../../lib/colperms';
 import { histDb } from '../../../../../lib/history';
+const nk = (s) => String(s ?? '').toLowerCase().replace(/[\s\-_]/g, '');
 export async function POST(req, { params }) {
   const id = decodeURIComponent(params.id);
   const { elementId, col, value } = await req.json();
@@ -13,7 +14,7 @@ export async function POST(req, { params }) {
   const only = allowedCols(u, await getColPerms());
   if (only) {
     const c = (Array.isArray(s.columns) ? s.columns : []).find((x) => x && x.name === col);
-    if (!u || !canJob(u, s.job || '') || !c || c.type !== 'bool' || c.readOnly || !only.includes(col) || typeof value !== 'boolean')
+    if (!u || !canJob(u, s.job || '') || !c || c.type !== 'bool' || c.readOnly || !only.some((o) => nk(o) === nk(col)) || typeof value !== 'boolean')
       return Response.json({ error: 'You cannot change this column' }, { status: 403 });
   } else if (!canEdit(u) || !canJob(u, s.job || '')) return Response.json({ error: 'You cannot edit this schedule' }, { status: 403 });
   // for History: what the value was before
