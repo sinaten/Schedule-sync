@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // Phone-only chrome (hidden by CSS on laptops): back / home / avatar on top, QR button at the bottom.
 function initials(n) {
@@ -9,6 +9,12 @@ function initials(n) {
 
 export default function MobileShell({ name, role, admin }) {
   const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(0);
+  useEffect(() => {
+    const f = (e) => setPending(Number(e.detail) || 0);
+    window.addEventListener('ss-draft', f);
+    return () => window.removeEventListener('ss-draft', f);
+  }, []);
   const back = () => { if (history.length > 1) history.back(); else location.href = '/'; };
   return (
     <>
@@ -46,7 +52,9 @@ export default function MobileShell({ name, role, admin }) {
         <a className="ms-sm" href="/media" aria-label="Photos and videos" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D97757" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" /><circle cx="9" cy="10" r="1.7" /><path d="M4 17l5-4.5 3.5 3 3-2.5 4.5 4" /></svg>
         </a>
-        <span className="ms-sm" aria-hidden="true" />
+        <button type="button" className="ms-sm" aria-label="Save changes" onClick={() => window.dispatchEvent(new Event('ss-save'))} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer', opacity: pending ? 1 : 0.4 }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2e9e5b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7" /></svg>
+        </button>
       </nav>
     </>
   );
