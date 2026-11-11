@@ -37,6 +37,8 @@ function setAlpha(vw, ids, a) {
     ids.forEach((d) => tree.enumNodeFragments(d, (f) => {
       const base = fl.getMaterial(f);
       if (!base) return;
+      window.__ssOrig = window.__ssOrig || new Map();
+      if (!window.__ssOrig.has(f)) window.__ssOrig.set(f, base);
       const key = 'ss-' + base.uuid + '-' + a;
       let m = cache[key];
       if (!m) {
@@ -50,6 +52,20 @@ function setAlpha(vw, ids, a) {
       }
       fl.setMaterial(f, m);
     }, true));
+    vw.impl.invalidate(true, true, true);
+  } catch (e) {}
+}
+
+// Undo the colours and see-through parts, so the look can be applied again without reloading the model.
+function resetLook(vw) {
+  try {
+    vw.clearThemingColors(vw.model);
+    const fl = vw.model.getFragmentList();
+    if (window.__ssOrig) {
+      window.__ssOrig.forEach((m, f) => { try { fl.setMaterial(f, m); } catch (e) {} });
+      window.__ssOrig.clear();
+    }
+    vw.showAll();
     vw.impl.invalidate(true, true, true);
   } catch (e) {}
 }
@@ -145,6 +161,12 @@ export default function Viewer3D({ job = '' }) {
     window.addEventListener('ss-save', f);
     return () => window.removeEventListener('ss-save', f);
   }, []);
+
+  useEffect(() => {
+    const f = () => { const vw = viewer.current; if (vw && vw.model) { resetLook(vw); applyLook(vw, job); } };
+    window.addEventListener('ss-reload-look', f);
+    return () => window.removeEventListener('ss-reload-look', f);
+  }, [job]);
 
   async function toggle(tb, col, value) {
     setPopup((p) => p && { ...p, tables: p.tables.map((t) => (t.id === tb.id ? { ...t, vals: { ...t.vals, [col]: value } } : t)) });
