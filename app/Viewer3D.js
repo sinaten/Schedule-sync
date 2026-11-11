@@ -105,17 +105,24 @@ export default function Viewer3D({ job = '' }) {
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [popup, setPopup] = useState(null);
+  const [draft, setDraft] = useState({});
 
   async function toggle(tb, col, value) {
     setPopup((p) => p && { ...p, tables: p.tables.map((t) => (t.id === tb.id ? { ...t, vals: { ...t.vals, [col]: value } } : t)) });
-    try {
-      const r = await fetch('/api/schedules/' + encodeURIComponent(tb.id) + '/edits', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ elementId: tb.element_id, col, value }) });
-      if (!r.ok) throw new Error('not allowed');
-      setMsg('');
-    } catch (e) {
-      setPopup((p) => p && { ...p, tables: p.tables.map((t) => (t.id === tb.id ? { ...t, vals: { ...t.vals, [col]: !value } } : t)) });
-      setMsg('You cannot change ' + col);
+    setDraft((d) => ({ ...d, [tb.id + '|' + tb.element_id + '|' + col]: { id: tb.id, eid: tb.element_id, col, value } }));
+  }
+
+  async function saveDraft() {
+    const items = Object.values(draft);
+    let bad = '';
+    for (const it of items) {
+      try {
+        const r = await fetch('/api/schedules/' + encodeURIComponent(it.id) + '/edits', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ elementId: it.eid, col: it.col, value: it.value }) });
+        if (!r.ok) bad = it.col;
+      } catch (e) { bad = it.col; }
     }
+    setDraft({});
+    setMsg(bad ? 'You cannot change ' + bad : 'Saved. Revit gets the change on its next sync.');
   }
 
   async function refresh() {
@@ -225,6 +232,7 @@ export default function Viewer3D({ job = '' }) {
           <div style={{ maxHeight: 320, overflow: 'auto', background: '#fff', borderTop: '2px solid #16262e', fontSize: 13 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: '#16262e', color: '#fff' }}>
               <strong>Element {popup.id}</strong>
+              {Object.keys(draft).length > 0 && <button onClick={saveDraft} style={{ marginLeft: 'auto', marginRight: 10, background: '#26a69a', color: '#fff', border: 0, borderRadius: 6, padding: '4px 14px', fontWeight: 600, cursor: 'pointer' }}>Save ({Object.keys(draft).length})</button>}
               <button onClick={() => setPopup(null)} aria-label="Close" style={{ background: 'none', border: 0, color: '#fff', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>{'\u00D7'}</button>
             </div>
             {popup.tables.length === 0 && <p style={{ margin: 0, padding: 10, color: '#546e7a' }}>No schedule row for this part.</p>}
