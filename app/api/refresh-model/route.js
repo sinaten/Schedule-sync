@@ -8,7 +8,7 @@ async function status(sql, job) {
   const [p] = await sql`select value from settings where key = ${'ping:' + job}`;
   const [r] = await sql`select value from settings where key = ${'refresh:' + job}`;
   const online = !!p && !!p.value && Date.now() - Number(p.value.at || 0) < ONLINE_MS;
-  return { online, state: (r && r.value && r.value.state) || '', msg: (r && r.value && r.value.msg) || '' };
+  return { online, state: (r && r.value && r.value.state) || '', msg: (r && r.value && r.value.msg) || '', pct: r && r.value && typeof r.value.pct === 'number' ? r.value.pct : null };
 }
 export async function GET(req) {
   const job = new URL(req.url).searchParams.get('job') || '';
