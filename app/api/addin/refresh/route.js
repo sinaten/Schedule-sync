@@ -13,9 +13,9 @@ export async function GET(req) {
 }
 export async function POST(req) {
   if (!isAddin(req)) return deny();
-  const { job, state, msg } = await req.json();
+  const { job, state, msg, pct } = await req.json();
   if (!job) return Response.json({ error: 'job' }, { status: 400 });
   const sql = await db();
-  await put(sql, 'refresh:' + job, { state: String(state || ''), msg: String(msg || ''), at: Date.now() });
+  await put(sql, 'refresh:' + job, { state: String(state || ''), msg: String(msg || ''), pct: Number.isFinite(Number(pct)) && Number(pct) >= 0 ? Number(pct) : null, at: Date.now() });
   return Response.json({ ok: true });
 }
