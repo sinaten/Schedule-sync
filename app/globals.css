@@ -101,4 +101,6 @@ tr.rowp td:first-child{box-shadow:inset 4px 0 var(--amber)}
   .ms-tab.on i{opacity:1}
   .ms-tab-i.on{color:#d93025}
   .ms-tab-f.on{color:#1e9e5a}
+  /* Issues tab: the page below is empty for now */
+  body[data-ms-tab="issues"] > :not(header):not(nav):not(.ms-tabs-wrap):not(.ms-spacer):not(script){display:none!important}
 }
