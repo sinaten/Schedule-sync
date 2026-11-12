@@ -75,8 +75,23 @@ function resetLook(vw) {
 async function applyLook(vw, job, layer, keepView) {
   try {
     const r = await fetch('/api/aps?look=1&job=' + encodeURIComponent(job) + (window.__ssView ? '&view=' + encodeURIComponent(window.__ssView) : ''), { cache: 'no-store' });
-    const look = await r.json();
+    let look = await r.json();
     if (!look || !look.visible) return;
+    if (window.__ssView) {
+      // another view: its own parts, coloured by the main view's colour codes (its own colours win where it has any)
+      try {
+        const rm = await fetch('/api/aps?look=1&job=' + encodeURIComponent(job), { cache: 'no-store' });
+        const ml = await rm.json();
+        if (ml && ml.colors) {
+          const byEl = {};
+          for (const hex in ml.colors) ml.colors[hex].forEach((i) => { byEl[i] = hex; });
+          for (const hex in look.colors || {}) look.colors[hex].forEach((i) => { byEl[i] = hex; });
+          const colors = {};
+          look.visible.forEach((i) => { if (byEl[i]) (colors[byEl[i]] = colors[byEl[i]] || []).push(i); });
+          look = { ...look, colors };
+        }
+      } catch (e) { /* keep the view's own colours */ }
+    }
     const A = window.Autodesk.Viewing;
     await new Promise((res) => {
       if (vw.model && vw.model.getInstanceTree && vw.model.getInstanceTree()) res();
