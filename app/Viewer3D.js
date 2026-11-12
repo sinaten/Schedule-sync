@@ -299,7 +299,9 @@ export default function Viewer3D({ job = '' }) {
           const me = meRef.current || 'Me';
           const locked = [];
           const mine = [];
-          pp.tables.forEach((tb) => tb.columns.forEach((c) => ((tb.editable || []).includes(c.name) ? mine : locked).push({ tb, c })));
+          // the user's bar shows the parameters of the Revit group "Other" (older uploads without group info fall back to the ticks the user may change)
+          const hasGroup = pp.tables.some((tb) => tb.columns.some((c) => c.group));
+          pp.tables.forEach((tb) => tb.columns.forEach((c) => { const ed = (tb.editable || []).includes(c.name); if ((hasGroup ? /^other/i.test(c.group || '') : ed) && !/link|url/i.test(c.name)) mine.push({ tb, c, ed }); }));
           const val = (tb, c) => { const v = tb.vals && tb.vals[c.name]; return typeof v === 'boolean' ? (v ? '✓ Yes' : 'No') : show(v); };
           const SHOW_LINKS = false; // flip to true to show URL / link columns in Source
           const isLink = (tb, c) => !SHOW_LINKS && (/link|url/i.test(c.name) || /^https?:\/\//.test(String((tb.vals && tb.vals[c.name]) || '')));
@@ -328,10 +330,10 @@ export default function Viewer3D({ job = '' }) {
                   ))}
                 </div>
               )))}
-              {bar('ok', me, openMe, setOpenMe, mine.length === 0 ? <div style={{ ...row, color: '#8a8576' }}>{pp.id ? 'Nothing to change here.' : 'Select a part in the model.'}</div> : mine.map(({ tb, c }) => (
+              {bar('ok', me, openMe, setOpenMe, mine.length === 0 ? <div style={{ ...row, color: '#8a8576' }}>{pp.id ? 'Nothing to change here.' : 'Select a part in the model.'}</div> : mine.map(({ tb, c, ed }) => (
                 <div key={tb.id + '|' + c.name} style={row}>
                   <span>{c.name}</span>
-                  <input type="checkbox" aria-label={c.name} checked={!!(tb.vals && tb.vals[c.name] === true)} onChange={(e) => toggle(tb, c.name, e.target.checked)} style={{ width: 22, height: 22, accentColor: '#2e9e5b' }} />
+                  {ed ? <input type="checkbox" aria-label={c.name} checked={!!(tb.vals && tb.vals[c.name] === true)} onChange={(e) => toggle(tb, c.name, e.target.checked)} style={{ width: 22, height: 22, accentColor: '#2e9e5b' }} /> : <span style={{ color: '#9a9686', textAlign: 'right' }}>{val(tb, c)}</span>}
                 </div>
               )))}
               {Object.keys(draft).length > 0 && (
