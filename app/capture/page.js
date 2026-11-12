@@ -129,7 +129,7 @@ export default function Capture() {
       const r = await jsonPost('/api/media', { visitId: visit.id, pathname: res.pathname, kind, size: blob.size, contentType: blob.type });
       if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Could not register the file');
       // Opened from an issue: the photo also goes into that issue's gallery.
-      if (kind === 'photo') { try { const cx = JSON.parse(sessionStorage.getItem('issuectx') || 'null'); if (cx) await jsonPost('/api/issue', { action: 'link', job: cx.job, element: cx.element, pathname: res.pathname, name: path.split('/').pop() }); } catch (e) { /* optional */ } }
+      if (kind === 'photo' || kind === 'video') { try { const cx = JSON.parse(sessionStorage.getItem('issuectx') || 'null'); if (cx) await jsonPost('/api/issue', { action: 'link', job: cx.job, element: cx.element, pathname: res.pathname, kind, contentType: blob.type, name: path.split('/').pop() }); } catch (e) { /* optional */ } }
       setSaved((x) => x + 1);
       flash('Saved');
     } catch (e) {
