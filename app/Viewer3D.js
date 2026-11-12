@@ -151,6 +151,8 @@ export default function Viewer3D({ job = '' }) {
   const [busy, setBusy] = useState(false);
   const [popup, setPopup] = useState(null);
   const [draft, setDraft] = useState({});
+  const [openSrc, setOpenSrc] = useState(false);
+  const [openMe, setOpenMe] = useState(true);
   const saveRef = useRef(null);
   saveRef.current = () => saveDraft();
   useEffect(() => { window.dispatchEvent(new CustomEvent('ss-draft', { detail: Object.keys(draft).length })); }, [draft]);
@@ -287,26 +289,43 @@ export default function Viewer3D({ job = '' }) {
             {'\u25B2'}<br />{'\u2195'}<br />{'\u25BC'}
           </div>
         )}
-        {popup && (
-          <div style={{ maxHeight: 320, overflow: 'auto', background: '#fff', borderTop: '2px solid #16262e', fontSize: 13 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: '#16262e', color: '#fff' }}>
-              <strong>Element {popup.id}</strong>
-              {Object.keys(draft).length > 0 && <button onClick={saveDraft} style={{ marginLeft: 'auto', marginRight: 10, background: '#26a69a', color: '#fff', border: 0, borderRadius: 6, padding: '4px 14px', fontWeight: 600, cursor: 'pointer' }}>Save ({Object.keys(draft).length})</button>}
-              <button onClick={() => setPopup(null)} aria-label="Close" style={{ background: 'none', border: 0, color: '#fff', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>{'\u00D7'}</button>
+        {popup && (() => {
+          const me = (popup.tables[0] && popup.tables[0].me) || 'Admin';
+          const locked = [];
+          const mine = [];
+          popup.tables.forEach((tb) => tb.columns.forEach((c) => ((tb.editable || []).includes(c.name) ? mine : locked).push({ tb, c })));
+          const val = (tb, c) => { const v = tb.vals && tb.vals[c.name]; return typeof v === 'boolean' ? (v ? '✓ Yes' : 'No') : show(v); };
+          const bar = (icon, title, open, setOpen, body) => (
+            <div style={{ margin: '0 12px 8px', border: '1px solid #efece3', borderRadius: 14, overflow: 'hidden', background: '#fdfcf9' }}>
+              <button type="button" onClick={() => setOpen(!open)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', border: 0, background: 'none', font: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', textAlign: 'left', color: '#141413' }}>
+                <span style={{ width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, background: icon === 'lock' ? '#eceae2' : '#e1f1e6', color: icon === 'lock' ? '#6b675c' : '#2e9e5b' }}>{icon === 'lock' ? '\u{1F512}' : '✓'}</span>
+                {title}
+                <span style={{ marginLeft: 'auto', color: '#8a8576', fontSize: 12, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}>{'▾'}</span>
+              </button>
+              {open && <div style={{ borderTop: '1px solid #efece3' }}>{body}</div>}
             </div>
-            {popup.tables.length === 0 && <p style={{ margin: 0, padding: 10, color: '#546e7a' }}>No schedule row for this part.</p>}
-            {popup.tables.map((tb) => (
-              <div key={tb.id} style={{ padding: '8px 10px', borderTop: '1px solid #eceff1' }}>
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>{tb.name}</div>
-                <table><tbody>
-                  {tb.columns.map((c) => (
-                    <tr key={c.name}><td style={{ color: '#546e7a', paddingRight: 8, verticalAlign: 'top' }}>{c.name}</td><td>{(tb.editable || []).includes(c.name) ? <input type="checkbox" aria-label={c.name} style={{ width: 22, height: 22 }} checked={tb.vals && tb.vals[c.name] === true} onChange={(e) => toggle(tb, c.name, e.target.checked)} /> : show(tb.vals && tb.vals[c.name])}</td></tr>
-                  ))}
-                </tbody></table>
-              </div>
-            ))}
-          </div>
-        )}
+          );
+          const row = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '9px 14px', fontSize: 12.5, borderBottom: '1px solid #f4f2ea' };
+          return (
+            <div style={{ background: '#fff', borderRadius: '22px 22px 0 0', boxShadow: '0 -8px 24px rgba(20,20,19,.12)', padding: '6px 0 12px', maxHeight: 380, overflow: 'auto', maxWidth: 520, margin: '0 auto', fontSize: 13, color: '#141413' }}>
+              <div style={{ width: 38, height: 4, borderRadius: 4, background: '#d9d5c8', margin: '4px auto 8px' }} />
+              <div style={{ padding: '2px 16px 10px', fontWeight: 700, fontSize: 14 }}>Element {popup.id}</div>
+              {popup.tables.length === 0 && <p style={{ margin: 0, padding: '4px 16px 10px', color: '#8a8576' }}>No schedule row for this part.</p>}
+              {popup.tables.length > 0 && bar('lock', 'Source', openSrc, setOpenSrc, locked.length === 0 ? <div style={{ ...row, color: '#8a8576' }}>Nothing is locked.</div> : locked.map(({ tb, c }) => (
+                <div key={tb.id + '|' + c.name} style={row}><span>{c.name}</span><span style={{ color: '#9a9686' }}>{val(tb, c)}</span></div>
+              )))}
+              {popup.tables.length > 0 && bar('ok', me, openMe, setOpenMe, mine.length === 0 ? <div style={{ ...row, color: '#8a8576' }}>Nothing to change here.</div> : mine.map(({ tb, c }) => (
+                <div key={tb.id + '|' + c.name} style={row}>
+                  <span>{c.name}</span>
+                  <input type="checkbox" aria-label={c.name} checked={!!(tb.vals && tb.vals[c.name] === true)} onChange={(e) => toggle(tb, c.name, e.target.checked)} style={{ width: 22, height: 22, accentColor: '#2e9e5b' }} />
+                </div>
+              )))}
+              {Object.keys(draft).length > 0 && (
+                <button type="button" onClick={saveDraft} style={{ display: 'block', width: 'calc(100% - 24px)', margin: '2px 12px 0', height: 40, border: 0, borderRadius: 12, background: '#2e9e5b', color: '#fff', font: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>{'✓'} Save changes</button>
+              )}
+            </div>
+          );
+        })()}
       </div>
       {!ready && (
         <p style={{ margin: 0, padding: 16, color: '#546e7a' }}>
