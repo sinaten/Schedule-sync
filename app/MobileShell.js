@@ -13,7 +13,12 @@ export default function MobileShell({ name, role, admin }) {
   const [pending, setPending] = useState(0);
   const [job, setJob] = useState('');
   // the page below the tabs follows the choice: Issues shows the normal job page (model), Follow-up is empty for now and is the default
-  useEffect(() => { if (job) document.body.setAttribute('data-ms-tab', tab); else document.body.removeAttribute('data-ms-tab'); }, [tab, job]);
+  useEffect(() => {
+    if (job) document.body.setAttribute('data-ms-tab', tab); else document.body.removeAttribute('data-ms-tab');
+    // the model viewer cannot size itself while its page is hidden: tell it to re-measure when the tab changes
+    const t1 = setTimeout(() => window.dispatchEvent(new Event('resize')), 60), t2 = setTimeout(() => window.dispatchEvent(new Event('resize')), 500);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [tab, job]);
   const [online, setOnline] = useState(null);
   const [phase, setPhase] = useState('idle');
   const [pct, setPct] = useState(0);
