@@ -161,6 +161,7 @@ export default function Viewer3D({ job = '' }) {
   const [openSrc, setOpenSrc] = useState(false);
   const [openMe, setOpenMe] = useState(true);
   const [mode, setMode] = useState('user');
+  const [issueOn, setIssueOn] = useState({});
   const [layer, setLayer] = useState({ edits: [], look: null, pending: false });
   const layerRef = useRef(layer);
   layerRef.current = layer;
@@ -369,6 +370,29 @@ export default function Viewer3D({ job = '' }) {
                   {ed ? <input type="checkbox" aria-label={c.name} checked={!!(tb.vals && tb.vals[c.name] === true)} onChange={(e) => toggle(tb, c.name, e.target.checked)} style={{ width: 22, height: 22, accentColor: '#2e9e5b' }} /> : <span style={{ color: '#9a9686', textAlign: 'right' }}>{val(tb, c)}</span>}
                 </div>
               )))}
+              {pp.id && (() => {
+                // Issue: flags this part by setting its Yes/No parameter "Issue" in Revit (the Revit side colours it with the Issue filter)
+                let isq = null;
+                pp.tables.forEach((tb) => { if (!isq) { const c = tb.columns.find((x) => /^issue$/i.test(x.name) && x.type === 'bool'); if (c) isq = { tb, c }; } });
+                const key = isq ? isq.tb.id + '|' + isq.tb.element_id : '';
+                const flagged = isq ? (key in issueOn ? issueOn[key] : !!(isq.tb.vals && isq.tb.vals[isq.c.name] === true)) : false;
+                const send = async () => {
+                  if (!isq) { setMsg('Add the Yes/No parameter "Issue" to a schedule in Revit, then sync.'); return; }
+                  const on = !flagged;
+                  setIssueOn((o) => ({ ...o, [key]: on }));
+                  try {
+                    const r = await fetch('/api/schedules/' + encodeURIComponent(isq.tb.id) + '/edits', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ elementId: isq.tb.element_id, col: isq.c.name, value: on }) });
+                    const j = await r.json().catch(() => ({}));
+                    if (!r.ok) { setIssueOn((o) => ({ ...o, [key]: !on })); setMsg(j.error || 'Could not set the issue.'); return; }
+                    setMsg(on ? 'Issue sent to Revit. The colour follows in about a minute.' : 'Issue cleared. Revit updates in about a minute.');
+                  } catch (e) { setIssueOn((o) => ({ ...o, [key]: !on })); setMsg('No connection to the website.'); }
+                };
+                return (
+                  <button type="button" onClick={send} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: 'calc(100% - 24px)', margin: '4px 12px 8px', height: 32, borderRadius: 16, font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', border: '1.5px solid ' + (isq ? '#e8710a' : '#d9d5c8'), background: flagged ? '#e8710a' : '#fff', color: flagged ? '#fff' : isq ? '#e8710a' : '#9a9686', boxShadow: flagged ? '0 4px 12px rgba(232,113,10,.35)' : 'none' }}>
+                    <span aria-hidden="true">{'\u2691'}</span>{flagged ? 'Issue \u00B7 flagged' : 'Issue'}
+                  </button>
+                );
+              })()}
               {Object.keys(draft).length > 0 && (
                 <button type="button" onClick={saveDraft} style={{ display: 'block', width: 'calc(100% - 24px)', margin: '2px 12px 0', height: 40, border: 0, borderRadius: 12, background: '#2e9e5b', color: '#fff', font: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>{'✓'} Save changes</button>
               )}
