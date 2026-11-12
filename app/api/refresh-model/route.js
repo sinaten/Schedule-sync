@@ -17,15 +17,18 @@ export async function GET(req) {
   return Response.json(await status(await db(), job));
 }
 export async function POST(req) {
-  const { job, full } = await req.json().catch(() => ({}));
+  const { job, full, source } = await req.json().catch(() => ({}));
   const u = await currentUser();
-  if (!job || !canJob(u, job) || !canEdit(u)) return Response.json({ error: 'You cannot refresh this model' }, { status: 403 });
+  const ed = job && canJob(u, job) && canEdit(u);
+  // the Source bar shows the real model, so anyone with access may refresh its colours (never the full model)
+  if (!job || !canJob(u, job) || (!ed && !source)) return Response.json({ error: 'You cannot refresh this model' }, { status: 403 });
   const sql = await db();
   const s = await status(sql, job);
   if (!s.online) return Response.json({ ok: false, offline: true });
   // if the website already has a 3D model, only the colours are refreshed (fast); otherwise the whole model is published
   const [m] = await sql`select value from settings where key = ${'model:' + job}`;
   const mode = !full && m && m.value && m.value.urn ? 'quick' : 'full';
+  if (!ed && mode === 'full') return Response.json({ error: 'You cannot refresh this model' }, { status: 403 });
   await put(sql, 'refresh:' + job, { state: 'requested', mode, msg: '', at: Date.now() });
   return Response.json({ ok: true });
 }
