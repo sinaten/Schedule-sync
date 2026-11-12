@@ -88,12 +88,13 @@ tr.rowp td:first-child{box-shadow:inset 4px 0 var(--amber)}
 .ms-toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--ms-big,90px) + 40px + env(safe-area-inset-bottom));z-index:80;max-width:calc(100vw - 48px);padding:8px 14px;border-radius:14px;background:#fdecea;color:#b3402a;border:1px solid #f4c7c0;font-size:12.5px;line-height:1.35;text-align:center;box-shadow:0 4px 14px rgba(20,20,19,.1)}
 
 
-/* Issues / Follow-up switch under the phone top bar */
-.ms-tabs{display:none}
+/* Issues / Follow-up switch under the phone top bar (only on a job page; stays put while scrolling) */
+.ms-tabs-wrap{display:none}
 @media (pointer:coarse) and (max-width:940px){
-  .ms-tabs{display:flex;gap:3px;margin:12px max(16px,env(safe-area-inset-right)) 0 max(16px,env(safe-area-inset-left));padding:4px;background:#f4f3ee;border-radius:16px}
-  .ms-tab{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 0;border:0;border-radius:12px;background:transparent;font:inherit;font-size:16px;font-weight:500;color:#8a877b;cursor:pointer;-webkit-tap-highlight-color:transparent}
-  .ms-tab i{width:8px;height:8px;border-radius:50%;opacity:.55}
+  .ms-tabs-wrap{display:block;position:sticky;top:calc(max(env(safe-area-inset-top),10px) + 61px);z-index:45;background:#fff;padding:10px max(16px,env(safe-area-inset-right)) 8px max(16px,env(safe-area-inset-left))}
+  .ms-tabs{display:flex;gap:3px;padding:3px;background:#f4f3ee;border-radius:14px}
+  .ms-tab{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:9px 0;border:0;border-radius:11px;background:transparent;font:inherit;font-size:14.5px;font-weight:500;color:#8a877b;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .ms-tab i{width:7px;height:7px;border-radius:50%;opacity:.55}
   .ms-tab-i i{background:#d93025}
   .ms-tab-f i{background:#1e9e5a}
   .ms-tab.on{background:#fff;box-shadow:0 1px 4px rgba(20,20,19,.15);font-weight:600}
