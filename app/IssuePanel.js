@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { upload as blobUpload } from '@vercel/blob/client';
 
 const OR = '#e8710a';
 const when = (t) => { const d = new Date(t); return d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) + ' · ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
@@ -48,6 +49,9 @@ export default function IssuePanel({ job, element, onMsg }) {
   const [busy, setBusy] = useState(false);
   const [cam, setCam] = useState(false);
   const [view, setView] = useState(null);
+  const [menu, setMenu] = useState(false);
+  const [sending, setSending] = useState(false);
+  const mediaRef = useRef(null), anyRef = useRef(null);
   const photoRef = useRef(null), fileRef = useRef(null), chatPhotoRef = useRef(null), endRef = useRef(null), loaded = useRef('');
   const q = '?job=' + encodeURIComponent(job) + '&element=' + encodeURIComponent(element);
 
@@ -88,7 +92,7 @@ export default function IssuePanel({ job, element, onMsg }) {
 
   const me = d ? d.me : '';
   const items = d ? d.items : [];
-  const comments = items.filter((i) => i.kind === 'comment' || (i.kind === 'photo' && i.body === 'chat'));
+  const comments = items.filter((i) => i.kind === 'comment' || (i.kind === 'photo' && i.body === 'chat') || i.kind === 'chat');
   const files = items.filter((i) => i.kind === 'file');
   const photos = items.filter((i) => i.kind === 'photo' || i.kind === 'video');
   const author = d && d.issue ? d.issue.author : '';
@@ -122,6 +126,20 @@ export default function IssuePanel({ job, element, onMsg }) {
     const r = await fetch('/api/issue', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, element, action: 'comment', body }) });
     if (!r.ok) { setChat(body); onMsg && onMsg('Could not send.'); }
     load();
+  };
+  // + in the chat: a photo, video or file goes straight to storage and appears only in the chat
+  const attach = async (file) => {
+    if (!file) return;
+    setSending(true); setMenu(false);
+    try {
+      if (!(d && d.issue)) await saveText0();
+      const safe = String(file.name || 'file').replace(/[^\w.-]+/g, '_').slice(-80);
+      const res = await blobUpload('issues/' + job + '/' + element + '/chat-' + Date.now() + '-' + safe, file, { access: 'private', handleUploadUrl: '/api/issue/token', clientPayload: JSON.stringify({ job, element }), contentType: file.type || undefined, multipart: file.size > 20 * 1024 * 1024 });
+      const r = await fetch('/api/issue', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, element, action: 'attach', pathname: res.pathname, name: file.name, contentType: file.type }) });
+      if (!r.ok) { const j = await r.json().catch(() => ({})); onMsg && onMsg(j.error || 'Could not send.'); }
+      await load();
+    } catch (e) { onMsg && onMsg('Could not send: ' + (e && e.message ? e.message : 'error')); }
+    setSending(false);
   };
   const del = async (id) => { if (!window.confirm('Delete this?')) return; await fetch('/api/issue?id=' + id, { method: 'DELETE' }); load(); };
 
@@ -164,12 +182,19 @@ export default function IssuePanel({ job, element, onMsg }) {
       )}
       {sheet === 'comments' && (
         <Sheet dock close={() => setSheet('')} name="Comments" foot={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px calc(10px + env(safe-area-inset-bottom))', borderTop: '1px solid #efece3' }}>
-            <button type="button" aria-label="Add photo" onClick={() => openCam()} style={{ border: 0, background: '#f1ede4', width: 38, height: 38, borderRadius: 19, fontSize: 17, cursor: 'pointer', flex: 'none' }}>{'📷'}</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px calc(10px + env(safe-area-inset-bottom))', borderTop: '1px solid #efece3', position: 'relative' }}>
+            {menu && (
+              <div style={{ position: 'absolute', left: 12, bottom: 58, width: 220, background: '#fff', borderRadius: 16, boxShadow: '0 6px 24px rgba(0,0,0,.22)', border: '1px solid #efece3', overflow: 'hidden', zIndex: 5 }}>
+                <button type="button" onClick={() => mediaRef.current && mediaRef.current.click()} style={{ display: 'block', width: '100%', textAlign: 'left', border: 0, borderBottom: '1px solid #f1ede4', background: '#fff', padding: '12px 16px', font: 'inherit', fontSize: 14, fontWeight: 600, color: '#141413', cursor: 'pointer' }}>Photo or video</button>
+                <button type="button" onClick={() => anyRef.current && anyRef.current.click()} style={{ display: 'block', width: '100%', textAlign: 'left', border: 0, background: '#fff', padding: '12px 16px', font: 'inherit', fontSize: 14, fontWeight: 600, color: '#141413', cursor: 'pointer' }}>File</button>
+              </div>
+            )}
+            <button type="button" aria-label="Add" disabled={sending} onClick={() => setMenu((m) => !m)} style={{ width: 38, height: 38, borderRadius: 19, border: '1.5px solid ' + OR, background: menu ? '#fff7ef' : '#fff', color: OR, fontSize: 24, lineHeight: '30px', cursor: 'pointer', flex: 'none', padding: 0 }}>{sending ? '…' : '+'}</button>
             <input value={chat} onChange={(e) => setChat(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); send(); } }} placeholder="Write a comment…" enterKeyHint="send"
               style={{ flex: 1, minWidth: 0, height: 38, boxSizing: 'border-box', border: '1.5px solid #e0dccf', borderRadius: 19, padding: '0 14px', font: 'inherit', fontSize: 14, outline: 'none' }} />
             <button type="button" aria-label="Send" onClick={send} style={{ border: 0, background: OR, color: '#fff', width: 38, height: 38, borderRadius: 19, fontSize: 19, fontWeight: 700, cursor: 'pointer', flex: 'none' }}>{'✓'}</button>
-            <input ref={chatPhotoRef} type="file" accept="image/*" hidden onChange={(e) => { upload(e.target.files[0], 'photo', true); e.target.value = ''; }} />
+            <input ref={mediaRef} type="file" accept="image/*,video/*" hidden onChange={(e) => { attach(e.target.files[0]); e.target.value = ''; }} />
+            <input ref={anyRef} type="file" hidden onChange={(e) => { attach(e.target.files[0]); e.target.value = ''; }} />
           </div>
         }>
           {comments.length === 0 && <p style={{ textAlign: 'center', color: '#9a9686', fontSize: 13 }}>No comments yet.</p>}
@@ -178,8 +203,17 @@ export default function IssuePanel({ job, element, onMsg }) {
             return (
               <div key={c.id} style={{ display: 'flex', flexDirection: 'column', alignItems: mine ? 'flex-end' : 'flex-start', marginBottom: 10 }}>
                 <div style={{ fontSize: 11.5, color: '#8a8576', margin: '0 6px 2px' }}>{c.author} {'·'} {new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                <div onDoubleClick={() => (mine ? del(c.id) : null)} style={{ maxWidth: '80%', padding: c.kind === 'photo' ? 4 : '8px 12px', borderRadius: 16, background: mine ? OR : '#eeece5', color: mine ? '#fff' : '#141413', fontSize: 14, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                  {c.kind === 'photo' ? <a href={url(c.pathname)} target="_blank" rel="noreferrer"><img src={url(c.pathname)} alt="" style={{ display: 'block', maxWidth: '100%', borderRadius: 12 }} /></a> : c.body}
+                <div onDoubleClick={() => (mine ? del(c.id) : null)} style={{ maxWidth: '80%', padding: c.kind === 'comment' ? '8px 12px' : 4, borderRadius: 16, background: mine ? OR : '#eeece5', color: mine ? '#fff' : '#141413', fontSize: 14, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {c.kind === 'comment' ? c.body : /^video\//.test(c.content_type || '') ? (
+                    <button type="button" onClick={() => setView({ kind: 'video', pathname: c.pathname })} style={{ display: 'block', position: 'relative', padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}>
+                      <video src={url(c.pathname) + '#t=0.1'} preload="metadata" muted playsInline style={{ display: 'block', width: 180, maxWidth: '100%', borderRadius: 12, background: '#141413' }} />
+                      <span style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: 34, height: 34, borderRadius: 17, background: 'rgba(20,20,19,.6)', color: '#fff', lineHeight: '34px', fontSize: 13 }}>{'▶'}</span>
+                    </button>
+                  ) : c.kind === 'photo' || /^image\//.test(c.content_type || '') ? (
+                    <button type="button" onClick={() => setView({ kind: 'photo', pathname: c.pathname })} style={{ display: 'block', padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}><img src={url(c.pathname)} alt="" style={{ display: 'block', width: 180, maxWidth: '100%', borderRadius: 12 }} /></button>
+                  ) : (
+                    <a href={url(c.pathname) + '&dl=1'} style={{ display: 'block', padding: '6px 10px', color: mine ? '#fff' : OR, fontWeight: 600, fontSize: 13, textDecoration: 'none', wordBreak: 'break-all' }}>{c.name || 'File'}</a>
+                  )}
                 </div>
               </div>
             );
