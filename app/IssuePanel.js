@@ -39,6 +39,7 @@ export default function IssuePanel({ job, element, onMsg }) {
   const [chat, setChat] = useState('');
   const [busy, setBusy] = useState(false);
   const [cam, setCam] = useState(false);
+  const [view, setView] = useState(null);
   const photoRef = useRef(null), fileRef = useRef(null), chatPhotoRef = useRef(null), endRef = useRef(null), loaded = useRef('');
   const q = '?job=' + encodeURIComponent(job) + '&element=' + encodeURIComponent(element);
 
@@ -72,7 +73,7 @@ export default function IssuePanel({ job, element, onMsg }) {
   const items = d ? d.items : [];
   const comments = items.filter((i) => i.kind === 'comment' || (i.kind === 'photo' && i.body === 'chat'));
   const files = items.filter((i) => i.kind === 'file');
-  const photos = items.filter((i) => i.kind === 'photo');
+  const photos = items.filter((i) => i.kind === 'photo' || i.kind === 'video');
   const author = d && d.issue ? d.issue.author : '';
   const locked = !!author && author !== me;
 
@@ -108,7 +109,7 @@ export default function IssuePanel({ job, element, onMsg }) {
   const del = async (id) => { if (!window.confirm('Delete this?')) return; await fetch('/api/issue?id=' + id, { method: 'DELETE' }); load(); };
 
   const pill = (on) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, border: '1.5px solid ' + (on ? OR : '#d9d5c8'), background: '#fff', color: on ? OR : '#6b675c', borderRadius: 14, padding: '4px 10px', font: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer' });
-  const tab = { flex: 1, border: 0, background: 'transparent', font: 'inherit', fontSize: 12.5, fontWeight: 600, color: '#141413', padding: '9px 4px', cursor: 'pointer' };
+  const tab = { flex: 1, border: '1.5px solid ' + OR, borderRadius: 14, background: 'transparent', font: 'inherit', fontSize: 12.5, fontWeight: 600, color: '#141413', padding: '6px 4px', cursor: 'pointer' };
   const cnt = (n) => <span style={{ marginLeft: 4, background: n ? OR : '#e7e3d8', color: n ? '#fff' : '#8a8576', borderRadius: 9, padding: '1px 7px', fontSize: 11.5 }}>{n}</span>;
   return (
     <div style={{ margin: '0 12px 10px', border: '1px solid #f0d9bf', borderRadius: 14, background: '#fffaf4', padding: 12 }}>
@@ -120,22 +121,28 @@ export default function IssuePanel({ job, element, onMsg }) {
           style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: 0, outline: 'none', resize: 'none', font: 'inherit', fontSize: 14, color: '#141413', background: 'transparent' }} />
         {!locked && (
           <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-            <button type="button" disabled={busy} onClick={() => openCam()} style={pill(true)}>{'📷'} Add photo</button>
-            <button type="button" disabled={busy} onClick={() => fileRef.current && fileRef.current.click()} style={pill(false)}>{'📎'} Add file</button>
+            <button type="button" disabled={busy} onClick={() => openCam()} style={pill(true)}>Gallery</button>
+            <button type="button" disabled={busy} onClick={() => fileRef.current && fileRef.current.click()} style={pill(true)}>File</button>
           </div>
         )}
       </div>
       <input ref={photoRef} type="file" accept="image/*" hidden onChange={(e) => { upload(e.target.files[0], 'photo'); e.target.value = ''; }} />
       <input ref={fileRef} type="file" hidden onChange={(e) => { upload(e.target.files[0], 'file'); e.target.value = ''; }} />
-      <div style={{ display: 'flex', marginTop: 8, background: '#f4f1e8', borderRadius: 12 }}>
-        <button type="button" style={tab} onClick={() => setSheet('comments')}>{'💬'} Comments{cnt(comments.length)}</button>
-        <button type="button" style={tab} onClick={() => setSheet('files')}>{'📎'} Files{cnt(files.length)}</button>
-        <button type="button" style={tab} onClick={() => setSheet('photos')}>{'🖼'} Photos{cnt(photos.length)}</button>
+      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+        <button type="button" style={tab} onClick={() => setSheet('comments')}>Comments{cnt(comments.length)}</button>
+        <button type="button" style={tab} onClick={() => setSheet('files')}>Files{cnt(files.length)}</button>
+        <button type="button" style={tab} onClick={() => setSheet('photos')}>Gallery{cnt(photos.length)}</button>
       </div>
 
       {cam && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 3000, background: '#141413' }}>
           <iframe src="/scan" title="Camera" allow="camera; microphone; geolocation" style={{ width: '100%', height: '100%', border: 0 }} />
+        </div>
+      )}
+      {view && (
+        <div onClick={() => setView(null)} style={{ position: 'fixed', inset: 0, zIndex: 3500, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {view.kind === 'video' ? <video src={url(view.pathname)} controls autoPlay playsInline onClick={(e) => e.stopPropagation()} style={{ maxWidth: '100vw', maxHeight: '100vh' }} /> : <img src={url(view.pathname)} alt="" style={{ maxWidth: '100vw', maxHeight: '100vh', objectFit: 'contain' }} />}
+          <button type="button" aria-label="Close" onClick={() => setView(null)} style={{ position: 'fixed', top: 'calc(env(safe-area-inset-top) + 12px)', right: 14, width: 44, height: 44, border: 0, borderRadius: 22, background: '#fff', fontSize: 18, cursor: 'pointer' }}>{'✕'}</button>
         </div>
       )}
       {sheet === 'comments' && (
@@ -172,16 +179,19 @@ export default function IssuePanel({ job, element, onMsg }) {
               {(f.author === me) && <button type="button" onClick={() => del(f.id)} aria-label="Delete" style={{ border: 0, background: 'transparent', color: '#b0ab9a', fontSize: 16, cursor: 'pointer' }}>{'✕'}</button>}
             </div>
           ))}
-          {!locked && <button type="button" disabled={busy} onClick={() => fileRef.current && fileRef.current.click()} style={{ ...pill(false), marginTop: 12 }}>{'📎'} Add file</button>}
+          {!locked && <button type="button" disabled={busy} onClick={() => fileRef.current && fileRef.current.click()} style={{ ...pill(true), marginTop: 12 }}>Add file</button>}
         </Sheet>
       )}
       {sheet === 'photos' && (
-        <Sheet close={() => setSheet('')} name="Photos">
+        <Sheet close={() => setSheet('')} name="Gallery">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-            <button type="button" disabled={busy} onClick={() => openCam()} style={{ aspectRatio: '1', border: '2px dashed ' + OR, borderRadius: 12, background: '#fff7ef', color: OR, font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>{'＋'}<br />Add photo</button>
+            <button type="button" disabled={busy} onClick={() => openCam()} style={{ aspectRatio: '1', border: '2px dashed ' + OR, borderRadius: 12, background: '#fff7ef', color: OR, font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>{'＋'}<br />Add</button>
             {photos.map((p) => (
               <div key={p.id} style={{ position: 'relative' }}>
-                <a href={url(p.pathname)} target="_blank" rel="noreferrer"><img src={url(p.pathname)} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 12, display: 'block' }} /></a>
+                <button type="button" onClick={() => setView(p)} style={{ display: 'block', width: '100%', padding: 0, border: 0, background: 'transparent', cursor: 'pointer', position: 'relative' }}>
+                  {p.kind === 'video' ? <video src={url(p.pathname) + '#t=0.1'} preload="metadata" muted playsInline style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 12, display: 'block', background: '#141413' }} /> : <img src={url(p.pathname)} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 12, display: 'block' }} />}
+                  {p.kind === 'video' && <span style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: 34, height: 34, borderRadius: 17, background: 'rgba(20,20,19,.6)', color: '#fff', lineHeight: '34px', fontSize: 13 }}>{'▶'}</span>}
+                </button>
                 {p.author === me && <button type="button" onClick={() => del(p.id)} aria-label="Delete" style={{ position: 'absolute', top: 4, right: 4, width: 24, height: 24, border: 0, borderRadius: 12, background: 'rgba(20,20,19,.6)', color: '#fff', cursor: 'pointer' }}>{'✕'}</button>}
               </div>
             ))}
