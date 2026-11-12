@@ -102,7 +102,7 @@ async function applyLook(vw, job, layer, keepView) {
       for (const k in map) byId[parseInt(k.slice(-8), 16)] = map[k];
       const dbIds = (ids) => ids.map((i) => byId[i]).filter(Boolean);
       const shown = dbIds(look.visible);
-      if (!keepView) { vw.isolate(shown); vw.fitToView(shown); }
+      if (!keepView || keepView === 'iso') { vw.isolate(shown); if (!keepView) vw.fitToView(shown); } // 'iso': re-apply what is shown but keep the camera where the person left it
       const T = window.THREE;
       // colour per part: the real look first, then (when the person's own bar is on) their layer on top of it
       const fin = {};
@@ -234,7 +234,7 @@ export default function Viewer3D({ job = '' }) {
   }, []);
 
   useEffect(() => {
-    const f = () => { const vw = viewer.current; if (vw && vw.model) { resetLook(vw); applyLook(vw, job, modeRef.current === 'user' ? layerRef.current : null); } };
+    const f = () => { const vw = viewer.current; if (vw && vw.model) { resetLook(vw); applyLook(vw, job, modeRef.current === 'user' ? layerRef.current : null, 'iso'); } };
     window.addEventListener('ss-reload-look', f);
     return () => window.removeEventListener('ss-reload-look', f);
   }, [job]);
