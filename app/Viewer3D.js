@@ -1,4 +1,5 @@
 'use client';
+import IssuePanel from './IssuePanel';
 import { useEffect, useRef, useState } from 'react';
 
 const VIEWER = 'https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/';
@@ -422,6 +423,7 @@ export default function Viewer3D({ job = '' }) {
                         <span aria-hidden="true">{'\u2691'}</span>{flagged ? 'Clear issue' : 'Issue'}
                       </button>
                     )}
+                  {flagged && isq && <IssuePanel job={job} element={String(isq.tb.element_id)} onMsg={setMsg} />}
                   </div>
                 );
               })()}
