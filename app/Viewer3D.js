@@ -71,7 +71,7 @@ function resetLook(vw) {
 }
 
 // Recreates what the chosen Revit 3D view shows: only its elements, with the colours set in that view.
-async function applyLook(vw, job) {
+async function applyLook(vw, job, layer, keepView) {
   try {
     const r = await fetch('/api/aps?look=1&job=' + encodeURIComponent(job), { cache: 'no-store' });
     const look = await r.json();
@@ -86,15 +86,22 @@ async function applyLook(vw, job) {
       for (const k in map) byId[parseInt(k.slice(-8), 16)] = map[k];
       const dbIds = (ids) => ids.map((i) => byId[i]).filter(Boolean);
       const shown = dbIds(look.visible);
-      vw.isolate(shown);
-      vw.fitToView(shown);
+      if (!keepView) { vw.isolate(shown); vw.fitToView(shown); }
       const T = window.THREE;
-      for (const hex in look.colors) {
-        const [h, tr] = hex.split('_');
+      // colour per part: the real look first, then (when the person's own bar is on) their layer on top of it
+      const fin = {};
+      for (const hex in look.colors) look.colors[hex].forEach((i) => { fin[i] = hex; });
+      if (layer && layer.look && layer.look.colors) {
+        (layer.edits || []).forEach((e) => { delete fin[parseInt(e.elementId, 10)]; });
+        for (const hex in layer.look.colors) layer.look.colors[hex].forEach((i) => { fin[i] = hex; });
+      }
+      const byHex = {};
+      for (const i in fin) (byHex[fin[i]] = byHex[fin[i]] || []).push(parseInt(i, 10));
+      for (const hex in byHex) {
+        const [h] = hex.split('_');
         const n = parseInt(h, 16);
         const col = new T.Vector4(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1);
-        const ids = dbIds(look.colors[hex]);
-        ids.forEach((d) => vw.setThemingColor(d, col, vw.model, true));
+        dbIds(byHex[hex]).forEach((d) => vw.setThemingColor(d, col, vw.model, true));
       }
     }, () => {});
   } catch (e) {}
@@ -154,6 +161,28 @@ export default function Viewer3D({ job = '' }) {
   const [openSrc, setOpenSrc] = useState(false);
   const [openMe, setOpenMe] = useState(true);
   const [mode, setMode] = useState('user');
+  const [layer, setLayer] = useState({ edits: [], look: null, pending: false });
+  const layerRef = useRef(layer);
+  layerRef.current = layer;
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const pollT = useRef(null);
+  async function loadLayer() {
+    try { const r = await fetch('/api/layer?job=' + encodeURIComponent(job), { cache: 'no-store' }); if (r.ok) { const j = await r.json(); setLayer(j); return j; } } catch (e) {}
+    return null;
+  }
+  function pollLayer() {
+    clearInterval(pollT.current);
+    let n = 0;
+    pollT.current = setInterval(async () => { n++; const j = await loadLayer(); if ((j && !j.pending) || n > 40) clearInterval(pollT.current); }, 3000);
+  }
+  useEffect(() => { loadLayer().then((j) => { if (j && j.pending) pollLayer(); }); return () => clearInterval(pollT.current); }, [job]);
+  useEffect(() => {
+    const vw = viewer.current;
+    if (!vw || !vw.model) return;
+    try { vw.clearThemingColors(vw.model); } catch (e) {}
+    applyLook(vw, job, mode === 'user' ? layer : null, true);
+  }, [mode, layer]);
   const meRef = useRef('');
   const [, setMeTick] = useState(0);
   useEffect(() => { fetch('/api/job-rows?job=' + encodeURIComponent(job) + '&ids=').then((r) => { const m = r.headers.get('x-me'); if (m) { meRef.current = decodeURIComponent(m); setMeTick(1); } }).catch(() => {}); }, [job]);
@@ -167,13 +196,12 @@ export default function Viewer3D({ job = '' }) {
   }, []);
 
   useEffect(() => {
-    const f = () => { const vw = viewer.current; if (vw && vw.model) { resetLook(vw); applyLook(vw, job); } };
+    const f = () => { const vw = viewer.current; if (vw && vw.model) { resetLook(vw); applyLook(vw, job, modeRef.current === 'user' ? layerRef.current : null); } };
     window.addEventListener('ss-reload-look', f);
     return () => window.removeEventListener('ss-reload-look', f);
   }, [job]);
 
   async function toggle(tb, col, value) {
-    setPopup((p) => p && { ...p, tables: p.tables.map((t) => (t.id === tb.id ? { ...t, vals: { ...t.vals, [col]: value } } : t)) });
     setDraft((d) => ({ ...d, [tb.id + '|' + tb.element_id + '|' + col]: { id: tb.id, eid: tb.element_id, col, value } }));
   }
 
@@ -182,12 +210,14 @@ export default function Viewer3D({ job = '' }) {
     let bad = '';
     for (const it of items) {
       try {
-        const r = await fetch('/api/schedules/' + encodeURIComponent(it.id) + '/edits', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ elementId: it.eid, col: it.col, value: it.value }) });
+        const r = await fetch('/api/schedules/' + encodeURIComponent(it.id) + '/edits', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ elementId: it.eid, col: it.col, value: it.value, layer: true }) });
         if (!r.ok) bad = it.col;
       } catch (e) { bad = it.col; }
     }
     setDraft({});
-    setMsg(bad ? 'You cannot change ' + bad : 'Saved. Revit gets the change on its next sync.');
+    setMsg(bad ? 'You cannot change ' + bad : 'Saved in your own layer. The main model is not changed.');
+    await loadLayer();
+    pollLayer();
   }
 
   async function refresh() {
@@ -234,7 +264,7 @@ export default function Viewer3D({ job = '' }) {
         viewer.current.start();
         A.Document.load(
           'urn:' + info.model.urn,
-          (doc) => { const node = (info.model.view && doc.getRoot().search({ type: 'geometry' }).find((n) => String(n.name()).toLowerCase() === String(info.model.view).toLowerCase())) || doc.getRoot().search({ type: 'geometry', role: '3d' })[0] || doc.getRoot().getDefaultGeometry(); const vw = viewer.current; vw.loadDocumentNode(doc, node).then(() => { applyLook(vw, job); attachPopup(vw, job, setPopup); }); },
+          (doc) => { const node = (info.model.view && doc.getRoot().search({ type: 'geometry' }).find((n) => String(n.name()).toLowerCase() === String(info.model.view).toLowerCase())) || doc.getRoot().search({ type: 'geometry', role: '3d' })[0] || doc.getRoot().getDefaultGeometry(); const vw = viewer.current; vw.loadDocumentNode(doc, node).then(() => { applyLook(vw, job, modeRef.current === 'user' ? layerRef.current : null); attachPopup(vw, job, setPopup); }); },
           (code, m) => setMsg('Could not open the model: ' + m)
         );
       })
@@ -294,7 +324,9 @@ export default function Viewer3D({ job = '' }) {
           </div>
         )}
         {(() => {
-          const pp = popup || { id: null, tables: [] };
+          const pp0 = popup || { id: null, tables: [] };
+          // what the sheet shows: Source = the real data; the person's own bar = real data + their layer + unsaved ticks
+          const pp = { ...pp0, tables: pp0.tables.map((tb) => { if (mode !== 'user') return tb; const v = { ...tb.vals }; (layer.edits || []).forEach((e) => { if (e.scheduleId === tb.id && e.elementId === String(tb.element_id)) v[e.col] = e.value; }); Object.values(draft).forEach((d) => { if (d.id === tb.id && d.eid === tb.element_id) v[d.col] = d.value; }); return { ...tb, vals: v }; }) };
           if (pp.tables[0] && pp.tables[0].me) meRef.current = pp.tables[0].me;
           const me = meRef.current || 'Me';
           const locked = [];
@@ -308,7 +340,7 @@ export default function Viewer3D({ job = '' }) {
           const pick = (m) => { setMode(m); setOpenSrc(m === 'source'); setOpenMe(m === 'user'); };
           const bar = (icon, title, open, setOpen, body) => (
             <div style={{ margin: '0 12px 8px', border: '1px solid #efece3', borderRadius: 14, overflow: 'hidden', background: '#fdfcf9' }}>
-              <button type="button" onClick={() => setOpen(!open)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', border: 0, background: 'none', font: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', textAlign: 'left', color: '#141413' }}>
+              <button type="button" onClick={() => (open ? setOpen(false) : pick(icon === 'lock' ? 'source' : 'user'))} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', border: 0, background: 'none', font: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', textAlign: 'left', color: '#141413' }}>
                 <span role="checkbox" aria-checked={mode === (icon === 'lock' ? 'source' : 'user')} onClick={(e) => { e.stopPropagation(); pick(icon === 'lock' ? 'source' : 'user'); }} style={{ width: 22, height: 22, boxSizing: 'border-box', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: '#fff', border: '2px solid ' + (mode === (icon === 'lock' ? 'source' : 'user') ? '#2e9e5b' : '#c9c5b8'), background: mode === (icon === 'lock' ? 'source' : 'user') ? '#2e9e5b' : '#fff' }}>{mode === (icon === 'lock' ? 'source' : 'user') ? '\u2713' : ''}</span>
                 {title}{pp.id && <span style={{ marginLeft: 14, fontWeight: 500, fontSize: 12.5, color: '#8a8576' }}>{pp.id}</span>}
                 <span style={{ marginLeft: 'auto', color: '#8a8576', fontSize: 12, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}>{'▾'}</span>
