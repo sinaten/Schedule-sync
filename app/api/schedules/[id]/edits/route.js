@@ -2,10 +2,11 @@ import { db } from '../../../../../lib/db';
 import { currentUser, canJob, canEdit } from '../../../../../lib/user';
 import { getColPerms, allowedCols } from '../../../../../lib/colperms';
 import { histDb } from '../../../../../lib/history';
+import { getLayer, putLayer } from '../../../../../lib/layer';
 const nk = (s) => String(s ?? '').toLowerCase().replace(/[\s\-_]/g, '');
 export async function POST(req, { params }) {
   const id = decodeURIComponent(params.id);
-  const { elementId, col, value } = await req.json();
+  const { elementId, col, value, layer } = await req.json();
   const sql = await db();
   const u = await currentUser();
   const [s] = await sql`select job, columns from schedules where id=${id}`;
@@ -22,6 +23,28 @@ export async function POST(req, { params }) {
   if (typeof value === 'boolean') {
     const [r] = await sql`select vals ->> ${col} as v from rows where schedule_id=${id} and element_id=${elementId}`;
     before = r && r.v === 'true' ? true : r && r.v === 'false' ? false : null;
+  }
+  // From the 3D popup the change goes into the person's own layer: the main data and Revit are not touched until a manager moves it into the model.
+  if (layer) {
+    const who = (u && u.name) || 'admin';
+    const jb = s.job || '';
+    const L = await getLayer(sql, jb, who);
+    const eid = String(elementId);
+    const i = L.edits.findIndex((e) => e.scheduleId === id && e.elementId === eid && e.col === col);
+    const was = i >= 0 ? L.edits[i].value : before;
+    if (i >= 0) L.edits.splice(i, 1);
+    if (value !== before) L.edits.push({ scheduleId: id, elementId: eid, col, value });
+    L.rev = (L.rev || 0) + 1;
+    L.look = null;
+    await putLayer(sql, jb, who, L);
+    if (typeof value === 'boolean' && was !== value) {
+      try {
+        const h = await histDb();
+        const change = [{ element: eid, name: eid, param: String(col), from: was, to: value, at: new Date().toISOString() }];
+        await h`insert into history(username, job, changes) values(${who}, ${s.job || null}, ${JSON.stringify(change)}::jsonb)`;
+      } catch {}
+    }
+    return Response.json({ ok: true, layer: true });
   }
   await sql`delete from edits where schedule_id=${id} and element_id=${elementId} and col=${col} and status='pending'`;
   await sql`insert into edits(schedule_id,element_id,col,value) values(${id},${elementId},${col},${JSON.stringify(value)}::jsonb)`;
