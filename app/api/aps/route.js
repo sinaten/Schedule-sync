@@ -51,6 +51,13 @@ export async function GET(req) {
     const lj = new URL(req.url).searchParams.get('job') || '';
     const lsql = await settings();
     const [l] = await lsql`select value from settings where key=${'look:' + lj}`;
+    const vw = new URL(req.url).searchParams.get('view') || '';
+    if (vw) {
+      // the colours of one of the offered views (falls back to the main view's)
+      const [ls] = await lsql`select value from settings where key=${'looks:' + lj}`;
+      const one = ls && ls.value ? ls.value[vw] : null;
+      return Response.json(one || (l ? l.value : null));
+    }
     return Response.json(l ? l.value : null);
   }
   if (!ready()) return Response.json({ configured: false });
@@ -68,7 +75,7 @@ export async function GET(req) {
       status = mf.status;
       progress = mf.progress || '';
     }
-    const out = { configured: true, model: { name: model.name, urn: model.urn, status, progress, view: model.view || '' } };
+    const out = { configured: true, model: { name: model.name, urn: model.urn, status, progress, view: model.view || '', views: Array.isArray(model.views) ? model.views : [] } };
     if (status === 'success') {
       const v = await token('viewables:read');
       out.token = v.access_token;
@@ -89,6 +96,14 @@ export async function POST(req) {
       const lsql = await settings();
       const lv = JSON.stringify(body.look || null);
       await lsql`insert into settings(key, value) values(${'look:' + String(body.job || '')}, ${lv}::jsonb) on conflict (key) do update set value = excluded.value`;
+      if (body.looks && typeof body.looks === 'object') {
+        const lk = JSON.stringify(body.looks);
+        await lsql`insert into settings(key, value) values(${'looks:' + String(body.job || '')}, ${lk}::jsonb) on conflict (key) do update set value = excluded.value`;
+      }
+      if (Array.isArray(body.views) && body.job) {
+        const vs = JSON.stringify({ views: body.views.map(String) });
+        await lsql`update settings set value = value || ${vs}::jsonb where key = ${'model:' + String(body.job)}`;
+      }
       return Response.json({ ok: true });
     }
     const t = await token('bucket:create bucket:read data:read data:write data:create');
@@ -122,7 +137,7 @@ export async function POST(req) {
       });
       if (!job.ok) throw new Error('Could not start conversion (' + job.status + '): ' + (await job.text()).slice(0, 300));
       const sql = await settings();
-      const value = JSON.stringify({ urn, name: body.name || 'Model', uploadedAt: new Date().toISOString(), view: String(body.view || '') });
+      const value = JSON.stringify({ urn, name: body.name || 'Model', uploadedAt: new Date().toISOString(), view: String(body.view || ''), views: Array.isArray(body.views) ? body.views.map(String) : [] });
       await sql`insert into settings(key, value) values(${body.job ? 'model:' + body.job : 'model'}, ${value}::jsonb) on conflict (key) do update set value = excluded.value`;
       return Response.json({ ok: true });
     }
