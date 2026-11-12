@@ -9,6 +9,7 @@ function initials(n) {
 
 export default function MobileShell({ name, role, admin }) {
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState('issues');
   const [pending, setPending] = useState(0);
   const [job, setJob] = useState('');
   const [online, setOnline] = useState(null);
@@ -93,6 +94,10 @@ export default function MobileShell({ name, role, admin }) {
           </>
         )}
       </header>
+      <div className="ms-tabs" role="tablist" aria-label="Issues and follow-up">
+        <button type="button" role="tab" aria-selected={tab === 'issues'} className={'ms-tab ms-tab-i' + (tab === 'issues' ? ' on' : '')} onClick={() => setTab('issues')}><i />Issues</button>
+        <button type="button" role="tab" aria-selected={tab === 'follow'} className={'ms-tab ms-tab-f' + (tab === 'follow' ? ' on' : '')} onClick={() => setTab('follow')}><i />Follow-up</button>
+      </div>
       <div className="ms-spacer" />
       <nav className="ms-bot" aria-label="Quick actions">
         <button type="button" className="ms-sm" aria-label="Refresh 3D model from Revit" onClick={refreshModel} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer', opacity: job ? 1 : 0.4 }}>
