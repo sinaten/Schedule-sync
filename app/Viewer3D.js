@@ -316,8 +316,13 @@ export default function Viewer3D({ job = '' }) {
               <div style={{ width: 38, height: 4, borderRadius: 4, background: '#d9d5c8', margin: '4px auto 8px' }} />
               <div style={{ padding: '2px 16px 10px', fontWeight: 700, fontSize: 14 }}>{pp.id ? 'Element ' + pp.id : 'No element selected'}</div>
               {pp.id && pp.tables.length === 0 && <p style={{ margin: 0, padding: '4px 16px 10px', color: '#8a8576' }}>No schedule row for this part.</p>}
-              {bar('lock', 'Source', openSrc, setOpenSrc, locked.length === 0 ? <div style={{ ...row, color: '#8a8576' }}>{pp.id ? 'Nothing is locked.' : 'Select a part in the model.'}</div> : locked.map(({ tb, c }) => (
-                <div key={tb.id + '|' + c.name} style={row}><span>{c.name}</span><span style={{ color: '#9a9686' }}>{val(tb, c)}</span></div>
+              {bar('lock', 'Source', openSrc, setOpenSrc, pp.tables.length === 0 ? <div style={{ ...row, color: '#8a8576' }}>{pp.id ? 'Nothing is locked.' : 'Select a part in the model.'}</div> : pp.tables.map((tb) => (
+                <div key={tb.id}>
+                  <div style={{ padding: '8px 14px 4px', fontSize: 11.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: '#6b675c', background: '#f6f4ec' }}>{tb.name}</div>
+                  {tb.columns.map((c) => (
+                    <div key={c.name} style={row}><span>{c.name}</span><span style={{ color: '#9a9686', textAlign: 'right' }}>{val(tb, c)}</span></div>
+                  ))}
+                </div>
               )))}
               {bar('ok', me, openMe, setOpenMe, mine.length === 0 ? <div style={{ ...row, color: '#8a8576' }}>{pp.id ? 'Nothing to change here.' : 'Select a part in the model.'}</div> : mine.map(({ tb, c }) => (
                 <div key={tb.id + '|' + c.name} style={row}>
