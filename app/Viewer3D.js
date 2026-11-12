@@ -373,7 +373,7 @@ export default function Viewer3D({ job = '' }) {
               {pp.id && (() => {
                 // Issue: flags this part by setting its Yes/No parameter "Issue" in Revit (the Revit side colours it with the Issue filter)
                 let isq = null;
-                pp.tables.forEach((tb) => { if (!isq) { const c = tb.columns.find((x) => /^issue$/i.test(x.name) && x.type === 'bool'); if (c) isq = { tb, c }; } });
+                pp.tables.forEach((tb) => { if (!isq) { const c = tb.columns.find((x) => /^(\d+\s*[-.]?\s*)?issue$/i.test(String(x.name).trim()) && x.type === 'bool'); if (c) isq = { tb, c }; } });
                 const key = isq ? isq.tb.id + '|' + isq.tb.element_id : '';
                 const flagged = isq ? (key in issueOn ? issueOn[key] : !!(isq.tb.vals && isq.tb.vals[isq.c.name] === true)) : false;
                 const send = async () => {
