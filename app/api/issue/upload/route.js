@@ -18,6 +18,6 @@ export async function POST(req) {
   const safe = String(file.name || 'file').replace(/[^\w.-]+/g, '_').slice(-80);
   const r = await put('issues/' + job + '/' + el + '/' + Date.now() + '-' + safe, file, { access: 'private', addRandomSuffix: true, contentType: file.type || undefined });
   const sql = await issuesDb();
-  await sql`insert into issue_items(job, element_id, kind, author, name, pathname, content_type) values(${job}, ${el}, ${kind}, ${(u && u.name) || 'admin'}, ${String(file.name || safe)}, ${r.pathname}, ${String(file.type || '')})`;
+  await sql`insert into issue_items(job, element_id, kind, author, body, name, pathname, content_type) values(${job}, ${el}, ${kind}, ${(u && u.name) || 'admin'}, ${f.get('chat') ? 'chat' : null}, ${String(file.name || safe)}, ${r.pathname}, ${String(file.type || '')})`;
   return Response.json({ ok: true });
 }
