@@ -19,7 +19,15 @@ async function shrink(file) {
 
 const titleSt = { position: 'sticky', top: 0, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #efece3', fontWeight: 700, fontSize: 14.5 };
 // Bottom sheet (defined outside the panel so typing in it never loses focus).
-function Sheet({ children, name, foot, close }) {
+function Sheet({ children, name, foot, close, dock }) {
+  // dock: a space under the page (no dimmed backdrop), so the model above stays visible
+  if (dock) return (
+    <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 2000, height: '42vh', background: '#fff', borderTop: '2px solid #e8710a', borderRadius: '18px 18px 0 0', boxShadow: '0 -4px 14px rgba(0,0,0,.12)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={titleSt}><span>{name}</span><button type="button" onClick={close} aria-label="Close" style={{ border: 0, background: '#f1ede4', width: 30, height: 30, borderRadius: 15, fontSize: 16, cursor: 'pointer' }}>{'✕'}</button></div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 14 }}>{children}</div>
+      {foot}
+    </div>
+  );
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(20,20,19,.4)', display: 'flex', alignItems: 'flex-end' }} onClick={close}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, margin: '0 auto', height: '72vh', background: '#fff', borderRadius: '20px 20px 0 0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -68,6 +76,15 @@ export default function IssuePanel({ job, element, onMsg }) {
     window.addEventListener('message', f);
     return () => window.removeEventListener('message', f);
   }, [cam, job, element]);
+
+  // while the comments space is open, leave room for it under the page
+  useEffect(() => {
+    if (sheet !== 'comments') return;
+    const b = document.body, old = b.style.paddingBottom;
+    b.style.paddingBottom = '42vh';
+    window.dispatchEvent(new Event('resize'));
+    return () => { b.style.paddingBottom = old; window.dispatchEvent(new Event('resize')); };
+  }, [sheet]);
 
   const me = d ? d.me : '';
   const items = d ? d.items : [];
@@ -146,11 +163,12 @@ export default function IssuePanel({ job, element, onMsg }) {
         </div>
       )}
       {sheet === 'comments' && (
-        <Sheet close={() => setSheet('')} name="Comments" foot={
+        <Sheet dock close={() => setSheet('')} name="Comments" foot={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px calc(10px + env(safe-area-inset-bottom))', borderTop: '1px solid #efece3' }}>
             <button type="button" aria-label="Add photo" onClick={() => openCam()} style={{ border: 0, background: '#f1ede4', width: 38, height: 38, borderRadius: 19, fontSize: 17, cursor: 'pointer', flex: 'none' }}>{'📷'}</button>
             <input value={chat} onChange={(e) => setChat(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); send(); } }} placeholder="Write a comment…" enterKeyHint="send"
               style={{ flex: 1, minWidth: 0, height: 38, boxSizing: 'border-box', border: '1.5px solid #e0dccf', borderRadius: 19, padding: '0 14px', font: 'inherit', fontSize: 14, outline: 'none' }} />
+            <button type="button" aria-label="Send" onClick={send} style={{ border: 0, background: OR, color: '#fff', width: 38, height: 38, borderRadius: 19, fontSize: 19, fontWeight: 700, cursor: 'pointer', flex: 'none' }}>{'✓'}</button>
             <input ref={chatPhotoRef} type="file" accept="image/*" hidden onChange={(e) => { upload(e.target.files[0], 'photo', true); e.target.value = ''; }} />
           </div>
         }>
