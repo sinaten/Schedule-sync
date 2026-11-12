@@ -185,6 +185,20 @@ export default function Viewer3D({ job = '' }) {
     try { vw.clearThemingColors(vw.model); } catch (e) {}
     applyLook(vw, job, mode === 'user' ? layer : null, true);
   }, [mode, layer]);
+  // the website picks up new colours from Revit by itself (the add-in sends them after every change)
+  useEffect(() => {
+    let last = null;
+    const tm = setInterval(async () => {
+      if (document.hidden) return;
+      try {
+        const r = await fetch('/api/aps?look=1&job=' + encodeURIComponent(job), { cache: 'no-store' });
+        const s = await r.text();
+        if (last !== null && s !== last) window.dispatchEvent(new Event('ss-reload-look'));
+        last = s;
+      } catch (e) {}
+    }, 15000);
+    return () => clearInterval(tm);
+  }, [job]);
   const meRef = useRef('');
   const [, setMeTick] = useState(0);
   useEffect(() => { fetch('/api/job-rows?job=' + encodeURIComponent(job) + '&ids=').then((r) => { const m = r.headers.get('x-me'); if (m) { meRef.current = decodeURIComponent(m); setMeTick(1); } }).catch(() => {}); }, [job]);
@@ -388,9 +402,16 @@ export default function Viewer3D({ job = '' }) {
                   } catch (e) { setIssueOn((o) => ({ ...o, [key]: !on })); setMsg('No connection to the website.'); }
                 };
                 return (
-                  <button type="button" onClick={send} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: 'calc(100% - 24px)', margin: '4px 12px 8px', height: 32, borderRadius: 16, font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', border: '1.5px solid ' + (isq ? '#e8710a' : '#d9d5c8'), background: flagged ? '#e8710a' : '#fff', color: flagged ? '#fff' : isq ? '#e8710a' : '#9a9686', boxShadow: flagged ? '0 4px 12px rgba(232,113,10,.35)' : 'none' }}>
-                    <span aria-hidden="true">{'\u2691'}</span>{flagged ? 'Issue \u00B7 flagged' : 'Issue'}
-                  </button>
+                  <div>
+                    <div style={{ margin: '0 12px 6px', border: '1px solid #efece3', borderRadius: 14, background: '#fdfcf9', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', fontSize: 13.5, fontWeight: 600, color: '#141413' }}>
+                      <span role="checkbox" aria-checked={flagged} aria-disabled="true" style={{ width: 22, height: 22, boxSizing: 'border-box', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: '#fff', border: '2px solid ' + (flagged ? '#e8710a' : '#c9c6ba'), background: flagged ? '#e8710a' : 'transparent', pointerEvents: 'none' }}>{flagged ? '\u2713' : ''}</span>
+                      Issue
+                      <span style={{ marginLeft: 'auto', fontWeight: 500, fontSize: 12.5, color: flagged ? '#e8710a' : '#8a8576' }}>{flagged ? 'Flagged' : 'None'}</span>
+                    </div>
+                    <button type="button" onClick={send} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: 'calc(100% - 24px)', margin: '0 12px 8px', height: 32, borderRadius: 16, font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', border: '1.5px solid ' + (isq ? '#e8710a' : '#d9d5c8'), background: flagged ? '#e8710a' : '#fff', color: flagged ? '#fff' : isq ? '#e8710a' : '#9a9686', boxShadow: flagged ? '0 4px 12px rgba(232,113,10,.35)' : 'none' }}>
+                      <span aria-hidden="true">{'\u2691'}</span>{flagged ? 'Clear issue' : 'Issue'}
+                    </button>
+                  </div>
                 );
               })()}
               {Object.keys(draft).length > 0 && (
