@@ -154,6 +154,8 @@ export default function Viewer3D({ job = '' }) {
   const [openSrc, setOpenSrc] = useState(false);
   const [openMe, setOpenMe] = useState(true);
   const meRef = useRef('');
+  const [, setMeTick] = useState(0);
+  useEffect(() => { fetch('/api/job-rows?job=' + encodeURIComponent(job) + '&ids=').then((r) => { const m = r.headers.get('x-me'); if (m) { meRef.current = decodeURIComponent(m); setMeTick(1); } }).catch(() => {}); }, [job]);
   const saveRef = useRef(null);
   saveRef.current = () => saveDraft();
   useEffect(() => { window.dispatchEvent(new CustomEvent('ss-draft', { detail: Object.keys(draft).length })); }, [draft]);
