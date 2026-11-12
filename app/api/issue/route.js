@@ -28,7 +28,7 @@ export async function POST(req) {
     // a photo taken in the camera flow (it also lives in the user's album)
     const [m] = await sql`select pathname from media where pathname = ${String(b.pathname || '')}`;
     if (!m) return Response.json({ error: 'Unknown photo' }, { status: 400 });
-    await sql`insert into issue_items(job, element_id, kind, author, name, pathname, content_type) values(${job}, ${el}, 'photo', ${nm(u)}, ${String(b.name || 'photo.jpg')}, ${m.pathname}, 'image/jpeg')`;
+    await sql`insert into issue_items(job, element_id, kind, author, name, pathname, content_type) values(${job}, ${el}, ${b.kind === 'video' ? 'video' : 'photo'}, ${nm(u)}, ${String(b.name || 'photo.jpg')}, ${m.pathname}, ${String(b.contentType || (b.kind === 'video' ? 'video/mp4' : 'image/jpeg'))})`;
     return Response.json({ ok: true });
   }
   if (b.action === 'comment') {
