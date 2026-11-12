@@ -51,6 +51,7 @@ export default function IssuePanel({ job, element, onMsg }) {
   const [view, setView] = useState(null);
   const [menu, setMenu] = useState(false);
   const [sending, setSending] = useState(false);
+  const [err, setErr] = useState('');
   const mediaRef = useRef(null), anyRef = useRef(null);
   const photoRef = useRef(null), fileRef = useRef(null), chatPhotoRef = useRef(null), endRef = useRef(null), loaded = useRef('');
   const q = '?job=' + encodeURIComponent(job) + '&element=' + encodeURIComponent(element);
@@ -66,7 +67,7 @@ export default function IssuePanel({ job, element, onMsg }) {
   };
   useEffect(() => { loaded.current = ''; setD(null); setSheet(''); load(); }, [job, element]);
   useEffect(() => { if (sheet !== 'comments') return; const t = setInterval(load, 6000); return () => clearInterval(t); }, [sheet, job, element]);
-  useEffect(() => { if (sheet === 'comments' && endRef.current) endRef.current.scrollIntoView({ block: 'end' }); }, [sheet, d]);
+  useEffect(() => { if (sheet === 'comments' && endRef.current) endRef.current.scrollIntoView({ block: 'end' }); }, [sheet, d, sending, err]);
 
   // Add photo = the same camera flow as the QR button: scan the section QR, then take photos into your folder; they also land in this issue.
   const openCam = async () => {
@@ -130,15 +131,15 @@ export default function IssuePanel({ job, element, onMsg }) {
   // + in the chat: a photo, video or file goes straight to storage and appears only in the chat
   const attach = async (file) => {
     if (!file) return;
-    setSending(true); setMenu(false);
+    setSending(true); setMenu(false); setErr('');
     try {
       if (!(d && d.issue)) await saveText0();
       const safe = String(file.name || 'file').replace(/[^\w.-]+/g, '_').slice(-80);
       const res = await blobUpload('issues/' + job + '/' + element + '/chat-' + Date.now() + '-' + safe, file, { access: 'private', handleUploadUrl: '/api/issue/token', clientPayload: JSON.stringify({ job, element }), contentType: file.type || undefined, multipart: file.size > 20 * 1024 * 1024 });
       const r = await fetch('/api/issue', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, element, action: 'attach', pathname: res.pathname, name: file.name, contentType: file.type }) });
-      if (!r.ok) { const j = await r.json().catch(() => ({})); onMsg && onMsg(j.error || 'Could not send.'); }
+      if (!r.ok) { const j = await r.json().catch(() => ({})); setErr('Not saved: ' + (j.error || 'server error ' + r.status)); }
       await load();
-    } catch (e) { onMsg && onMsg('Could not send: ' + (e && e.message ? e.message : 'error')); }
+    } catch (e) { setErr('Not sent: ' + (e && e.message ? e.message : 'error')); }
     setSending(false);
   };
   const del = async (id) => { if (!window.confirm('Delete this?')) return; await fetch('/api/issue?id=' + id, { method: 'DELETE' }); load(); };
@@ -212,6 +213,8 @@ export default function IssuePanel({ job, element, onMsg }) {
               </div>
             );
           })}
+          {sending && <p style={{ textAlign: 'center', color: OR, fontSize: 13, fontWeight: 600 }}>Sending…</p>}
+          {err && <p onClick={() => setErr('')} style={{ textAlign: 'center', color: '#c0392b', fontSize: 13, fontWeight: 600, background: '#fdecea', borderRadius: 10, padding: '8px 10px' }}>{err}</p>}
           <div ref={endRef} />
         </Sheet>
       )}
