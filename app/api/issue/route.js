@@ -24,6 +24,13 @@ export async function POST(req) {
   const u = await currentUser();
   if (!u || !job || !el || !canJob(u, job)) return no();
   const sql = await issuesDb();
+  if (b.action === 'attach') {
+    // a photo, video or file sent in the chat (uploaded straight to storage); it stays in the chat, not in the Gallery
+    const path = String(b.pathname || '');
+    if (!path.startsWith('issues/' + job + '/' + el + '/')) return Response.json({ error: 'Bad path' }, { status: 400 });
+    await sql`insert into issue_items(job, element_id, kind, author, name, pathname, content_type) values(${job}, ${el}, 'chat', ${nm(u)}, ${String(b.name || 'file').slice(0, 200)}, ${path}, ${String(b.contentType || '')})`;
+    return Response.json({ ok: true });
+  }
   if (b.action === 'link') {
     // a photo taken in the camera flow (it also lives in the user's album)
     const [m] = await sql`select pathname from media where pathname = ${String(b.pathname || '')}`;
