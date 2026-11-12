@@ -128,6 +128,8 @@ export default function Capture() {
       });
       const r = await jsonPost('/api/media', { visitId: visit.id, pathname: res.pathname, kind, size: blob.size, contentType: blob.type });
       if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Could not register the file');
+      // Opened from an issue: the photo also goes into that issue's gallery.
+      if (kind === 'photo') { try { const cx = JSON.parse(sessionStorage.getItem('issuectx') || 'null'); if (cx) await jsonPost('/api/issue', { action: 'link', job: cx.job, element: cx.element, pathname: res.pathname, name: path.split('/').pop() }); } catch (e) { /* optional */ } }
       setSaved((x) => x + 1);
       flash('Saved');
     } catch (e) {
@@ -190,7 +192,7 @@ export default function Capture() {
   return (
     <div className="sc-wrap cp-wrap">
       <video ref={videoRef} className="sc-video" playsInline muted />
-      <button type="button" className="sc-close" aria-label="Close" onClick={() => { history.length > 1 ? history.back() : (location.href = '/'); }}>
+      <button type="button" className="sc-close" aria-label="Close" onClick={() => { if (window.parent !== window) { window.parent.postMessage('issue-close', location.origin); return; } history.length > 1 ? history.back() : (location.href = '/'); }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FAF9F5" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
       </button>
       <div className="cp-label"><b>{title}</b><span>{subText}</span></div>
