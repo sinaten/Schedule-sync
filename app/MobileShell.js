@@ -9,7 +9,7 @@ function initials(n) {
 
 export default function MobileShell({ name, role, admin }) {
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState('follow');
+  const [tab, setTab] = useState('issues');
   const [pending, setPending] = useState(0);
   const [job, setJob] = useState('');
   // the page below the tabs follows the choice: Follow-up shows the normal job page, Issues is empty for now
