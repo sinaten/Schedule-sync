@@ -74,7 +74,7 @@ function resetLook(vw) {
 // Recreates what the chosen Revit 3D view shows: only its elements, with the colours set in that view.
 async function applyLook(vw, job, layer, keepView) {
   try {
-    const r = await fetch('/api/aps?look=1&job=' + encodeURIComponent(job), { cache: 'no-store' });
+    const r = await fetch('/api/aps?look=1&job=' + encodeURIComponent(job) + (window.__ssView ? '&view=' + encodeURIComponent(window.__ssView) : ''), { cache: 'no-store' });
     const look = await r.json();
     if (!look || !look.visible) return;
     const A = window.Autodesk.Viewing;
@@ -119,7 +119,8 @@ async function attachPopup(vw, job, setPopup) {
     const rev = {};
     await new Promise((res) => vw.model.getExternalIdMapping((m) => { for (const k in m) rev[m[k]] = parseInt(k.slice(-8), 16); res(); }, () => res()));
     const tree = vw.model.getInstanceTree();
-    vw.addEventListener(A.SELECTION_CHANGED_EVENT, async (e) => {
+    if (vw.__ssSel) vw.removeEventListener(A.SELECTION_CHANGED_EVENT, vw.__ssSel);
+    vw.addEventListener(A.SELECTION_CHANGED_EVENT, vw.__ssSel = async (e) => {
       const sel = e.dbIdArray || [];
       if (!sel.length) return; // clicking empty space keeps the current popup
       const cands = [];
@@ -163,6 +164,10 @@ export default function Viewer3D({ job = '' }) {
   const [openMe, setOpenMe] = useState(true);
   const [mode, setMode] = useState('user');
   const [issueOn, setIssueOn] = useState({});
+  const docRef = useRef(null);
+  const [curView, setCurView] = useState('');
+  const [vOpen, setVOpen] = useState(false);
+  const [vq, setVq] = useState('');
   const [askClear, setAskClear] = useState('');
   const [layer, setLayer] = useState({ edits: [], look: null, pending: false });
   const layerRef = useRef(layer);
@@ -193,7 +198,7 @@ export default function Viewer3D({ job = '' }) {
     const tm = setInterval(async () => {
       if (document.hidden) return;
       try {
-        const r = await fetch('/api/aps?look=1&job=' + encodeURIComponent(job), { cache: 'no-store' });
+        const r = await fetch('/api/aps?look=1&job=' + encodeURIComponent(job) + (window.__ssView ? '&view=' + encodeURIComponent(window.__ssView) : ''), { cache: 'no-store' });
         const s = await r.text();
         if (last !== null && s !== last) window.dispatchEvent(new Event('ss-reload-look'));
         last = s;
@@ -218,6 +223,19 @@ export default function Viewer3D({ job = '' }) {
     window.addEventListener('ss-reload-look', f);
     return () => window.removeEventListener('ss-reload-look', f);
   }, [job]);
+
+  // pick another Revit 3D view of this job: its geometry loads and its own colours are applied
+  async function switchView(name) {
+    setVOpen(false); setVq('');
+    const vw = viewer.current, doc = docRef.current;
+    if (!vw || !doc) return;
+    const node = doc.getRoot().search({ type: 'geometry' }).find((n) => String(n.name()).toLowerCase() === String(name).toLowerCase());
+    if (!node) { setMsg('That view is not in the published model yet. Publish from Revit again.'); return; }
+    window.__ssView = name; setCurView(name);
+    try { await vw.loadDocumentNode(doc, node); } catch (e) { setMsg('Could not open that view.'); return; }
+    applyLook(vw, job, modeRef.current === 'user' ? layerRef.current : null);
+    attachPopup(vw, job, setPopup);
+  }
 
   async function toggle(tb, col, value) {
     setDraft((d) => ({ ...d, [tb.id + '|' + tb.element_id + '|' + col]: { id: tb.id, eid: tb.element_id, col, value } }));
@@ -282,7 +300,7 @@ export default function Viewer3D({ job = '' }) {
         viewer.current.start();
         A.Document.load(
           'urn:' + info.model.urn,
-          (doc) => { const node = (info.model.view && doc.getRoot().search({ type: 'geometry' }).find((n) => String(n.name()).toLowerCase() === String(info.model.view).toLowerCase())) || doc.getRoot().search({ type: 'geometry', role: '3d' })[0] || doc.getRoot().getDefaultGeometry(); const vw = viewer.current; vw.loadDocumentNode(doc, node).then(() => { applyLook(vw, job, modeRef.current === 'user' ? layerRef.current : null); attachPopup(vw, job, setPopup); }); },
+          (doc) => { const node = (info.model.view && doc.getRoot().search({ type: 'geometry' }).find((n) => String(n.name()).toLowerCase() === String(info.model.view).toLowerCase())) || doc.getRoot().search({ type: 'geometry', role: '3d' })[0] || doc.getRoot().getDefaultGeometry(); const vw = viewer.current; docRef.current = doc; setCurView(String(node.name())); vw.loadDocumentNode(doc, node).then(() => { applyLook(vw, job, modeRef.current === 'user' ? layerRef.current : null); attachPopup(vw, job, setPopup); }); },
           (code, m) => setMsg('Could not open the model: ' + m)
         );
       })
@@ -332,6 +350,29 @@ export default function Viewer3D({ job = '' }) {
       <div style={bar}>
         <strong>3D model{m ? ': ' + m.name : ''}</strong>
       </div>
+      {ready && Array.isArray(m.views) && m.views.length > 1 && (() => {
+        const cur = curView || m.view || m.views[0];
+        const list = m.views.filter((x) => x.toLowerCase().includes(vq.trim().toLowerCase()));
+        return (
+          <div style={{ position: 'relative', padding: '6px 12px 8px', zIndex: 30 }}>
+            <button type="button" onClick={() => setVOpen((o) => !o)} style={{ width: '100%', height: 40, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '0 16px', border: '1.5px solid ' + (vOpen ? '#e8710a' : '#d9d5c8'), borderRadius: 20, background: '#fff', font: 'inherit', fontSize: 14, fontWeight: 600, color: '#141413', cursor: 'pointer' }}>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><span style={{ color: '#8a8576', fontWeight: 500, marginRight: 6 }}>View</span>{cur}</span>
+              <span style={{ color: '#8a8576' }}>{vOpen ? '▴' : '▾'}</span>
+            </button>
+            {vOpen && (
+              <div style={{ position: 'absolute', left: 12, right: 12, top: 52, background: '#fff', border: '1.5px solid #e8710a', borderRadius: 16, boxShadow: '0 8px 28px rgba(0,0,0,.22)', overflow: 'hidden' }}>
+                <input value={vq} onChange={(e) => setVq(e.target.value)} placeholder="Search views..." style={{ display: 'block', width: 'calc(100% - 20px)', boxSizing: 'border-box', margin: 10, height: 34, border: '1.5px solid #e0dccf', borderRadius: 17, padding: '0 14px', font: 'inherit', fontSize: 14, outline: 'none' }} />
+                <div style={{ maxHeight: 260, overflowY: 'auto' }}>
+                  {list.length === 0 && <div style={{ padding: '12px 16px', color: '#9a9686', fontSize: 13 }}>No view found.</div>}
+                  {list.map((x) => (
+                    <button key={x} type="button" onClick={() => switchView(x)} style={{ display: 'flex', justifyContent: 'space-between', width: '100%', textAlign: 'left', border: 0, borderTop: '1px solid #f1ede4', background: x === cur ? '#fff7ef' : '#fff', color: x === cur ? '#e8710a' : '#141413', padding: '11px 16px', font: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}><span>{x}</span>{x === cur && <span>{'✓'}</span>}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
       <div style={{ position: 'relative' }}>
         <div ref={box} style={{ position: 'relative', height: ready ? 480 : 0, touchAction: 'none' }} />
         {ready && (
