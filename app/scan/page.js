@@ -111,7 +111,7 @@ export default function Scan() {
   return (
     <div className="sc-wrap">
       <button type="button" className="sc-close" aria-label="Close scanner"
-        onClick={() => { stop(); if (history.length > 1) history.back(); else location.href = '/'; }}>
+        onClick={() => { stop(); if (window.parent !== window) { window.parent.postMessage('issue-close', location.origin); return; } if (history.length > 1) history.back(); else location.href = '/'; }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FAF9F5" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
       </button>
 
