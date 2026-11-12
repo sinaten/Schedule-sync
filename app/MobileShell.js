@@ -10,10 +10,10 @@ function initials(n) {
 export default function MobileShell({ name, role, admin }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState('follow');
-  // the page below the tabs follows the choice: Follow-up shows the normal job page, Issues is empty for now
-  useEffect(() => { if (job) document.body.setAttribute('data-ms-tab', tab); else document.body.removeAttribute('data-ms-tab'); }, [tab, job]);
   const [pending, setPending] = useState(0);
   const [job, setJob] = useState('');
+  // the page below the tabs follows the choice: Follow-up shows the normal job page, Issues is empty for now
+  useEffect(() => { if (job) document.body.setAttribute('data-ms-tab', tab); else document.body.removeAttribute('data-ms-tab'); }, [tab, job]);
   const [online, setOnline] = useState(null);
   const [phase, setPhase] = useState('idle');
   const [pct, setPct] = useState(0);
