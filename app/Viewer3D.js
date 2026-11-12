@@ -95,9 +95,7 @@ async function applyLook(vw, job) {
         const col = new T.Vector4(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1);
         const ids = dbIds(look.colors[hex]);
         ids.forEach((d) => vw.setThemingColor(d, col, vw.model, true));
-        if (tr && Number(tr) > 0) setAlpha(vw, ids, 1 - 0.65 * Math.min(100, Number(tr)) / 100);
       }
-      for (const k in look.trans || {}) setAlpha(vw, dbIds(look.trans[k]), 1 - 0.65 * Math.min(100, Number(k)) / 100);
     }, () => {});
   } catch (e) {}
 }
