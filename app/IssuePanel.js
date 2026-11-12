@@ -38,6 +38,7 @@ export default function IssuePanel({ job, element, onMsg }) {
   const [sheet, setSheet] = useState('');
   const [chat, setChat] = useState('');
   const [busy, setBusy] = useState(false);
+  const [cam, setCam] = useState(false);
   const photoRef = useRef(null), fileRef = useRef(null), chatPhotoRef = useRef(null), endRef = useRef(null), loaded = useRef('');
   const q = '?job=' + encodeURIComponent(job) + '&element=' + encodeURIComponent(element);
 
@@ -53,6 +54,19 @@ export default function IssuePanel({ job, element, onMsg }) {
   useEffect(() => { loaded.current = ''; setD(null); setSheet(''); load(); }, [job, element]);
   useEffect(() => { if (sheet !== 'comments') return; const t = setInterval(load, 6000); return () => clearInterval(t); }, [sheet, job, element]);
   useEffect(() => { if (sheet === 'comments' && endRef.current) endRef.current.scrollIntoView({ block: 'end' }); }, [sheet, d]);
+
+  // Add photo = the same camera flow as the QR button: scan the section QR, then take photos into your folder; they also land in this issue.
+  const openCam = async () => {
+    if (!(d && d.issue)) { try { await fetch('/api/issue', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, element, description: text }) }); } catch (e) {} }
+    try { sessionStorage.setItem('issuectx', JSON.stringify({ job, element })); } catch (e) {}
+    setCam(true);
+  };
+  useEffect(() => {
+    if (!cam) return;
+    const f = (e) => { if (e.origin === location.origin && e.data === 'issue-close') { try { sessionStorage.removeItem('issuectx'); } catch (x) {} setCam(false); load(); } };
+    window.addEventListener('message', f);
+    return () => window.removeEventListener('message', f);
+  }, [cam, job, element]);
 
   const me = d ? d.me : '';
   const items = d ? d.items : [];
@@ -106,7 +120,7 @@ export default function IssuePanel({ job, element, onMsg }) {
           style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: 0, outline: 'none', resize: 'none', font: 'inherit', fontSize: 14, color: '#141413', background: 'transparent' }} />
         {!locked && (
           <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-            <button type="button" disabled={busy} onClick={() => photoRef.current && photoRef.current.click()} style={pill(true)}>{'📷'} Add photo</button>
+            <button type="button" disabled={busy} onClick={() => openCam()} style={pill(true)}>{'📷'} Add photo</button>
             <button type="button" disabled={busy} onClick={() => fileRef.current && fileRef.current.click()} style={pill(false)}>{'📎'} Add file</button>
           </div>
         )}
@@ -119,10 +133,15 @@ export default function IssuePanel({ job, element, onMsg }) {
         <button type="button" style={tab} onClick={() => setSheet('photos')}>{'🖼'} Photos{cnt(photos.length)}</button>
       </div>
 
+      {cam && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 3000, background: '#141413' }}>
+          <iframe src="/scan" title="Camera" allow="camera; microphone; geolocation" style={{ width: '100%', height: '100%', border: 0 }} />
+        </div>
+      )}
       {sheet === 'comments' && (
         <Sheet close={() => setSheet('')} name="Comments" foot={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px calc(10px + env(safe-area-inset-bottom))', borderTop: '1px solid #efece3' }}>
-            <button type="button" aria-label="Add photo" onClick={() => chatPhotoRef.current && chatPhotoRef.current.click()} style={{ border: 0, background: '#f1ede4', width: 38, height: 38, borderRadius: 19, fontSize: 17, cursor: 'pointer', flex: 'none' }}>{'📷'}</button>
+            <button type="button" aria-label="Add photo" onClick={() => openCam()} style={{ border: 0, background: '#f1ede4', width: 38, height: 38, borderRadius: 19, fontSize: 17, cursor: 'pointer', flex: 'none' }}>{'📷'}</button>
             <input value={chat} onChange={(e) => setChat(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); send(); } }} placeholder="Write a comment…" enterKeyHint="send"
               style={{ flex: 1, minWidth: 0, height: 38, boxSizing: 'border-box', border: '1.5px solid #e0dccf', borderRadius: 19, padding: '0 14px', font: 'inherit', fontSize: 14, outline: 'none' }} />
             <input ref={chatPhotoRef} type="file" accept="image/*" hidden onChange={(e) => { upload(e.target.files[0], 'photo', true); e.target.value = ''; }} />
@@ -159,7 +178,7 @@ export default function IssuePanel({ job, element, onMsg }) {
       {sheet === 'photos' && (
         <Sheet close={() => setSheet('')} name="Photos">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-            <button type="button" disabled={busy} onClick={() => photoRef.current && photoRef.current.click()} style={{ aspectRatio: '1', border: '2px dashed ' + OR, borderRadius: 12, background: '#fff7ef', color: OR, font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>{'＋'}<br />Add photo</button>
+            <button type="button" disabled={busy} onClick={() => openCam()} style={{ aspectRatio: '1', border: '2px dashed ' + OR, borderRadius: 12, background: '#fff7ef', color: OR, font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>{'＋'}<br />Add photo</button>
             {photos.map((p) => (
               <div key={p.id} style={{ position: 'relative' }}>
                 <a href={url(p.pathname)} target="_blank" rel="noreferrer"><img src={url(p.pathname)} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 12, display: 'block' }} /></a>
