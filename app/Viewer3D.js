@@ -224,17 +224,14 @@ export default function Viewer3D({ job = '' }) {
     return () => window.removeEventListener('ss-reload-look', f);
   }, [job]);
 
-  // pick another Revit 3D view of this job: its geometry loads and its own colours are applied
+  // pick another Revit 3D view of this job. The model on the site is the whole building; a view is recreated from what it shows and its colours.
   async function switchView(name) {
     setVOpen(false); setVq('');
-    const vw = viewer.current, doc = docRef.current;
-    if (!vw || !doc) return;
-    const node = doc.getRoot().search({ type: 'geometry' }).find((n) => String(n.name()).toLowerCase() === String(name).toLowerCase());
-    if (!node) { setMsg('That view is not in the published model yet. Publish from Revit again.'); return; }
+    const vw = viewer.current;
+    if (!vw || !vw.model) return;
     window.__ssView = name; setCurView(name);
-    try { await vw.loadDocumentNode(doc, node); } catch (e) { setMsg('Could not open that view.'); return; }
-    applyLook(vw, job, modeRef.current === 'user' ? layerRef.current : null);
-    attachPopup(vw, job, setPopup);
+    resetLook(vw);
+    await applyLook(vw, job, modeRef.current === 'user' ? layerRef.current : null);
   }
 
   async function toggle(tb, col, value) {
@@ -300,7 +297,7 @@ export default function Viewer3D({ job = '' }) {
         viewer.current.start();
         A.Document.load(
           'urn:' + info.model.urn,
-          (doc) => { const node = (info.model.view && doc.getRoot().search({ type: 'geometry' }).find((n) => String(n.name()).toLowerCase() === String(info.model.view).toLowerCase())) || doc.getRoot().search({ type: 'geometry', role: '3d' })[0] || doc.getRoot().getDefaultGeometry(); const vw = viewer.current; docRef.current = doc; setCurView(String(node.name())); vw.loadDocumentNode(doc, node).then(() => { applyLook(vw, job, modeRef.current === 'user' ? layerRef.current : null); attachPopup(vw, job, setPopup); }); },
+          (doc) => { const node = (info.model.view && doc.getRoot().search({ type: 'geometry' }).find((n) => String(n.name()).toLowerCase() === String(info.model.view).toLowerCase())) || doc.getRoot().search({ type: 'geometry', role: '3d' })[0] || doc.getRoot().getDefaultGeometry(); const vw = viewer.current; docRef.current = doc; vw.loadDocumentNode(doc, node).then(() => { applyLook(vw, job, modeRef.current === 'user' ? layerRef.current : null); attachPopup(vw, job, setPopup); }); },
           (code, m) => setMsg('Could not open the model: ' + m)
         );
       })
