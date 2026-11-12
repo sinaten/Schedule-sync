@@ -162,6 +162,7 @@ export default function Viewer3D({ job = '' }) {
   const [openMe, setOpenMe] = useState(true);
   const [mode, setMode] = useState('user');
   const [issueOn, setIssueOn] = useState({});
+  const [askClear, setAskClear] = useState('');
   const [layer, setLayer] = useState({ edits: [], look: null, pending: false });
   const layerRef = useRef(layer);
   layerRef.current = layer;
@@ -408,9 +409,19 @@ export default function Viewer3D({ job = '' }) {
                       Issue
                       <span style={{ marginLeft: 'auto', fontWeight: 500, fontSize: 12.5, color: flagged ? '#e8710a' : '#8a8576' }}>{flagged ? 'Flagged' : 'None'}</span>
                     </div>
-                    <button type="button" onClick={send} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: 'calc(100% - 24px)', margin: '0 12px 8px', height: 32, borderRadius: 16, font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', border: '1.5px solid ' + (isq ? '#e8710a' : '#d9d5c8'), background: flagged ? '#e8710a' : '#fff', color: flagged ? '#fff' : isq ? '#e8710a' : '#9a9686', boxShadow: flagged ? '0 4px 12px rgba(232,113,10,.35)' : 'none' }}>
-                      <span aria-hidden="true">{'\u2691'}</span>{flagged ? 'Clear issue' : 'Issue'}
-                    </button>
+                    {flagged && askClear === key ? (
+                      <div role="group" aria-label="Confirm clearing the issue" style={{ display: 'flex', alignItems: 'center', gap: 8, width: 'calc(100% - 24px)', margin: '0 12px 8px', minHeight: 40, boxSizing: 'border-box', padding: '4px 4px 4px 14px', borderRadius: 20, border: '1.5px solid #e8710a', background: '#fff7ef' }}>
+                        <span style={{ flex: 1, fontSize: 12.5, fontWeight: 600, color: '#8a4a0a', lineHeight: 1.25 }}>Are you sure you want to clear this issue?</span>
+                        <span style={{ display: 'flex', background: '#f1ede4', borderRadius: 16, padding: 2, flex: 'none' }}>
+                          <button type="button" onClick={() => setAskClear('')} style={{ border: 0, borderRadius: 14, padding: '6px 14px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', background: '#fff', color: '#141413', boxShadow: '0 1px 3px rgba(20,20,19,.15)' }}>No</button>
+                          <button type="button" onClick={() => { setAskClear(''); send(); }} style={{ border: 0, borderRadius: 14, padding: '6px 14px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', background: 'transparent', color: '#e8710a' }}>Yes</button>
+                        </span>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => (flagged ? setAskClear(key) : send())} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: 'calc(100% - 24px)', margin: '0 12px 8px', height: 32, borderRadius: 16, font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', border: '1.5px solid ' + (isq ? '#e8710a' : '#d9d5c8'), background: flagged ? '#e8710a' : '#fff', color: flagged ? '#fff' : isq ? '#e8710a' : '#9a9686', boxShadow: flagged ? '0 4px 12px rgba(232,113,10,.35)' : 'none' }}>
+                        <span aria-hidden="true">{'\u2691'}</span>{flagged ? 'Clear issue' : 'Issue'}
+                      </button>
+                    )}
                   </div>
                 );
               })()}
