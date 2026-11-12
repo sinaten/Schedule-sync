@@ -9,7 +9,7 @@ export async function GET(req) {
   const job = u.searchParams.get('job') || '';
   if (!canJob(await currentUser(), job)) return Response.json({ error: 'No access' }, { status: 403 });
   const ids = (u.searchParams.get('ids') || '').split(',').filter(Boolean).slice(0, 50);
-  if (!ids.length) return Response.json([]);
+  if (!ids.length) { const um = await currentUser(); return Response.json([], { headers: { 'x-me': encodeURIComponent((um && (um.name || um.email)) || 'Admin') } }); }
   const sql = await db();
   const rows = job
     ? await sql`select s.id, s.name, s.columns, r.element_id, r.vals from rows r join schedules s on s.id = r.schedule_id where s.job = ${job} and r.element_id = any(${ids}::text[]) order by s.name`
