@@ -166,6 +166,7 @@ export default function Viewer3D({ job = '' }) {
   layerRef.current = layer;
   const modeRef = useRef(mode);
   modeRef.current = mode;
+  if (typeof window !== 'undefined') window.__ssMode = mode;
   const pollT = useRef(null);
   async function loadLayer() {
     try { const r = await fetch('/api/layer?job=' + encodeURIComponent(job), { cache: 'no-store' }); if (r.ok) { const j = await r.json(); setLayer(j); return j; } } catch (e) {}
