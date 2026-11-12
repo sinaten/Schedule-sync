@@ -19,7 +19,7 @@ export async function GET(req) {
   const out = rows.map((r) => {
     const cols = Array.isArray(r.columns) ? r.columns : [];
     const editable = cols.filter((c) => c && c.type === 'bool' && !c.readOnly && (only ? only.some((o) => nk(o) === nk(c.name)) : canEdit(u2))).map((c) => c.name);
-    return { ...r, editable };
+    return { ...r, editable, me: (u2 && (u2.name || u2.email)) || 'Admin' };
   });
   return Response.json(out);
 }
