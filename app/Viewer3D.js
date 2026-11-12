@@ -335,7 +335,7 @@ export default function Viewer3D({ job = '' }) {
           const mine = [];
           // the user's bar shows the parameters of the Revit group "Other" (older uploads without group info fall back to the ticks the user may change)
           const hasGroup = pp.tables.some((tb) => tb.columns.some((c) => c.group));
-          pp.tables.forEach((tb) => tb.columns.forEach((c) => { const ed = (tb.editable || []).includes(c.name); if ((hasGroup ? /^other/i.test(c.group || '') : ed) && !/link|url/i.test(c.name)) mine.push({ tb, c, ed }); }));
+          pp.tables.forEach((tb) => tb.columns.forEach((c) => { const ed = (tb.editable || []).includes(c.name); if ((hasGroup ? /^other/i.test(c.group || '') : ed) && !/link|url/i.test(c.name) && !/^(\d+\s*[-.]?\s*)?issue$/i.test(String(c.name).trim())) mine.push({ tb, c, ed }); // the Issue tick is the orange Issue button, not a checklist row }));
           const val = (tb, c) => { const v = tb.vals && tb.vals[c.name]; return typeof v === 'boolean' ? (v ? '✓ Yes' : 'No') : show(v); };
           const SHOW_LINKS = false; // flip to true to show URL / link columns in Source
           const isLink = (tb, c) => !SHOW_LINKS && (/link|url/i.test(c.name) || /^https?:\/\//.test(String((tb.vals && tb.vals[c.name]) || '')));
