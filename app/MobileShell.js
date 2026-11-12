@@ -52,7 +52,7 @@ export default function MobileShell({ name, role, admin }) {
   async function refreshModel() {
     if (!job || phase !== 'idle') return;
     try {
-      const r = await fetch('/api/refresh-model', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job }) });
+      const r = await fetch('/api/refresh-model', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, source: window.__ssMode === 'source' }) });
       const j = await r.json().catch(() => ({}));
       if (j.offline) { setOnline(false); flash('Turn on your laptop and open Revit, then try again.'); return; }
       if (!r.ok) { flash(j.error || 'Could not start the refresh.'); return; }
