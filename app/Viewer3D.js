@@ -71,6 +71,21 @@ function resetLook(vw) {
   } catch (e) {}
 }
 
+// Puts the camera where the Revit view had it (position, look direction, up). Revit feet; the viewer works relative to the model's own offset.
+function setCam(vw, cam) {
+  try {
+    const T = window.THREE;
+    const off = (vw.model.getGlobalOffset && vw.model.getGlobalOffset()) || { x: 0, y: 0, z: 0 };
+    const e = cam.eye, d = cam.dir, u = cam.up;
+    const eye = new T.Vector3(e[0] - off.x, e[1] - off.y, e[2] - off.z);
+    const tgt = new T.Vector3(eye.x + d[0] * 10, eye.y + d[1] * 10, eye.z + d[2] * 10);
+    vw.navigation.setCameraUpVector(new T.Vector3(u[0], u[1], u[2]));
+    vw.navigation.setView(eye, tgt);
+    if (cam.persp) vw.navigation.toPerspective(); else vw.navigation.toOrthographic();
+    return true;
+  } catch (e) { return false; }
+}
+
 // Recreates what the chosen Revit 3D view shows: only its elements, with the colours set in that view.
 async function applyLook(vw, job, layer, keepView) {
   try {
@@ -102,7 +117,7 @@ async function applyLook(vw, job, layer, keepView) {
       for (const k in map) byId[parseInt(k.slice(-8), 16)] = map[k];
       const dbIds = (ids) => ids.map((i) => byId[i]).filter(Boolean);
       const shown = dbIds(look.visible);
-      if (!keepView || keepView === 'iso') { vw.isolate(shown); if (!keepView) vw.fitToView(shown); } // 'iso': re-apply what is shown but keep the camera where the person left it
+      if (!keepView || keepView === 'iso') { vw.isolate(shown); if (!keepView && !(window.__ssView && look.cam && setCam(vw, look.cam))) vw.fitToView(shown); } // 'iso': re-apply what is shown but keep the camera where the person left it
       const T = window.THREE;
       // colour per part: the real look first, then (when the person's own bar is on) their layer on top of it
       const fin = {};
