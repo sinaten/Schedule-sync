@@ -75,7 +75,19 @@ export async function GET(req) {
       status = mf.status;
       progress = mf.progress || '';
     }
-    const out = { configured: true, model: { name: model.name, urn: model.urn, status, progress, view: model.view || '', views: Array.isArray(model.views) ? model.views : [] } };
+    let shown = { name: model.name, urn: model.urn, status, progress, view: model.view || '', views: Array.isArray(model.views) ? model.views : [] };
+    // while the new upload is still being converted, keep showing the previous model (if that one is ready)
+    if (status !== 'success' && model.prev && model.prev.urn) {
+      const rp = await api('/modelderivative/v2/designdata/' + model.prev.urn + '/manifest', t);
+      if (rp.ok) {
+        const mp = await rp.json();
+        if (mp.status === 'success') {
+          shown = { name: model.prev.name, urn: model.prev.urn, status: 'success', progress: '', view: model.prev.view || '', views: Array.isArray(model.prev.views) ? model.prev.views : [], converting: progress || 'starting' };
+          status = 'success';
+        }
+      }
+    }
+    const out = { configured: true, model: shown };
     if (status === 'success') {
       const v = await token('viewables:read');
       out.token = v.access_token;
@@ -137,7 +149,10 @@ export async function POST(req) {
       });
       if (!job.ok) throw new Error('Could not start conversion (' + job.status + '): ' + (await job.text()).slice(0, 300));
       const sql = await settings();
-      const value = JSON.stringify({ urn, name: body.name || 'Model', uploadedAt: new Date().toISOString(), view: String(body.view || ''), views: Array.isArray(body.views) ? body.views.map(String) : [] });
+      const mk = body.job ? 'model:' + body.job : 'model';
+      const [ex] = await sql`select value from settings where key=${mk}`;
+      const prev = ex && ex.value && ex.value.urn ? { urn: ex.value.urn, name: ex.value.name, view: ex.value.view || '', views: ex.value.views || [] } : null;
+      const value = JSON.stringify({ prev, urn, name: body.name || 'Model', uploadedAt: new Date().toISOString(), view: String(body.view || ''), views: Array.isArray(body.views) ? body.views.map(String) : [] });
       await sql`insert into settings(key, value) values(${body.job ? 'model:' + body.job : 'model'}, ${value}::jsonb) on conflict (key) do update set value = excluded.value`;
       return Response.json({ ok: true });
     }
