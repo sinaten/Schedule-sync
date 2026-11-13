@@ -95,7 +95,7 @@ function applyCut(vw, box) {
     const T = window.THREE;
     const off = (vw.model.getGlobalOffset && vw.model.getGlobalOffset()) || { x: 0, y: 0, z: 0 };
     const o = [box.o[0] - off.x, box.o[1] - off.y, box.o[2] - off.z];
-    const flip = q.get('cutflip') ? 1 : -1;
+    const flip = q.get('cutflip') ? -1 : 1;
     const planes = [];
     [[box.bx, 0], [box.by, 1], [box.bz, 2]].forEach(([a, k]) => {
       const od = o[0] * a[0] + o[1] * a[1] + o[2] * a[2];
