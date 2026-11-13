@@ -67,6 +67,7 @@ function resetLook(vw) {
       window.__ssOrig.clear();
     }
     vw.showAll();
+    try { vw.setCutPlanes([]); } catch (e) {}
     vw.impl.invalidate(true, true, true);
   } catch (e) {}
 }
@@ -84,6 +85,25 @@ function setCam(vw, cam) {
     if (cam.persp) vw.navigation.toPerspective(); else vw.navigation.toOrthographic();
     return true;
   } catch (e) { return false; }
+}
+
+// Cuts the model with the Revit section box (six planes), so nothing outside the box shows at all. Add ?nocut=1 to the address to switch it off, ?cutflip=1 if it cuts the wrong side.
+function applyCut(vw, box) {
+  try {
+    const q = new URLSearchParams(window.location.search);
+    if (!box || q.get('nocut')) { vw.setCutPlanes([]); return; }
+    const T = window.THREE;
+    const off = (vw.model.getGlobalOffset && vw.model.getGlobalOffset()) || { x: 0, y: 0, z: 0 };
+    const o = [box.o[0] - off.x, box.o[1] - off.y, box.o[2] - off.z];
+    const flip = q.get('cutflip') ? 1 : -1;
+    const planes = [];
+    [[box.bx, 0], [box.by, 1], [box.bz, 2]].forEach(([a, k]) => {
+      const od = o[0] * a[0] + o[1] * a[1] + o[2] * a[2];
+      planes.push(new T.Vector4(flip * a[0], flip * a[1], flip * a[2], flip * (-od - box.min[k])));
+      planes.push(new T.Vector4(-flip * a[0], -flip * a[1], -flip * a[2], -flip * (od + box.max[k])));
+    });
+    vw.setCutPlanes(planes);
+  } catch (e) {}
 }
 
 // Recreates what the chosen Revit 3D view shows: only its elements, with the colours set in that view.
@@ -117,6 +137,7 @@ async function applyLook(vw, job, layer, keepView) {
       for (const k in map) byId[parseInt(k.slice(-8), 16)] = map[k];
       const dbIds = (ids) => ids.map((i) => byId[i]).filter(Boolean);
       const shown = dbIds(look.visible);
+      applyCut(vw, look.box);
       if (!keepView || keepView === 'iso') { vw.isolate(shown); if (!keepView && !(window.__ssView && look.cam && setCam(vw, look.cam))) vw.fitToView(shown); } // 'iso': re-apply what is shown but keep the camera where the person left it
       const T = window.THREE;
       // colour per part: the real look first, then (when the person's own bar is on) their layer on top of it
