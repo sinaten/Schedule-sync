@@ -155,6 +155,11 @@ export default function IssuePanel({ job, element, onMsg }) {
       <div style={{ border: '1px solid #e7e3d8', borderRadius: 12, background: '#fff', padding: 8 }}>
         <textarea value={text} onChange={(e) => setText(e.target.value)} onBlur={saveText} readOnly={locked} placeholder={locked ? 'No description yet.' : 'Describe the issue…'} rows={4}
           style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: 0, outline: 'none', resize: 'none', font: 'inherit', fontSize: 14, color: '#141413', background: 'transparent' }} />
+        {!locked && (
+          <div style={{ marginTop: 4 }}>
+            <button type="button" disabled={busy} onClick={() => openCam()} style={pill(true)}>Add photos and videos</button>
+          </div>
+        )}
       </div>
       <input ref={photoRef} type="file" accept="image/*" hidden onChange={(e) => { upload(e.target.files[0], 'photo'); e.target.value = ''; }} />
       <input ref={fileRef} type="file" hidden onChange={(e) => { upload(e.target.files[0], 'file'); e.target.value = ''; }} />
