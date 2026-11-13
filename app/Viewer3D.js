@@ -288,7 +288,7 @@ export default function Viewer3D({ job = '' }) {
       const r = await fetch('/api/aps?job=' + encodeURIComponent(job), { cache: 'no-store' });
       const j = await r.json();
       setInfo(j);
-      statusRef.current = j.model ? j.model.status : 'none';
+      statusRef.current = j.model ? (j.model.converting ? 'converting' : j.model.status) : 'none';
       if (j.token) tokenRef.current = { token: j.token, expires: j.expires };
     } catch (e) {
       setMsg(String(e.message || e));
@@ -376,6 +376,7 @@ export default function Viewer3D({ job = '' }) {
     <section style={wrap}>
       <div style={bar}>
         <strong>3D model{m ? ': ' + m.name : ''}</strong>
+        {m && m.converting && <span style={{ marginLeft: 10, fontSize: 12, opacity: 0.85 }}>Updating: {m.converting}</span>}
       </div>
       {ready && Array.isArray(m.views) && m.views.length > 1 && (() => {
         const cur = curView || m.view || m.views[0];
