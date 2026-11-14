@@ -171,7 +171,7 @@ async function applyLook(vw, job, layer, keepView) {
       const shown = dbIds(look.visible);
       applyCut(vw, look.box);
       try { vw.setGhosting(false); } catch (e) { /* hidden parts disappear completely, no glass */ }
-      if (!keepView || keepView === 'iso') { vw.isolate(shown); if (!keepView) { vw.fitToView(shown, vw.model, true); if ((window.__ssView && look.cam) || look.origin) orient(vw, look.cam, look.origin); } } // 'iso': re-apply what is shown but keep the camera where the person left it
+      if (!keepView || keepView === 'iso') { vw.isolate(shown); if (!keepView) { vw.fitToView(shown, vw.model, true); } } // 'iso': re-apply what is shown but keep the camera where the person left it
       const T = window.THREE;
       // colour per part: the real look first, then (when the person's own bar is on) their layer on top of it
       const fin = {};
