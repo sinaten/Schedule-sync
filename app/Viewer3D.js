@@ -80,6 +80,21 @@ function setCam(vw, cam) {
     const off = (vw.model.getGlobalOffset && vw.model.getGlobalOffset()) || { x: 0, y: 0, z: 0 };
     const e = cam.eye, d = cam.dir, u = cam.up;
     const eye = new T.Vector3(e[0] - off.x, e[1] - off.y, e[2] - off.z);
+    // Guard: when the camera is far from the model, or does not face it, do not use it (the caller then fits the model in the screen)
+    try {
+      const bb = vw.model.getBoundingBox();
+      if (bb) {
+        const dx = Math.max(bb.min.x - eye.x, 0, eye.x - bb.max.x), dy = Math.max(bb.min.y - eye.y, 0, eye.y - bb.max.y), dz = Math.max(bb.min.z - eye.z, 0, eye.z - bb.max.z);
+        const out = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        const diag = bb.min.distanceTo(bb.max);
+        if (out > diag * 0.5) return false;
+        if (out > 0) {
+          const c = new T.Vector3((bb.min.x + bb.max.x) / 2, (bb.min.y + bb.max.y) / 2, (bb.min.z + bb.max.z) / 2).sub(eye);
+          const len = c.length();
+          if (len > 0 && (c.x * d[0] + c.y * d[1] + c.z * d[2]) / len < 0.26) return false;
+        }
+      }
+    } catch (e2) { /* no box: use the camera as it is */ }
     const tgt = new T.Vector3(eye.x + d[0] * 10, eye.y + d[1] * 10, eye.z + d[2] * 10);
     vw.navigation.setCameraUpVector(new T.Vector3(u[0], u[1], u[2]));
     vw.navigation.setView(eye, tgt);
