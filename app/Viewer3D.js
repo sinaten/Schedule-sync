@@ -107,7 +107,7 @@ function setCam(vw, cam) {
 function applyCut(vw, box) {
   try {
     const q = new URLSearchParams(window.location.search);
-    if (!box || q.get('nocut')) { vw.setCutPlanes([]); return; }
+    if (!box || !q.get('cut')) { vw.setCutPlanes([]); return; } // switched off for now: add ?cut=1 to the address to try it
     const T = window.THREE;
     const off = (vw.model.getGlobalOffset && vw.model.getGlobalOffset()) || { x: 0, y: 0, z: 0 };
     const o = [box.o[0] - off.x, box.o[1] - off.y, box.o[2] - off.z];
