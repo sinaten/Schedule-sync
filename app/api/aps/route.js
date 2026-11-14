@@ -60,6 +60,25 @@ export async function GET(req) {
     }
     return Response.json(l ? l.value : null);
   }
+  if (new URL(req.url).searchParams.get('ifc')) {
+    // the small IFC model of a job (cut with the Revit section box); same conversion as the main model
+    if (!ready()) return Response.json({ configured: false });
+    try {
+      const ij = new URL(req.url).searchParams.get('job') || '';
+      const isql = await settings();
+      const [im] = await isql`select value from settings where key=${'ifc:' + ij}`;
+      if (!im) return Response.json({ configured: true, ifc: null });
+      const it = await token('data:read');
+      const ir = await api('/modelderivative/v2/designdata/' + im.value.urn + '/manifest', it);
+      let st = 'pending', pr = '';
+      if (ir.ok) { const mf = await ir.json(); st = mf.status; pr = mf.progress || ''; }
+      const out = { configured: true, ifc: { name: im.value.name, urn: im.value.urn, status: st, progress: pr } };
+      if (st === 'success') { const v = await token('viewables:read'); out.token = v.access_token; out.expires = v.expires_in; }
+      return Response.json(out);
+    } catch (e) {
+      return Response.json({ configured: true, error: String(e.message || e) }, { status: 500 });
+    }
+  }
   if (!ready()) return Response.json({ configured: false });
   try {
     const sql = await settings();
@@ -145,9 +164,15 @@ export async function POST(req) {
       const job = await api('/modelderivative/v2/designdata/job', t, {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-ads-force': 'true' },
-        body: JSON.stringify({ input: { urn }, output: { formats: [{ type: 'svf2', views: ['2d', '3d'], advanced: { generateMasterViews: true } }] } }),
+        body: JSON.stringify({ input: { urn }, output: { formats: [{ type: 'svf2', views: ['2d', '3d'], advanced: body.kind === 'ifc' ? { conversionMethod: 'v3', buildingStoreys: 'show', spaces: 'hide', openingElements: 'hide' } : { generateMasterViews: true } }] } }),
       });
       if (!job.ok) throw new Error('Could not start conversion (' + job.status + '): ' + (await job.text()).slice(0, 300));
+      if (body.kind === 'ifc') {
+        const isql = await settings();
+        const iv = JSON.stringify({ urn, name: body.name || 'IFC model', uploadedAt: new Date().toISOString() });
+        await isql`insert into settings(key, value) values(${'ifc:' + String(body.job || '')}, ${iv}::jsonb) on conflict (key) do update set value = excluded.value`;
+        return Response.json({ ok: true });
+      }
       const sql = await settings();
       const mk = body.job ? 'model:' + body.job : 'model';
       const [ex] = await sql`select value from settings where key=${mk}`;
