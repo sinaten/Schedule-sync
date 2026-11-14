@@ -122,6 +122,19 @@ function applyCut(vw, box) {
   } catch (e) {}
 }
 
+// Turns the camera to the direction the Revit view looks in, but keeps the distance the fit-to-screen chose, so the model is always in view.
+function orient(vw, cam) {
+  try {
+    const T = window.THREE;
+    const nav = vw.navigation;
+    const tgt = nav.getTarget();
+    const dist = nav.getPosition().distanceTo(tgt);
+    const d = new T.Vector3(cam.dir[0], cam.dir[1], cam.dir[2]).normalize();
+    nav.setCameraUpVector(new T.Vector3(cam.up[0], cam.up[1], cam.up[2]));
+    nav.setView(new T.Vector3(tgt.x - d.x * dist, tgt.y - d.y * dist, tgt.z - d.z * dist), tgt);
+  } catch (e) { /* keep the fitted camera */ }
+}
+
 // Recreates what the chosen Revit 3D view shows: only its elements, with the colours set in that view.
 async function applyLook(vw, job, layer, keepView) {
   try {
@@ -155,7 +168,7 @@ async function applyLook(vw, job, layer, keepView) {
       const shown = dbIds(look.visible);
       applyCut(vw, look.box);
       try { vw.setGhosting(false); } catch (e) { /* hidden parts disappear completely, no glass */ }
-      if (!keepView || keepView === 'iso') { vw.isolate(shown); if (!keepView && !(window.__ssView && look.cam && setCam(vw, look.cam))) vw.fitToView(shown); } // 'iso': re-apply what is shown but keep the camera where the person left it
+      if (!keepView || keepView === 'iso') { vw.isolate(shown); if (!keepView) { vw.fitToView(shown, vw.model, true); if (window.__ssView && look.cam) orient(vw, look.cam); } } // 'iso': re-apply what is shown but keep the camera where the person left it
       const T = window.THREE;
       // colour per part: the real look first, then (when the person's own bar is on) their layer on top of it
       const fin = {};
