@@ -1,5 +1,6 @@
 'use client';
 import IssuePanel from './IssuePanel';
+import Snapshots from './Snapshots';
 import { useEffect, useRef, useState } from 'react';
 
 const VIEWER = 'https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/';
@@ -431,6 +432,7 @@ export default function Viewer3D({ job = '' }) {
             {'\u25B2'}<br />{'\u2195'}<br />{'\u25BC'}
           </div>
         )}
+        <Snapshots job={job} />
         {(() => {
           const pp0 = popup || { id: null, tables: [] };
           // what the sheet shows: Source = the real data; the person's own bar = real data + their layer + unsaved ticks
