@@ -154,6 +154,7 @@ async function applyLook(vw, job, layer, keepView) {
       const dbIds = (ids) => ids.map((i) => byId[i]).filter(Boolean);
       const shown = dbIds(look.visible);
       applyCut(vw, look.box);
+      try { vw.setGhosting(false); } catch (e) { /* hidden parts disappear completely, no glass */ }
       if (!keepView || keepView === 'iso') { vw.isolate(shown); if (!keepView && !(window.__ssView && look.cam && setCam(vw, look.cam))) vw.fitToView(shown); } // 'iso': re-apply what is shown but keep the camera where the person left it
       const T = window.THREE;
       // colour per part: the real look first, then (when the person's own bar is on) their layer on top of it
