@@ -1,6 +1,6 @@
 import { db } from '../lib/db';
 import JobList from './JobList';
-import { currentUser, isAdmin } from '../lib/user';
+import { currentUser } from '../lib/user';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
@@ -21,7 +21,7 @@ export default async function Home() {
   return (
     <main>
       <h1>Jobs</h1>
-      <JobList jobs={jobs} admin={isAdmin(u)} />
+      <JobList jobs={jobs} />
     </main>
   );
 }
