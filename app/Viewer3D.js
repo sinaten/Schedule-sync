@@ -123,14 +123,17 @@ function applyCut(vw, box) {
 }
 
 // Turns the camera to the direction the Revit view looks in, but keeps the distance the fit-to-screen chose, so the model is always in view.
-function orient(vw, cam) {
+function orient(vw, cam, origin) {
   try {
     const T = window.THREE;
     const nav = vw.navigation;
-    const tgt = nav.getTarget();
-    const dist = nav.getPosition().distanceTo(tgt);
-    const d = new T.Vector3(cam.dir[0], cam.dir[1], cam.dir[2]).normalize();
-    nav.setCameraUpVector(new T.Vector3(cam.up[0], cam.up[1], cam.up[2]));
+    const pos0 = nav.getPosition();
+    const cur = nav.getTarget();
+    const dist = pos0.distanceTo(cur);
+    let tgt = cur;
+    if (origin) { const off = (vw.model.getGlobalOffset && vw.model.getGlobalOffset()) || { x: 0, y: 0, z: 0 }; tgt = new T.Vector3(origin[0] - off.x, origin[1] - off.y, origin[2] - off.z); }
+    const d = cam ? new T.Vector3(cam.dir[0], cam.dir[1], cam.dir[2]).normalize() : new T.Vector3(cur.x - pos0.x, cur.y - pos0.y, cur.z - pos0.z).normalize();
+    if (cam) nav.setCameraUpVector(new T.Vector3(cam.up[0], cam.up[1], cam.up[2]));
     nav.setView(new T.Vector3(tgt.x - d.x * dist, tgt.y - d.y * dist, tgt.z - d.z * dist), tgt);
   } catch (e) { /* keep the fitted camera */ }
 }
@@ -168,7 +171,7 @@ async function applyLook(vw, job, layer, keepView) {
       const shown = dbIds(look.visible);
       applyCut(vw, look.box);
       try { vw.setGhosting(false); } catch (e) { /* hidden parts disappear completely, no glass */ }
-      if (!keepView || keepView === 'iso') { vw.isolate(shown); if (!keepView) { vw.fitToView(shown, vw.model, true); if (window.__ssView && look.cam) orient(vw, look.cam); } } // 'iso': re-apply what is shown but keep the camera where the person left it
+      if (!keepView || keepView === 'iso') { vw.isolate(shown); if (!keepView) { vw.fitToView(shown, vw.model, true); if ((window.__ssView && look.cam) || look.origin) orient(vw, look.cam, look.origin); } } // 'iso': re-apply what is shown but keep the camera where the person left it
       const T = window.THREE;
       // colour per part: the real look first, then (when the person's own bar is on) their layer on top of it
       const fin = {};
