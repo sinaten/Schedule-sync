@@ -95,6 +95,47 @@ function DeleteJob() {
   );
 }
 
+// Admin only: every job with its status. Inactive = nothing is sent from Revit, no 3D conversion (no Autodesk tokens), shown as inactive to everyone.
+function JobStatus() {
+  const [open, setOpen] = useState(false);
+  const [jobs, setJobs] = useState(null);
+  const [msg, setMsg] = useState('');
+  const load = () => fetch('/api/admin/jobs', { cache: 'no-store' }).then((r) => r.json()).then((j) => setJobs(j.jobs || [])).catch(() => setMsg('Could not load jobs'));
+  useEffect(() => { if (open) load(); }, [open]);
+  async function set(job, state) {
+    setMsg('Saving…');
+    const r = await fetch('/api/admin/jobs', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, state }) });
+    const j = await r.json().catch(() => ({}));
+    setMsg(r.ok ? '' : j.error || 'Failed (' + r.status + ')');
+    load();
+  }
+  const pill = { font: 'inherit', fontSize: 13, padding: '5px 12px', borderRadius: 999, border: '1px solid #d5dce0', background: '#fff', color: '#45565e', cursor: 'pointer' };
+  const label = (j) => (j.state === 'active' ? 'Active' : j.state === 'deleted' ? 'Deleted in Revit' : j.by === 'revit' ? 'Inactive (set in Revit)' : 'Inactive (set here)');
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <button type="button" style={pill} onClick={() => setOpen(!open)} aria-expanded={open}>{'Job status ' + (open ? '▴' : '▾')}</button>
+      {open && (
+        <div style={{ marginTop: 8, border: '1px solid #e6eaed', borderRadius: 12, padding: '10px 14px', maxWidth: 520, background: '#fafbfc' }}>
+          {!jobs ? <span className="muted" style={{ fontSize: 13 }}>{msg || 'Loading…'}</span> : (
+            <>
+              {jobs.map((j) => (
+                <div key={j.job} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid #eef1f3' }}>
+                  <b style={{ fontSize: 14 }}>{j.job}</b>
+                  {j.title ? <span className="muted" style={{ fontSize: 12 }}>{j.title}</span> : null}
+                  <span style={{ marginLeft: 'auto', fontSize: 12, color: j.state === 'active' ? '#2e9d57' : '#b00020', fontWeight: 600 }}>{label(j)}</span>
+                  <button type="button" style={pill} onClick={() => set(j.job, j.state === 'active' ? 'inactive' : 'active')}>{j.state === 'active' ? 'Deactivate' : 'Activate'}</button>
+                </div>
+              ))}
+              {!jobs.length && <span className="muted" style={{ fontSize: 13 }}>No jobs yet.</span>}
+              {msg && <b style={{ fontSize: 12 }}>{msg}</b>}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Settings() {
-  return (<><QrSettings /><DeleteJob /></>);
+  return (<><QrSettings /><JobStatus /><DeleteJob /></>);
 }
