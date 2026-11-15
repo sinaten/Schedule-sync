@@ -30,6 +30,6 @@ export async function POST(req) {
   const [m] = await sql`select value from settings where key = ${'model:' + job}`;
   const mode = !full && m && m.value && m.value.urn ? 'quick' : 'full';
   if (!ed && mode === 'full') return Response.json({ error: 'You cannot refresh this model' }, { status: 403 });
-  await put(sql, 'refresh:' + job, { state: 'requested', mode, msg: '', at: Date.now() });
+  await put(sql, 'refresh:' + job, { state: 'requested', mode, msg: '', at: Date.now(), by: (u && u.name) || '' });
   return Response.json({ ok: true });
 }
