@@ -1,6 +1,7 @@
 import { db, isAddin, deny } from '../../../lib/db';
 import { currentUser, canJob } from '../../../lib/user';
 import { bumpRev } from '../../../lib/rev';
+import { blocked } from '../../../lib/jobstate';
 export const dynamic = 'force-dynamic';
 
 // 3D model support through Autodesk Platform Services (APS).
@@ -138,6 +139,8 @@ export async function POST(req) {
   if (!ready()) return Response.json({ error: 'APS_CLIENT_ID / APS_CLIENT_SECRET are not set in Vercel' }, { status: 400 });
   try {
     const body = await req.json();
+    // inactive / deleted job: nothing is converted or stored, so no Autodesk tokens are used
+    if (body.job && (await blocked(await db(), String(body.job)))) return Response.json({ ok: false, inactive: true });
     if (body.action === 'look') {
       const lsql = await settings();
       const lv = JSON.stringify(body.look || null);
