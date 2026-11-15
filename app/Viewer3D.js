@@ -351,6 +351,23 @@ export default function Viewer3D({ job = '' }) {
     return () => window.removeEventListener('ss-paint', f);
   }, []);
 
+  // the colours follow the ticks: every few seconds the website's colours are asked for again, and the model is repainted when something changed
+  useEffect(() => {
+    let last = null;
+    const tm = setInterval(async () => {
+      if (document.hidden) return;
+      const vw = viewer.current;
+      if (!vw || !vw.model) return;
+      try {
+        const lay = modeRef.current === 'user';
+        const s = await fetch('/api/colorrules?job=' + encodeURIComponent(job) + '&compute=1' + (lay ? '&layer=1' : ''), { cache: 'no-store' }).then((r) => r.text());
+        if (last !== null && s !== last) applyLook(vw, job, lay ? layerRef.current : null, true);
+        last = s;
+      } catch (e) {}
+    }, 8000);
+    return () => clearInterval(tm);
+  }, [job]);
+
   useEffect(() => {
     const f = () => { const vw = viewer.current; if (vw && vw.model) { resetLook(vw); applyLook(vw, job, modeRef.current === 'user' ? layerRef.current : null, 'iso'); } };
     window.addEventListener('ss-reload-look', f);
