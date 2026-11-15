@@ -9,7 +9,10 @@ const ready = () => !!process.env.APS_CLIENT_ID && !!process.env.APS_CLIENT_SECR
 const bucket = () => 'ss-' + process.env.APS_CLIENT_ID.toLowerCase().replace(/[^a-z0-9]/g, '');
 const b64 = (s) => Buffer.from(s).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
+const TK = globalThis.__apsTk || (globalThis.__apsTk = new Map());
 async function token(scope) {
+  const c = TK.get(scope);
+  if (c && c.exp > Date.now() + 120000) return { ...c.val, expires_in: Math.floor((c.exp - Date.now()) / 1000) };
   const basic = Buffer.from(process.env.APS_CLIENT_ID + ':' + process.env.APS_CLIENT_SECRET).toString('base64');
   const r = await fetch(BASE + '/authentication/v2/token', {
     method: 'POST',
@@ -18,15 +21,26 @@ async function token(scope) {
     body: new URLSearchParams({ grant_type: 'client_credentials', scope }),
   });
   if (!r.ok) throw new Error('APS sign-in failed (' + r.status + '): ' + (await r.text()).slice(0, 200));
-  return r.json();
+  const j = await r.json();
+  TK.set(scope, { val: j, exp: Date.now() + (j.expires_in || 300) * 1000 });
+  return j;
 }
 
+const MF = globalThis.__apsMf || (globalThis.__apsMf = new Map());
 async function api(path, t, opts = {}) {
+  // model status answers are kept for a short time, so open pages cannot use up the Autodesk quota
+  const isMf = !opts.method && path.endsWith('/manifest');
+  if (isMf) { const c = MF.get(path); if (c && c.exp > Date.now()) return new Response(c.body, { status: c.status }); }
   const r = await fetch(BASE + path, {
     cache: 'no-store',
     ...opts,
     headers: { authorization: 'Bearer ' + t.access_token, ...(opts.headers || {}) },
   });
+  if (isMf) {
+    const body = await r.text();
+    MF.set(path, { body, status: r.status, exp: Date.now() + (r.ok && body.includes('"status":"success"') ? 60000 : 20000) });
+    return new Response(body, { status: r.status });
+  }
   return r;
 }
 
