@@ -25,7 +25,7 @@ export default function MobileShell({ name, role, admin }) {
   const base = useRef(null); // the change counter this page has already shown
   const phaseRef = useRef('idle');
   const lastPress = useRef(0);
-  const canPress = role === 'admin' || role === 'editor';
+  const canPress = true; // everyone with access to the job may refresh its colours (only the changed parameters; the whole model is never sent from here)
   useEffect(() => { phaseRef.current = phase; }, [phase]);
   const [toast, setToast] = useState('');
   const flash = (m) => { setToast(m); setTimeout(() => setToast(''), 6000); };

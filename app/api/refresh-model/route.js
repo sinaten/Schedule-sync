@@ -21,8 +21,8 @@ export async function POST(req) {
   const { job, full, source } = await req.json().catch(() => ({}));
   const u = await currentUser();
   const ed = job && canJob(u, job) && canEdit(u);
-  // the Source bar shows the real model, so anyone with access may refresh its colours (never the full model)
-  if (!job || !canJob(u, job) || (!ed && !source)) return Response.json({ error: 'You cannot refresh this model' }, { status: 403 });
+  // anyone with access to the job may refresh its colours (never the full model)
+  if (!job || !canJob(u, job)) return Response.json({ error: 'You cannot refresh this model' }, { status: 403 });
   const sql = await db();
   const s = await status(sql, job);
   if (!s.online) return Response.json({ ok: false, offline: true });
