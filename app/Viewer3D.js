@@ -291,20 +291,7 @@ export default function Viewer3D({ job = '' }) {
     try { vw.clearThemingColors(vw.model); } catch (e) {}
     applyLook(vw, job, mode === 'user' ? layer : null, true);
   }, [mode, layer]);
-  // the website picks up new colours from Revit by itself (the add-in sends them after every change)
-  useEffect(() => {
-    let last = null;
-    const tm = setInterval(async () => {
-      if (document.hidden) return;
-      try {
-        const r = await fetch('/api/aps?look=1&job=' + encodeURIComponent(job) + (window.__ssView ? '&view=' + encodeURIComponent(window.__ssView) : ''), { cache: 'no-store' });
-        const s = await r.text();
-        if (last !== null && s !== last) window.dispatchEvent(new Event('ss-reload-look'));
-        last = s;
-      } catch (e) {}
-    }, 3000);
-    return () => clearInterval(tm);
-  }, [job]);
+  // new colours are picked up when the page tells us a change arrived (ss-reload-look: after Save in Revit, or the refresh button) - no timer
   const meRef = useRef('');
   const [, setMeTick] = useState(0);
   useEffect(() => { fetch('/api/job-rows?job=' + encodeURIComponent(job) + '&ids=').then((r) => { const m = r.headers.get('x-me'); if (m) { meRef.current = decodeURIComponent(m); setMeTick(1); } }).catch(() => {}); }, [job]);

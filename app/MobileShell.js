@@ -60,10 +60,12 @@ export default function MobileShell({ name, role, admin }) {
       }).catch(() => {});
     };
     check();
-    const t = setInterval(check, 3000);
+    // no timer: the page looks for changes when it opens, when you come back to it, and when the refresh button is used
     const vis = () => { if (!document.hidden) check(); };
     document.addEventListener('visibilitychange', vis);
-    return () => { dead = true; clearInterval(t); if (ramp) clearInterval(ramp); document.removeEventListener('visibilitychange', vis); };
+    window.addEventListener('focus', vis); window.addEventListener('pageshow', vis); window.addEventListener('online', vis);
+    window.__ssCheck = check;
+    return () => { dead = true; if (ramp) clearInterval(ramp); document.removeEventListener('visibilitychange', vis); window.removeEventListener('focus', vis); window.removeEventListener('pageshow', vis); window.removeEventListener('online', vis); };
   }, [job]);
   useEffect(() => {
     if (phase !== 'running') return;
