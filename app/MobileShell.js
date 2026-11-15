@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // Phone-only chrome (hidden by CSS on laptops): back / home / avatar on top, QR button at the bottom.
 function initials(n) {
@@ -22,11 +22,6 @@ export default function MobileShell({ name, role, admin }) {
   const [online, setOnline] = useState(null);
   const [phase, setPhase] = useState('idle');
   const [pct, setPct] = useState(0);
-  const base = useRef(null); // the change counter this page has already shown
-  const phaseRef = useRef('idle');
-  const lastPress = useRef(0);
-  const canPress = true; // everyone with access to the job may refresh its colours (only the changed parameters; the whole model is never sent from here)
-  useEffect(() => { phaseRef.current = phase; }, [phase]);
   const [toast, setToast] = useState('');
   const flash = (m) => { setToast(m); setTimeout(() => setToast(''), 6000); };
   useEffect(() => {
@@ -36,36 +31,10 @@ export default function MobileShell({ name, role, admin }) {
   useEffect(() => {
     if (!job) return;
     let dead = false;
-    let ramp = null;
-    // a change reached this model (Revit publish, edits written into Revit): fill the button and bring the page up to date, no click needed
-    const apply = (j) => {
-      const b = base.current;
-      base.current = { n: j.rev, full: j.fullN };
-      if (phaseRef.current !== 'idle') return;
-      const reload = j.fullN > b.n;
-      setPct(0); setPhase('sync');
-      window.dispatchEvent(new Event('ss-reload-look'));
-      let p = 0;
-      ramp = setInterval(() => {
-        p += 12; setPct(Math.min(p, 100));
-        if (p >= 100) { clearInterval(ramp); ramp = null; if (reload) location.reload(); else setPhase('idle'); }
-      }, 300);
-    };
-    const check = () => {
-      if (document.hidden) return;
-      fetch('/api/refresh-model?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => {
-        if (dead) return;
-        if (typeof j.online === 'boolean') setOnline(j.online);
-        if (typeof j.rev === 'number') { if (!base.current) base.current = { n: j.rev, full: j.fullN }; else if (j.rev > base.current.n) apply(j); }
-      }).catch(() => {});
-    };
+    const check = () => fetch('/api/refresh-model?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (!dead && typeof j.online === 'boolean') setOnline(j.online); }).catch(() => {});
     check();
-    // no timer: the page looks for changes when it opens, when you come back to it, and when the refresh button is used
-    const vis = () => { if (!document.hidden) check(); };
-    document.addEventListener('visibilitychange', vis);
-    window.addEventListener('focus', vis); window.addEventListener('pageshow', vis); window.addEventListener('online', vis);
-    window.__ssCheck = check;
-    return () => { dead = true; if (ramp) clearInterval(ramp); document.removeEventListener('visibilitychange', vis); window.removeEventListener('focus', vis); window.removeEventListener('pageshow', vis); window.removeEventListener('online', vis); };
+    const t = setInterval(check, 20000);
+    return () => { dead = true; clearInterval(t); };
   }, [job]);
   useEffect(() => {
     if (phase !== 'running') return;
@@ -75,7 +44,6 @@ export default function MobileShell({ name, role, admin }) {
         const j = await fetch('/api/refresh-model?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json());
         if (typeof j.pct === 'number') setPct(j.pct);
         if (j.state === 'done') {
-          if (typeof j.rev === 'number') base.current = { n: j.rev, full: j.fullN };
           setPct(100);
           setPhase('done');
           // colours only: the open model is recoloured in place; a full publish needs a fresh page
@@ -90,9 +58,7 @@ export default function MobileShell({ name, role, admin }) {
     return () => clearInterval(t);
   }, [phase, job]);
   async function refreshModel() {
-    if (!job || phase !== 'idle' || !canPress) return;
-    if (Date.now() - lastPress.current < 30000) { flash('Wait a few seconds before refreshing again.'); return; }
-    lastPress.current = Date.now();
+    if (!job || phase !== 'idle') return;
     try {
       const r = await fetch('/api/refresh-model', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, source: window.__ssMode === 'source' }) });
       const j = await r.json().catch(() => ({}));

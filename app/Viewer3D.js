@@ -29,34 +29,33 @@ async function post(body) {
   return j;
 }
 
-// Glass: the parts keep their own colours from the model, but their material is cloned see-through (opacity a).
-// Done in small chunks so the page stays responsive; a newer look cancels the older one (token).
-async function setGlass(vw, ids, a, token) {
-  const fl = vw.model.getFragmentList();
-  const tree = vw.model.getInstanceTree();
-  const mm = vw.impl.matman();
-  const cache = {};
-  window.__ssOrig = window.__ssOrig || new Map();
-  for (let i = 0; i < ids.length; i += 1500) {
-    if (window.__ssTok !== token) return false;
-    ids.slice(i, i + 1500).forEach((d) => tree.enumNodeFragments(d, (f) => {
+// Glass look: a colour key like "ff0000_70" means 70 % transparent in Revit. The viewer's theming colour cannot be see-through, so the material of those parts is cloned with an opacity.
+function setAlpha(vw, ids, a) {
+  try {
+    const fl = vw.model.getFragmentList();
+    const tree = vw.model.getInstanceTree();
+    const mm = vw.impl.matman();
+    const cache = {};
+    ids.forEach((d) => tree.enumNodeFragments(d, (f) => {
       const base = fl.getMaterial(f);
       if (!base) return;
+      window.__ssOrig = window.__ssOrig || new Map();
       if (!window.__ssOrig.has(f)) window.__ssOrig.set(f, base);
       const key = 'ss-' + base.uuid + '-' + a;
       let m = cache[key];
       if (!m) {
         m = base.clone();
-        m.transparent = true; m.opacity = a; m.depthWrite = false; m.needsUpdate = true;
+        m.transparent = true;
+        m.opacity = a;
+        m.depthWrite = false;
+        m.needsUpdate = true;
         try { mm.addMaterial(key, m, true); } catch (e) {}
         cache[key] = m;
       }
       fl.setMaterial(f, m);
     }, true));
-    await new Promise((r) => requestAnimationFrame(() => r()));
-  }
-  vw.impl.invalidate(true, true, true);
-  return true;
+    vw.impl.invalidate(true, true, true);
+  } catch (e) {}
 }
 
 // Undo the colours and see-through parts, so the look can be applied again without reloading the model.
@@ -183,25 +182,11 @@ async function applyLook(vw, job, layer, keepView) {
       }
       const byHex = {};
       for (const i in fin) (byHex[fin[i]] = byHex[fin[i]] || []).push(parseInt(i, 10));
-      // 1) parts with a filter colour: solid, in the filter's colour
       for (const hex in byHex) {
         const [h] = hex.split('_');
         const n = parseInt(h, 16);
         const col = new T.Vector4(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1);
         dbIds(byHex[hex]).forEach((d) => vw.setThemingColor(d, col, vw.model, true));
-      }
-      // 2) every other part: its own colour from the model, as glass.
-      // If glass ever froze this browser (flag left on "busy"), it is skipped here and the parts stay normal. ?glass=1 switches it on again.
-      const token = (window.__ssTok = (window.__ssTok || 0) + 1);
-      let flag = '';
-      try { flag = localStorage.getItem('ssGlass') || ''; if (/[?&]glass=1/.test(location.search)) flag = ''; } catch (e) {}
-      if (flag === 'busy') { try { localStorage.setItem('ssGlass', 'crashed'); } catch (e) {} } // the last run never finished: do not try again
-      if (flag !== 'busy' && flag !== 'crashed') {
-        try { localStorage.setItem('ssGlass', 'busy'); } catch (e) {}
-        const solid = new Set(Object.keys(fin).map((i) => byId[parseInt(i, 10)]).filter(Boolean));
-        setGlass(vw, shown.filter((d) => !solid.has(d)), 0.3, token)
-          .then((ok) => { if (ok) { try { localStorage.setItem('ssGlass', 'ok'); } catch (e) {} } })
-          .catch(() => { try { localStorage.setItem('ssGlass', 'crashed'); } catch (e) {} });
       }
     }, () => {});
   } catch (e) {}
@@ -279,14 +264,32 @@ export default function Viewer3D({ job = '' }) {
     try { const r = await fetch('/api/layer?job=' + encodeURIComponent(job), { cache: 'no-store' }); if (r.ok) { const j = await r.json(); setLayer(j); return j; } } catch (e) {}
     return null;
   }
-  useEffect(() => { loadLayer(); }, [job]); // once when the page opens; later only with the refresh button (no timer)
+  function pollLayer() {
+    clearInterval(pollT.current);
+    let n = 0;
+    pollT.current = setInterval(async () => { n++; const j = await loadLayer(); if ((j && !j.pending) || n > 40) clearInterval(pollT.current); }, 3000);
+  }
+  useEffect(() => { loadLayer().then((j) => { if (j && j.pending) pollLayer(); }); return () => clearInterval(pollT.current); }, [job]);
   useEffect(() => {
     const vw = viewer.current;
     if (!vw || !vw.model) return;
     try { vw.clearThemingColors(vw.model); } catch (e) {}
     applyLook(vw, job, mode === 'user' ? layer : null, true);
   }, [mode, layer]);
-  // new colours are picked up when the page tells us a change arrived (ss-reload-look: after Save in Revit, or the refresh button) - no timer
+  // the website picks up new colours from Revit by itself (the add-in sends them after every change)
+  useEffect(() => {
+    let last = null;
+    const tm = setInterval(async () => {
+      if (document.hidden) return;
+      try {
+        const r = await fetch('/api/aps?look=1&job=' + encodeURIComponent(job) + (window.__ssView ? '&view=' + encodeURIComponent(window.__ssView) : ''), { cache: 'no-store' });
+        const s = await r.text();
+        if (last !== null && s !== last) window.dispatchEvent(new Event('ss-reload-look'));
+        last = s;
+      } catch (e) {}
+    }, 15000);
+    return () => clearInterval(tm);
+  }, [job]);
   const meRef = useRef('');
   const [, setMeTick] = useState(0);
   useEffect(() => { fetch('/api/job-rows?job=' + encodeURIComponent(job) + '&ids=').then((r) => { const m = r.headers.get('x-me'); if (m) { meRef.current = decodeURIComponent(m); setMeTick(1); } }).catch(() => {}); }, [job]);
@@ -300,7 +303,7 @@ export default function Viewer3D({ job = '' }) {
   }, []);
 
   useEffect(() => {
-    const f = async () => { const vw = viewer.current; if (vw && vw.model) { let ly = layerRef.current; try { ly = (await loadLayer()) || ly; } catch (e) {} resetLook(vw); applyLook(vw, job, modeRef.current === 'user' ? ly : null, 'iso'); } };
+    const f = () => { const vw = viewer.current; if (vw && vw.model) { resetLook(vw); applyLook(vw, job, modeRef.current === 'user' ? layerRef.current : null, 'iso'); } };
     window.addEventListener('ss-reload-look', f);
     return () => window.removeEventListener('ss-reload-look', f);
   }, [job]);
@@ -331,6 +334,7 @@ export default function Viewer3D({ job = '' }) {
     setDraft({});
     setMsg(bad ? 'You cannot change ' + bad : 'Saved in your own layer. The main model is not changed.');
     await loadLayer();
+    pollLayer();
   }
 
   async function refresh() {
@@ -347,19 +351,10 @@ export default function Viewer3D({ job = '' }) {
 
   useEffect(() => {
     refresh();
-    // keep asking while the model converts: not when the page is hidden, not after a failure, and not for ever
-    let n = 0;
     const t = setInterval(() => {
-      if (document.hidden) return;
-      const s = statusRef.current;
-      if (s === 'success' || s === 'none') return;
-      if (s === 'failed' || s === 'timeout') { clearInterval(t); return; }
-      if (++n > 40 && n % 4 !== 0) return; // after about 5 minutes ask less often, but never give up while the page is open
-      refresh();
-    }, 8000);
-    const vis = () => { const s = statusRef.current; if (!document.hidden && s !== 'success' && s !== 'none') { n = 0; refresh(); } };
-    document.addEventListener('visibilitychange', vis);
-    return () => { clearInterval(t); document.removeEventListener('visibilitychange', vis); };
+      if (statusRef.current !== 'success' && statusRef.current !== 'none') refresh();
+    }, 6000);
+    return () => clearInterval(t);
   }, []);
 
   useEffect(() => {
