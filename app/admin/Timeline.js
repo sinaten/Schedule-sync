@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Viewer3D from '../Viewer3D';
 import { computeColors } from '../../lib/colorrules';
-const GREY = '9a9a9a'; // parts that match no colour filter
+import { fadeColor } from '../../lib/fade';
 
 const inp = { padding: '6px 8px', fontSize: 14, border: '1px solid #cfd8dc', borderRadius: 6, background: '#fff' };
 const btn = { padding: '7px 14px', fontSize: 14, fontWeight: 600, border: '1px solid #cfd8dc', borderRadius: 18, background: '#fff', cursor: 'pointer' };
@@ -27,6 +27,8 @@ export default function Timeline() {
   const [playing, setPlaying] = useState(false);
   const [gap, setGap] = useState(2);       // longest pause between two changes, seconds
   const [typed, setTyped] = useState('');
+  const [fade, setFade] = useState(null);
+  useEffect(() => { fetch('/api/fade', { cache: 'no-store' }).then((r) => r.json()).then((j) => setFade(j.settings)).catch(() => {}); }, []);
 
   useEffect(() => { if (!open || jobs.length) return; fetch('/api/admin/jobs', { cache: 'no-store' }).then((r) => r.json()).then((j) => { const l = (j.jobs || []).filter((x) => x.state !== 'deleted'); setJobs(l); if (l[0]) setJob(l[0].job); }).catch(() => {}); }, [open]);
   useEffect(() => {
@@ -61,13 +63,15 @@ export default function Timeline() {
     for (let i = 0; i < step && i < list.length; i++) { const e = list[i]; const r = m.get(e.element) || {}; r[e.param] = e.to; m.set(e.element, r); }
     const cols = computeColors(data.rules, [...m].map(([element_id, vals]) => ({ element_id, vals })));
     const fin = {};
-    look.visible.forEach((i) => { fin[i] = GREY; });
+    const mat = {};
+    for (const hx in look.matColors || {}) look.matColors[hx].forEach((i) => { mat[i] = hx; });
+    look.visible.forEach((i) => { fin[i] = fadeColor(mat[i] || null, fade); });
     for (const hx in cols) cols[hx].forEach((i) => { fin[i] = hx; });
     const id = ++paint.current;
     const go = () => { if (id === paint.current) window.dispatchEvent(new CustomEvent('ss-paint', { detail: { fin } })); };
     go(); const t1 = setTimeout(go, 600); const t2 = setTimeout(go, 2000); // the model may still be loading
     return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [base, step, list, data, look]);
+  }, [base, step, list, data, look, fade]);
 
   // play: next change after a pause that follows the real gap, but never longer than "gap" seconds
   useEffect(() => {

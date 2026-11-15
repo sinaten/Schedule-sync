@@ -2,10 +2,10 @@
 import IssuePanel from './IssuePanel';
 import Snapshots from './Snapshots';
 import { useEffect, useRef, useState } from 'react';
+import { fadeColor } from '../lib/fade';
 
 const VIEWER = 'https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/';
 const CHUNK = 20 * 1024 * 1024;
-const GREY = '9a9a9a'; // parts that match no colour filter
 
 function loadAssets() {
   if (window.__apsAssets) return window.__apsAssets;
@@ -162,6 +162,8 @@ async function applyLook(vw, job, layer, keepView) {
     }
     let site = null;
     try { const rc = await fetch('/api/colorrules?job=' + encodeURIComponent(job) + '&compute=1' + (layer ? '&layer=1' : ''), { cache: 'no-store' }); if (rc.ok) site = await rc.json(); } catch (e) { /* no site colours: Revit's own colours stay */ }
+    let fade = null;
+    try { const rf = await fetch('/api/fade', { cache: 'no-store' }); if (rf.ok) fade = (await rf.json()).settings; } catch (e) { /* default fade */ }
     const A = window.Autodesk.Viewing;
     await new Promise((res) => {
       if (vw.model && vw.model.getInstanceTree && vw.model.getInstanceTree()) res();
@@ -188,7 +190,9 @@ async function applyLook(vw, job, layer, keepView) {
       if (site && site.has) {
         for (const k in fin) delete fin[k];
         for (const hex in site.colors) site.colors[hex].forEach((i) => { fin[i] = hex; });
-        look.visible.forEach((i) => { if (!fin[i]) fin[i] = GREY; });
+        const mat = {};
+        for (const hex in look.matColors || {}) look.matColors[hex].forEach((i) => { mat[i] = hex; });
+        look.visible.forEach((i) => { if (!fin[i]) fin[i] = fadeColor(mat[i] || null, fade); }); // no filter: own Revit colour, faded toward white
       }
       const byHex = {};
       for (const i in fin) (byHex[fin[i]] = byHex[fin[i]] || []).push(parseInt(i, 10));
