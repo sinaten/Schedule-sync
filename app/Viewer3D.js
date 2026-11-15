@@ -287,7 +287,7 @@ export default function Viewer3D({ job = '' }) {
         if (last !== null && s !== last) window.dispatchEvent(new Event('ss-reload-look'));
         last = s;
       } catch (e) {}
-    }, 15000);
+    }, 3000);
     return () => clearInterval(tm);
   }, [job]);
   const meRef = useRef('');
@@ -357,7 +357,8 @@ export default function Viewer3D({ job = '' }) {
       if (document.hidden) return;
       const s = statusRef.current;
       if (s === 'success' || s === 'none') return;
-      if (s === 'failed' || s === 'timeout' || ++n > 40) { clearInterval(t); return; }
+      if (s === 'failed' || s === 'timeout') { clearInterval(t); return; }
+      if (++n > 40 && n % 4 !== 0) return; // after about 5 minutes ask less often, but never give up while the page is open
       refresh();
     }, 8000);
     const vis = () => { const s = statusRef.current; if (!document.hidden && s !== 'success' && s !== 'none') { n = 0; refresh(); } };

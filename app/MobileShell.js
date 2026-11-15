@@ -60,7 +60,7 @@ export default function MobileShell({ name, role, admin }) {
       }).catch(() => {});
     };
     check();
-    const t = setInterval(check, 20000);
+    const t = setInterval(check, 3000);
     const vis = () => { if (!document.hidden) check(); };
     document.addEventListener('visibilitychange', vis);
     return () => { dead = true; clearInterval(t); if (ramp) clearInterval(ramp); document.removeEventListener('visibilitychange', vis); };
