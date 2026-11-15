@@ -7,12 +7,16 @@ function initials(n) {
   return (p.length > 1 ? p[0][0] + p[1][0] : (p[0] || '?')[0]).toUpperCase();
 }
 
+// Remembers where the person was while the browser stays open (sessionStorage): the tab of a job, the last job page (for the way back from Admin) and the scroll place of a page.
+const ss = { get(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} } };
+
 export default function MobileShell({ name, role, admin }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState('follow');
   const [pending, setPending] = useState(0);
   const [job, setJob] = useState('');
   // the page below the tabs follows the choice: Issues shows the normal job page (model), Follow-up is empty for now and is the default
+  useEffect(() => { if (job) ss.set('ms-tab:' + job, tab); }, [tab, job]);
   useEffect(() => {
     if (job) document.body.setAttribute('data-ms-tab', tab); else document.body.removeAttribute('data-ms-tab');
     // the model viewer cannot size itself while its page is hidden: tell it to re-measure when the tab changes
@@ -33,7 +37,14 @@ export default function MobileShell({ name, role, admin }) {
   }, [job]);
   useEffect(() => {
     const m = location.pathname.match(/^\/j\/([^/]+)/);
-    if (m) { setJob(decodeURIComponent(m[1])); if (!window.matchMedia('(pointer:coarse) and (max-width:1024px)').matches) setTab('issues'); } // on a laptop the model page (Issues) is the one shown first
+    if (m) {
+      const j = decodeURIComponent(m[1]);
+      setJob(j);
+      const saved = ss.get('ms-tab:' + j);
+      if (saved === 'issues' || saved === 'follow') setTab(saved);
+      else if (!window.matchMedia('(pointer:coarse) and (max-width:1024px)').matches) setTab('issues'); // on a laptop the model page (Issues) is the one shown first
+      ss.set('ms-last', location.pathname + location.search); // where "back" from Admin must return to
+    }
   }, []);
   useEffect(() => {
     if (!job) return;
@@ -81,7 +92,22 @@ export default function MobileShell({ name, role, admin }) {
     window.addEventListener('ss-draft', f);
     return () => window.removeEventListener('ss-draft', f);
   }, []);
-  const back = () => { if (history.length > 1) history.back(); else location.href = '/'; };
+  // scroll place of every page: saved while scrolling, put back after a refresh or when coming back to it
+  useEffect(() => {
+    const key = 'ms-scroll:' + location.pathname;
+    let tm = null;
+    const save = () => { clearTimeout(tm); tm = setTimeout(() => ss.set(key, String(window.scrollY || 0)), 150); };
+    window.addEventListener('scroll', save, { passive: true });
+    let nav = ''; try { nav = (performance.getEntriesByType('navigation')[0] || {}).type || ''; } catch (e) {}
+    const y = Number(ss.get(key));
+    let t0 = null;
+    if (y > 0 && (nav === 'reload' || nav === 'back_forward' || ss.get('ms-return') === location.pathname)) {
+      let n = 0; // the page fills in a moment after it opens: try for about 3 seconds
+      t0 = setInterval(() => { window.scrollTo(0, y); if (Math.abs((window.scrollY || 0) - y) < 4 || ++n > 15) clearInterval(t0); }, 200);
+    }
+    return () => { window.removeEventListener('scroll', save); clearTimeout(tm); if (t0) clearInterval(t0); };
+  }, []);
+  const back = () => { const last = ss.get('ms-last'); if (/^\/admin/.test(location.pathname) && last) { ss.set('ms-return', last.split('?')[0]); location.href = last; return; } if (history.length > 1) history.back(); else location.href = '/'; };
   return (
     <>
       <header className="ms-top">
