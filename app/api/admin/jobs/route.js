@@ -1,6 +1,6 @@
 import { db } from '../../../../lib/db';
 import { currentUser, isAdmin } from '../../../../lib/user';
-import { getJobState, setJobState } from '../../../../lib/jobstate';
+import { getJobState, setJobState, wipeJob } from '../../../../lib/jobstate';
 export const dynamic = 'force-dynamic';
 
 // Admins only: GET = all jobs with their status; PUT { job, state } = set a job active / inactive (from the website); DELETE = wipe a job's data (it is then kept inactive so Revit does not build it again).
@@ -30,14 +30,7 @@ export async function DELETE(req) {
   const none = raw === '_none'; // the "No job number yet" entry (older files without a job number)
   const job = none ? '' : raw;
   const sql = await db();
-  const ids = (await sql`select id from schedules where coalesce(job, '') = ${job}`).map((x) => x.id);
-  if (ids.length) {
-    await sql`delete from rows where schedule_id = any(${ids}::text[])`;
-    await sql`delete from edits where schedule_id = any(${ids}::text[])`;
-    await sql`delete from schedules where id = any(${ids}::text[])`;
-  }
-  const keys = none ? ['model', 'look', 'looks', 'ifc', 'model:', 'look:', 'looks:', 'ifc:'] : ['model:' + job, 'look:' + job, 'looks:' + job, 'ifc:' + job];
-  await sql`delete from settings where key = any(${keys}::text[]) or starts_with(key, ${'layer:' + job + ':'})`;
+  const n = await wipeJob(sql, job);
   if (!none) await setJobState(sql, job, 'inactive', 'site'); // so Revit does not build it again
-  return Response.json({ ok: true, schedules: ids.length });
+  return Response.json({ ok: true, schedules: n });
 }

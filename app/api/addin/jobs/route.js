@@ -1,8 +1,8 @@
 import { db, isAddin, deny } from '../../../../lib/db';
-import { getJobState, setJobState } from '../../../../lib/jobstate';
+import { getJobState, setJobState, wipeJob } from '../../../../lib/jobstate';
 export const dynamic = 'force-dynamic';
 // The Revit add-in: GET = every job the site knows with its status (active / inactive / deleted) and who set it;
-// POST { job, state, title } = Revit sets a job active / inactive / deleted (the website then shows it, data stays).
+// POST { job, state, title } = Revit sets a job active / inactive / deleted (deleted also wipes the job's data on the website; a small blocked mark stays so Revit does not build it again).
 export async function GET(req) {
   if (!isAddin(req)) return deny();
   const sql = await db();
@@ -23,6 +23,7 @@ export async function POST(req) {
   const state = String(b.state || '');
   if (!job || !['active', 'inactive', 'deleted'].includes(state)) return Response.json({ error: 'job and state (active, inactive, deleted) are required' }, { status: 400 });
   const sql = await db();
+  if (state === 'deleted') await wipeJob(sql, job); // deleted in Revit = everything on the site is wiped too
   const v = await setJobState(sql, job, state, 'revit', b.title);
   return Response.json({ ok: true, ...v });
 }
