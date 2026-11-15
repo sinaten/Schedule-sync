@@ -1,4 +1,5 @@
 import { db, isAddin, deny } from '../../../../lib/db';
+import { bumpRev } from '../../../../lib/rev';
 export const dynamic = 'force-dynamic';
 // The Revit add-in asks here (every few seconds) whether the phone wants the 3D model refreshed. Asking also tells the site that Revit is online.
 const put = (sql, k, v) => sql`insert into settings(key, value) values(${k}, ${JSON.stringify(v)}::jsonb) on conflict (key) do update set value = excluded.value`;
@@ -18,5 +19,7 @@ export async function POST(req) {
   const sql = await db();
   const [old] = await sql`select value from settings where key = ${'refresh:' + job}`;
   await put(sql, 'refresh:' + job, { mode: (old && old.value && old.value.mode) || 'full', state: String(state || ''), msg: String(msg || ''), pct: Number.isFinite(Number(pct)) && Number(pct) >= 0 ? Number(pct) : null, at: Date.now() });
+  // the publish finished: everybody on this job gets the new change
+  if (String(state) === 'done') await bumpRev(sql, job, ((old && old.value && old.value.mode) || 'full') === 'full');
   return Response.json({ ok: true });
 }
