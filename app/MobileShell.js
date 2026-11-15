@@ -33,7 +33,7 @@ export default function MobileShell({ name, role, admin }) {
   }, [job]);
   useEffect(() => {
     const m = location.pathname.match(/^\/j\/([^/]+)/);
-    if (m) setJob(decodeURIComponent(m[1]));
+    if (m) { setJob(decodeURIComponent(m[1])); if (!window.matchMedia('(pointer:coarse) and (max-width:1024px)').matches) setTab('issues'); } // on a laptop the model page (Issues) is the one shown first
   }, []);
   useEffect(() => {
     if (!job) return;
