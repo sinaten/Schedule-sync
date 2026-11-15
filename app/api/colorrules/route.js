@@ -2,6 +2,7 @@ import { db } from '../../../lib/db';
 import { currentUser, canJob, isAdmin } from '../../../lib/user';
 import { getColorRules, putColorRules, fromLook, computeColors } from '../../../lib/colorrules';
 import { bumpRev } from '../../../lib/rev';
+import { getLayer } from '../../../lib/layer';
 export const dynamic = 'force-dynamic';
 
 async function lookOf(sql, job) { const [r] = await sql`select value from settings where key = ${'look:' + job}`; return (r && r.value) || null; }
@@ -28,7 +29,15 @@ export async function GET(req) {
   const rows = await sql`select r.element_id, r.vals from rows r join schedules s on s.id = r.schedule_id where s.job = ${job} order by s.name`;
   const by = new Map();
   for (const r of rows) { const e = by.get(r.element_id); if (e) Object.assign(e.vals, r.vals || {}); else by.set(r.element_id, { element_id: r.element_id, vals: { ...(r.vals || {}) } }); }
-  return Response.json({ colors: computeColors(rules, [...by.values()]), n: by.size });
+  // layer=1: the signed-in person's own ticks (their layer) are laid over the real values
+  if (u.searchParams.get('layer') === '1') {
+    const me = await currentUser();
+    const L = await getLayer(sql, job, (me && me.name) || 'admin');
+    const sch = await sql`select id from schedules where job = ${job}`;
+    const mine = new Set(sch.map((x) => x.id));
+    for (const e of L.edits) { if (!mine.has(e.scheduleId)) continue; let r = by.get(String(e.elementId)); if (!r) { r = { element_id: String(e.elementId), vals: {} }; by.set(r.element_id, r); } r.vals[e.col] = e.value; }
+  }
+  return Response.json({ has: true, colors: computeColors(rules, [...by.values()]), n: by.size });
 }
 
 // Admins only. PUT { job, rules } saves the rules; POST { job, action:'import' } copies Revit's view filters again (the rules edited here are replaced).

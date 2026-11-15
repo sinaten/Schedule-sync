@@ -159,6 +159,8 @@ async function applyLook(vw, job, layer, keepView) {
         }
       } catch (e) { /* keep the view's own colours */ }
     }
+    let site = null;
+    try { const rc = await fetch('/api/colorrules?job=' + encodeURIComponent(job) + '&compute=1' + (layer ? '&layer=1' : ''), { cache: 'no-store' }); if (rc.ok) site = await rc.json(); } catch (e) { /* no site colours: Revit's own colours stay */ }
     const A = window.Autodesk.Viewing;
     await new Promise((res) => {
       if (vw.model && vw.model.getInstanceTree && vw.model.getInstanceTree()) res();
@@ -179,6 +181,12 @@ async function applyLook(vw, job, layer, keepView) {
       if (layer && layer.look && layer.look.colors) {
         (layer.edits || []).forEach((e) => { delete fin[parseInt(e.elementId, 10)]; });
         for (const hex in layer.look.colors) layer.look.colors[hex].forEach((i) => { fin[i] = hex; });
+      }
+      // the website works the colours out itself from the colour rules: a part with a filter gets that colour, every other part is grey
+      if (site && site.has) {
+        for (const k in fin) delete fin[k];
+        for (const hex in site.colors) site.colors[hex].forEach((i) => { fin[i] = hex; });
+        look.visible.forEach((i) => { if (!fin[i]) fin[i] = '9a9a9a'; });
       }
       const byHex = {};
       for (const i in fin) (byHex[fin[i]] = byHex[fin[i]] || []).push(parseInt(i, 10));
