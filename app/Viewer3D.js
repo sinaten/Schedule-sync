@@ -351,10 +351,18 @@ export default function Viewer3D({ job = '' }) {
 
   useEffect(() => {
     refresh();
+    // keep asking while the model converts: not when the page is hidden, not after a failure, and not for ever
+    let n = 0;
     const t = setInterval(() => {
-      if (statusRef.current !== 'success' && statusRef.current !== 'none') refresh();
-    }, 6000);
-    return () => clearInterval(t);
+      if (document.hidden) return;
+      const s = statusRef.current;
+      if (s === 'success' || s === 'none') return;
+      if (s === 'failed' || s === 'timeout' || ++n > 40) { clearInterval(t); return; }
+      refresh();
+    }, 8000);
+    const vis = () => { const s = statusRef.current; if (!document.hidden && s !== 'success' && s !== 'none') { n = 0; refresh(); } };
+    document.addEventListener('visibilitychange', vis);
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', vis); };
   }, []);
 
   useEffect(() => {
