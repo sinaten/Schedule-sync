@@ -9,8 +9,17 @@ import { issuesDb } from '../../../../lib/issues';
 export const dynamic = 'force-dynamic';
 
 // Admin (and whoever the admin allows in Settings > Access): per person, how many of their photos / videos were taken near the QR location (green / orange / red) or could not be checked.
-export async function GET() {
+export async function GET(req) {
   if (!canSee(await currentUser(), 'analysis', await getAccess())) return Response.json({ error: 'Not allowed' }, { status: 403 });
+  // ?log=<username> (or ?log=* for everyone): the full counter history, newest first (day, time Columbus, who, job, what)
+  const lg = new URL(req.url).searchParams.get('log');
+  if (lg) {
+    const s = await activityDb();
+    const rows = lg === '*'
+      ? await s`select id, to_char(at at time zone 'America/New_York', 'YYYY-MM-DD HH24:MI:SS') as t, who, job, kind from activity order by at desc limit 1000`
+      : await s`select id, to_char(at at time zone 'America/New_York', 'YYYY-MM-DD HH24:MI:SS') as t, who, job, kind from activity where who = ${lg} order by at desc limit 1000`;
+    return Response.json({ log: rows });
+  }
   const lr = await getLoc();
   const sql = await visitsDb();
   const users = await sql`select username, role from users`;
