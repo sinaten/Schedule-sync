@@ -1,4 +1,5 @@
 import { db } from '../../../lib/db';
+import { getRev } from '../../../lib/rev';
 import { currentUser, canJob, canEdit } from '../../../lib/user';
 export const dynamic = 'force-dynamic';
 // The phone asks Revit (through the add-in) to publish the 3D model again, and watches how it goes.
@@ -8,7 +9,7 @@ async function status(sql, job) {
   const [p] = await sql`select value from settings where key = ${'ping:' + job}`;
   const [r] = await sql`select value from settings where key = ${'refresh:' + job}`;
   const online = !!p && !!p.value && Date.now() - Number(p.value.at || 0) < ONLINE_MS;
-  return { online, state: (r && r.value && r.value.state) || '', msg: (r && r.value && r.value.msg) || '', pct: r && r.value && typeof r.value.pct === 'number' ? r.value.pct : null, mode: (r && r.value && r.value.mode) || '' };
+  return { ...(await getRev(sql, job)), online, state: (r && r.value && r.value.state) || '', msg: (r && r.value && r.value.msg) || '', pct: r && r.value && typeof r.value.pct === 'number' ? r.value.pct : null, mode: (r && r.value && r.value.mode) || '' };
 }
 export async function GET(req) {
   const job = new URL(req.url).searchParams.get('job') || '';
