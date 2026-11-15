@@ -279,12 +279,7 @@ export default function Viewer3D({ job = '' }) {
     try { const r = await fetch('/api/layer?job=' + encodeURIComponent(job), { cache: 'no-store' }); if (r.ok) { const j = await r.json(); setLayer(j); return j; } } catch (e) {}
     return null;
   }
-  function pollLayer() {
-    clearInterval(pollT.current);
-    let n = 0;
-    pollT.current = setInterval(async () => { n++; const j = await loadLayer(); if ((j && !j.pending) || n > 40) clearInterval(pollT.current); }, 3000);
-  }
-  useEffect(() => { loadLayer().then((j) => { if (j && j.pending) pollLayer(); }); return () => clearInterval(pollT.current); }, [job]);
+  useEffect(() => { loadLayer(); }, [job]); // once when the page opens; later only with the refresh button (no timer)
   useEffect(() => {
     const vw = viewer.current;
     if (!vw || !vw.model) return;
@@ -305,7 +300,7 @@ export default function Viewer3D({ job = '' }) {
   }, []);
 
   useEffect(() => {
-    const f = () => { const vw = viewer.current; if (vw && vw.model) { resetLook(vw); applyLook(vw, job, modeRef.current === 'user' ? layerRef.current : null, 'iso'); } };
+    const f = async () => { const vw = viewer.current; if (vw && vw.model) { let ly = layerRef.current; try { ly = (await loadLayer()) || ly; } catch (e) {} resetLook(vw); applyLook(vw, job, modeRef.current === 'user' ? ly : null, 'iso'); } };
     window.addEventListener('ss-reload-look', f);
     return () => window.removeEventListener('ss-reload-look', f);
   }, [job]);
@@ -336,7 +331,6 @@ export default function Viewer3D({ job = '' }) {
     setDraft({});
     setMsg(bad ? 'You cannot change ' + bad : 'Saved in your own layer. The main model is not changed.');
     await loadLayer();
-    pollLayer();
   }
 
   async function refresh() {
