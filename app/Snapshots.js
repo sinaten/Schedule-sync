@@ -97,6 +97,7 @@ export default function Snapshots({ job }) {
   useEffect(() => {
     let off = false;
     const load = () => {
+      if (document.hidden) return;
       fetch('/api/snap?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (!off) setList(j.snaps || []); }).catch(() => {});
       fetch('/api/aps?ifc=1&job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (!off) setIfc(!!(j.ifc && j.ifc.status === 'success')); }).catch(() => {});
     };
