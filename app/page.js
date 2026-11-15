@@ -10,6 +10,8 @@ export default async function Home() {
   const sql = await db();
   const sched = await sql`select coalesce(job,'') as job, count(*)::int as n from schedules group by 1`;
   const models = await sql`select case when key='model' then '' else substr(key, 7) end as job from settings where key='model' or key like 'model:%'`;
+  const st = await sql`select substr(key, 10) as job, value from settings where key like 'jobstate:%'`;
+  const stOf = new Map(st.map((x) => [x.job, x.value || {}]));
   const map = new Map();
   for (const s of sched) map.set(s.job, { slug: s.job || '_none', label: s.job || 'No job number yet', n: s.n, model: false });
   for (const m of models) {
@@ -17,6 +19,7 @@ export default async function Home() {
     j.model = true;
     map.set(m.job, j);
   }
+  for (const [k, x] of map) { const s = stOf.get(k); if (s && s.state && s.state !== 'active') { x.state = s.state; x.by = s.by || ''; } }
   const jobs = [...map.entries()].filter(([k]) => !u || u.jobs === null || (k !== '' && u.jobs.includes(k))).map(([, x]) => x).sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
   return (
     <main>
