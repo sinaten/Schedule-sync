@@ -60,7 +60,7 @@ function DeleteJob() {
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!open) return;
-    fetch('/api/admin/sections', { cache: 'no-store' }).then((r) => r.json()).then((j) => { setJobs(j.jobs || []); setJob((c) => c || (j.jobs || [])[0] || ''); }).catch(() => setMsg('Could not load jobs'));
+    fetch('/api/admin/sections', { cache: 'no-store' }).then((r) => r.json()).then((j) => { const l = [...(j.jobs || []).filter((x) => x !== '_none'), '_none']; setJobs(l); setJob((c) => c || l[0] || ''); }).catch(() => setMsg('Could not load jobs'));
   }, [open]);
   async function del() {
     if (!job) return;
@@ -81,7 +81,7 @@ function DeleteJob() {
           {!jobs ? <span className="muted" style={{ fontSize: 13 }}>{msg || 'Loading…'}</span> : (
             <>
               <select style={{ padding: '6px 8px', fontSize: 14, minWidth: 220, maxWidth: '100%' }} value={job} onChange={(e) => setJob(e.target.value)}>
-                {jobs.map((j) => <option key={j} value={j}>{j}</option>)}
+                {jobs.map((j) => <option key={j} value={j}>{j === '_none' ? 'No job number yet' : j}</option>)}
               </select>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
                 <button type="button" onClick={del} disabled={busy || !job} style={{ ...pill, color: '#b00020', borderColor: '#b00020' }}>Delete job</button>
