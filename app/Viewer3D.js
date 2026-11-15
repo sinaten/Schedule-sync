@@ -59,31 +59,32 @@ function setAlpha(vw, ids, a) {
   } catch (e) {}
 }
 
-// Real hatch for parts that match no colour filter: grey with diagonal lines in the part's own colour.
-// Autodesk's viewer cannot show Revit fill patterns, so the lines are drawn here with a small shader.
-// The lines are in screen pixels (like Revit drafting patterns), so they keep the same size at any zoom. Light comes from the camera so the parts still look 3D.
-const STRIPE_VS = 'varying vec3 vView;\nvoid main() {\n  vec4 mv = modelViewMatrix * vec4(position, 1.0);\n  vView = mv.xyz;\n  gl_Position = projectionMatrix * mv;\n}\n';
+// Real hatch for parts that match no colour filter: the part itself is themed plain grey (always works), and its own surface is
+// drawn once more in a separate overlay layer that shows only the lines, in the part's own Revit colour.
+// Autodesk's viewer cannot show Revit fill patterns, and it bundles parts together for speed (so a part's material cannot be swapped);
+// the overlay copies each part's geometry instead, so the lines stick to the part and turn with the model. If it fails, parts just stay grey.
+const HATCH_SCENE = 'ss-hatch';
+const STRIPE_VS = 'varying vec3 vW;\nvoid main() {\n  vec4 w = modelMatrix * vec4(position, 1.0);\n  vW = w.xyz;\n  gl_Position = projectionMatrix * viewMatrix * w;\n}\n';
 const STRIPE_FS = [
-  'uniform vec3 uBase;', 'uniform vec3 uLine;', 'uniform float uSpacing;', 'uniform float uWidth;', 'uniform vec2 uNorm;', 'uniform float uPx;',
-  'varying vec3 vView;',
+  'uniform vec3 uLine;', 'uniform float uSpacing;', 'uniform float uFrac;', 'uniform vec3 uDir;',
+  'varying vec3 vW;',
   'void main() {',
-  '  float shade = 1.0;',
-  '#if defined(GL_OES_standard_derivatives) || (__VERSION__ >= 300)',
-  '  vec3 n = normalize(cross(dFdx(vView), dFdy(vView)));',
-  '  shade = 0.6 + 0.4 * abs(n.z);',
+  '  float t = dot(vW, uDir) / uSpacing;',
+  '  float aa = 0.0;',
+  '#if (__VERSION__ >= 300) || defined(GL_OES_standard_derivatives)',
+  '  aa = fwidth(t);',
+  '  if (aa > 0.35) discard;', // too far away: lines would flicker, show plain grey
   '#endif',
-  '  float d = mod(dot(gl_FragCoord.xy / uPx, uNorm), uSpacing);',
-  '  vec3 c = d < uWidth ? uLine : uBase;',
-  '  gl_FragColor = vec4(c * shade, 1.0);',
+  '  if (fract(t) > uFrac + aa) discard;',
+  '  gl_FragColor = vec4(uLine, 1.0);',
   '}',
 ].join('\n');
 
 function clearStripes(vw) {
   try {
-    if (!window.__ssStripe || !window.__ssStripe.size) return;
-    const fl = vw.model.getFragmentList();
-    window.__ssStripe.forEach((m, f) => { try { fl.setMaterial(f, m); } catch (e) {} });
-    window.__ssStripe.clear();
+    if (!window.__ssHatchOn) return;
+    window.__ssHatchOn = false;
+    vw.impl.removeOverlayScene(HATCH_SCENE);
     vw.impl.invalidate(true, true, true);
   } catch (e) {}
 }
@@ -93,39 +94,43 @@ function applyStripes(vw, groups, hatch) {
   try {
     const T = window.THREE;
     const c = cleanHatch(hatch);
-    const fl = vw.model.getFragmentList();
-    const tree = vw.model.getInstanceTree();
-    const mm = vw.impl.matman();
-    try { if (vw.model.unconsolidate) vw.model.unconsolidate(); } catch (e) { /* the custom material needs the parts drawn one by one */ }
-    let px = window.devicePixelRatio || 1;
-    try { const r = vw.impl.glrenderer(); if (r && r.getPixelRatio) px = r.getPixelRatio() || px; } catch (e) {}
+    const m = vw.model;
+    const tree = m.getInstanceTree();
+    const inch = 0.0254 / ((m.getUnitScale && m.getUnitScale()) || 0.3048); // model units per inch
     const a = (c.stripe.angle * Math.PI) / 180;
-    const col = (h) => { const n = parseInt(h, 16); return new T.Vector3(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255); };
-    window.__ssStripe = window.__ssStripe || new Map();
+    const dir = new T.Vector3(Math.cos(a), Math.sin(a), 0.7).normalize();
+    clearStripes(vw);
+    vw.impl.createOverlayScene(HATCH_SCENE);
+    window.__ssHatchOn = true;
     for (const line in groups) {
-      const m = new T.ShaderMaterial({
+      const n = parseInt(line, 16);
+      const mat = new T.ShaderMaterial({
         uniforms: {
-          uBase: { type: 'v3', value: col(c.grey) },
-          uLine: { type: 'v3', value: col(line) },
-          uSpacing: { type: 'f', value: c.stripe.spacing },
-          uWidth: { type: 'f', value: Math.min(c.stripe.width, c.stripe.spacing - 1) },
-          uNorm: { type: 'v2', value: new T.Vector2(-Math.sin(a), Math.cos(a)) },
-          uPx: { type: 'f', value: px },
+          uLine: { type: 'v3', value: new T.Vector3(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255) },
+          uSpacing: { type: 'f', value: c.stripe.spacing * inch },
+          uFrac: { type: 'f', value: c.stripe.width / 100 },
+          uDir: { type: 'v3', value: dir },
         },
         vertexShader: STRIPE_VS,
         fragmentShader: STRIPE_FS,
         side: T.DoubleSide,
+        depthWrite: false,
+        polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4, // drawn just in front of the part's own surface
       });
-      m.derivatives = true; // three r71 name
-      m.extensions = { derivatives: true }; // newer name
-      try { mm.addMaterial('ss-stripe-' + line + '-' + c.stripe.spacing + '-' + c.stripe.width + '-' + c.stripe.angle + '-' + c.grey, m, true); } catch (e) {}
+      mat.derivatives = true; // three r71 name
+      mat.extensions = { derivatives: true }; // newer name
       groups[line].forEach((d) => tree.enumNodeFragments(d, (f) => {
-        if (!window.__ssStripe.has(f)) { const base = fl.getMaterial(f); if (base) window.__ssStripe.set(f, base); }
-        fl.setMaterial(f, m);
+        const p = vw.impl.getRenderProxy(m, f);
+        if (!p || !p.geometry) return;
+        const mesh = new T.Mesh(p.geometry, mat);
+        mesh.matrix.copy(p.matrixWorld);
+        mesh.matrixAutoUpdate = false;
+        mesh.frustumCulled = false;
+        vw.impl.addOverlay(HATCH_SCENE, mesh);
       }, true));
     }
     vw.impl.invalidate(true, true, true);
-  } catch (e) {}
+  } catch (e) { clearStripes(vw); }
 }
 
 // Undo the colours and see-through parts, so the look can be applied again without reloading the model.
@@ -265,7 +270,7 @@ async function applyLook(vw, job, layer, keepView) {
         const mat = {};
         for (const hex in look.matColors || {}) look.matColors[hex].forEach((i) => { mat[i] = hex; });
         if (cleanHatch(hatch).mode === 'stripe') {
-          look.visible.forEach((i) => { if (!fin[i]) { const l = stripeLine(mat[i] || null, hatch); (stripes[l] = stripes[l] || []).push(i); } });
+          look.visible.forEach((i) => { if (!fin[i]) { fin[i] = cleanHatch(hatch).grey; const l = stripeLine(mat[i] || null, hatch); (stripes[l] = stripes[l] || []).push(i); } });
         } else look.visible.forEach((i) => { if (!fin[i]) fin[i] = hatchColor(mat[i] || null, hatch); });
       }
       const byHex = {};
