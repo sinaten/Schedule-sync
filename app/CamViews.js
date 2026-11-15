@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { CAM_ICONS } from '../lib/camviews';
+import CamIcon from './CamIcon';
 
 // The saved camera views of a job, under the 3D model. Everyone sees them and one touch moves the camera there.
 // An admin can also make a new one from where the camera stands now, give it a unique name and an icon, and delete it.
@@ -8,7 +8,6 @@ export default function CamViews({ job, getCam, goCam }) {
   const [d, setD] = useState({ views: [], admin: false, editor: false });
   const [form, setForm] = useState(false);
   const [name, setName] = useState('');
-  const [icon, setIcon] = useState('camera');
   const [msg, setMsg] = useState('');
   const load = () => fetch('/api/camviews?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j.views) setD(j); }).catch(() => {});
   useEffect(() => { load(); }, [job]);
@@ -23,7 +22,7 @@ export default function CamViews({ job, getCam, goCam }) {
   async function save() {
     const cam = getCam();
     if (!cam) { setMsg('The model is not ready yet.'); return; }
-    const r = await fetch('/api/camviews', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, name, icon, cam, view: window.__ssView || '' }) });
+    const r = await fetch('/api/camviews', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, name, icon: 'camera', cam, view: window.__ssView || '' }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) { setMsg(j.error || 'Could not save.'); return; }
     setD((x) => ({ ...x, views: j.views })); setForm(false); setName(''); setMsg('');
@@ -40,7 +39,7 @@ export default function CamViews({ job, getCam, goCam }) {
     <div style={{ padding: '6px 12px 8px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
       {d.views.map((v) => (
         <span key={v.id} style={{ display: 'inline-flex', alignItems: 'center' }}>
-          <button type="button" style={chip} onClick={() => goCam(v)} title={v.name}><span style={{ fontSize: 15 }}>{CAM_ICONS[v.icon] || CAM_ICONS.camera}</span>{v.name}</button>
+          <button type="button" style={chip} onClick={() => goCam(v)} title={v.name}><span style={{ fontSize: 15 }}><CamIcon n={v.n} /></span>{v.name}</button>
           {d.admin && <button type="button" aria-label={'Delete ' + v.name} onClick={() => del(v)} style={{ border: 0, background: 'none', color: '#b3402a', cursor: 'pointer', fontSize: 14, padding: '0 4px' }}>{'✕'}</button>}
         </span>
       ))}
@@ -48,7 +47,6 @@ export default function CamViews({ job, getCam, goCam }) {
       {d.admin && form && (
         <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Unique name" maxLength={60} style={{ height: 32, boxSizing: 'border-box', border: '1.5px solid #e0dccf', borderRadius: 16, padding: '0 12px', font: 'inherit', fontSize: 13 }} />
-          {Object.keys(CAM_ICONS).map((k) => (<button key={k} type="button" aria-label={k} onClick={() => setIcon(k)} style={{ width: 32, height: 32, borderRadius: 16, border: '1.5px solid ' + (icon === k ? '#e8710a' : '#d9d5c8'), background: icon === k ? '#fff7ef' : '#fff', fontSize: 16, cursor: 'pointer' }}>{CAM_ICONS[k]}</button>))}
           <button type="button" style={{ ...chip, background: '#e8710a', borderColor: '#e8710a', color: '#fff' }} onClick={save} disabled={!name.trim()}>Save this angle</button>
           <button type="button" style={chip} onClick={() => { setForm(false); setMsg(''); }}>Cancel</button>
         </span>

@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { upload as blobUpload } from '@vercel/blob/client';
-import { CAM_ICONS, TOKEN } from '../lib/camviews';
+import { TOKEN } from '../lib/camviews';
+import CamIcon from './CamIcon';
 
 const OR = '#e8710a';
 const when = (t) => { const d = new Date(t); return d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) + ' · ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
@@ -75,7 +76,7 @@ export default function IssuePanel({ job, element, onMsg }) {
       if (m.index > last) out.push(<span key={k++}>{t.slice(last, m.index)}</span>);
       const v = cvs.views.find((x) => x.id === m[1]);
       out.push(v
-        ? <button key={k++} type="button" title={v.name} aria-label={'View: ' + v.name} onClick={() => window.dispatchEvent(new CustomEvent('ss-goto-view', { detail: { id: v.id } }))} style={{ display: 'inline', border: 0, background: 'none', padding: '0 1px', margin: 0, font: 'inherit', fontSize: '1em', lineHeight: 'inherit', cursor: 'pointer', verticalAlign: 'baseline' }}>{CAM_ICONS[v.icon] || CAM_ICONS.camera}</button>
+        ? <button key={k++} type="button" title={v.name} aria-label={'View: ' + v.name} onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('ss-goto-view', { detail: { id: v.id } })); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (x) {} }} style={{ display: 'inline', border: 0, background: 'none', padding: 0, margin: 0, font: 'inherit', fontSize: '1em', lineHeight: 'inherit', cursor: 'pointer', verticalAlign: 'baseline' }}><CamIcon n={v.n} /></button>
         : <span key={k++} title="This view was deleted" style={{ opacity: 0.4 }}>{'\u{1F6AB}'}</span>);
       last = m.index + m[0].length;
     }
@@ -202,10 +203,10 @@ export default function IssuePanel({ job, element, onMsg }) {
             <button type="button" disabled={busy} onClick={() => openCam()} style={pill(true)}>Add photos and videos</button>
             {cvs.views.length > 0 && (
               <span style={{ position: 'relative', display: 'inline-block', marginLeft: 6 }}>
-                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => setPickV((o) => !o)} style={pill(true)}>{'\u{1F4F7}'} Attach view</button>
+                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => setPickV((o) => !o)} style={pill(true)}>Attach view</button>
                 {pickV && (
                   <div style={{ position: 'absolute', left: 0, bottom: '110%', minWidth: 190, background: '#fff', border: '1px solid #efece3', borderRadius: 14, boxShadow: '0 6px 24px rgba(0,0,0,.22)', overflow: 'hidden', zIndex: 8 }}>
-                    {cvs.views.map((v) => (<button key={v.id} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => addView(v)} style={{ display: 'block', width: '100%', textAlign: 'left', border: 0, borderBottom: '1px solid #f1ede4', background: '#fff', padding: '10px 14px', font: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{CAM_ICONS[v.icon] || CAM_ICONS.camera} {v.name}</button>))}
+                    {cvs.views.map((v) => (<button key={v.id} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => addView(v)} style={{ display: 'block', width: '100%', textAlign: 'left', border: 0, borderBottom: '1px solid #f1ede4', background: '#fff', padding: '10px 14px', font: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}><CamIcon n={v.n} /> {v.name}</button>))}
                   </div>
                 )}
               </span>

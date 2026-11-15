@@ -8,11 +8,16 @@ const num3 = (a) => Array.isArray(a) && a.length === 3 && a.every((x) => Number.
 // GET ?job=X   everyone with access to the job: the saved views, and whether this person may make them (admin) or attach them to an Issue (editor).
 // POST         admin: { job, name, icon, cam, view }   a new saved view; the name must be unique in the job.
 // DELETE ?job=X&id=Y   admin.
+// every view has a number 1..20 (the smallest free one when it is made), shown on its camera icon; older views without one get theirs here
+const freeN = (list) => { const used = new Set(list.map((v) => v.n).filter(Boolean)); let n = 1; while (used.has(n)) n++; return n; };
 export async function GET(req) {
   const job = new URL(req.url).searchParams.get('job') || '';
   const u = await currentUser();
   if (!u || !canJob(u, job)) return Response.json({ error: 'No access' }, { status: 403 });
-  return Response.json({ views: await getCamViews(await db(), job), admin: isAdmin(u), editor: canEdit(u) });
+  const sql = await db();
+  const list = await getCamViews(sql, job);
+  if (list.some((v) => !v.n)) { for (const v of list) if (!v.n) v.n = freeN(list); await putCamViews(sql, job, list); }
+  return Response.json({ views: list, admin: isAdmin(u), editor: canEdit(u) });
 }
 export async function POST(req) {
   const u = await currentUser();
@@ -27,8 +32,9 @@ export async function POST(req) {
   const sql = await db();
   const list = await getCamViews(sql, job);
   if (list.some((v) => v.name.toLowerCase() === name.toLowerCase())) return Response.json({ error: 'A view with this name already exists.' }, { status: 409 });
+  if (list.length >= 20) return Response.json({ error: 'A job can have up to 20 saved views.' }, { status: 400 });
   const id = Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
-  list.push({ id, name, icon: CAM_ICONS[b.icon] ? b.icon : 'camera', cam, view: String(b.view || ''), by: u.name || 'admin', at: Date.now() });
+  list.push({ id, n: freeN(list), name, icon: CAM_ICONS[b.icon] ? b.icon : 'camera', cam, view: String(b.view || ''), by: u.name || 'admin', at: Date.now() });
   await putCamViews(sql, job, list);
   return Response.json({ ok: true, views: list });
 }
