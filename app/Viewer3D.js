@@ -282,11 +282,11 @@ export default function Viewer3D({ job = '' }) {
   const [draft, setDraft] = useState({});
   const [openSrc, setOpenSrc] = useState(false);
   const [openMe, setOpenMe] = useState(true);
-  const [mode, setMode] = useState(() => { try { return (typeof window !== 'undefined' && sessionStorage.getItem('ss-mode:' + job)) === 'source' ? 'source' : 'user'; } catch (e) { return 'user'; } });
+  const [mode, setMode] = useState(() => { try { return (typeof window !== 'undefined' && localStorage.getItem('ss-mode:' + job)) === 'source' ? 'source' : 'user'; } catch (e) { return 'user'; } });
   const [issueOn, setIssueOn] = useState({});
   const docRef = useRef(null);
-  const [curView, setCurView] = useState(() => { try { return (typeof window !== 'undefined' && sessionStorage.getItem('ss-view:' + job)) || ''; } catch (e) { return ''; } });
-  if (typeof window !== 'undefined' && !window.__ssViewInit) { window.__ssViewInit = job; try { const v = sessionStorage.getItem('ss-view:' + job); if (v && !window.__ssView) window.__ssView = v; } catch (e) {} }
+  const [curView, setCurView] = useState(() => { try { return (typeof window !== 'undefined' && localStorage.getItem('ss-view:' + job)) || ''; } catch (e) { return ''; } });
+  if (typeof window !== 'undefined' && !window.__ssViewInit) { window.__ssViewInit = job; try { const v = localStorage.getItem('ss-view:' + job); if (v && !window.__ssView) window.__ssView = v; } catch (e) {} }
   const [vOpen, setVOpen] = useState(false);
   const [vq, setVq] = useState('');
   const [askClear, setAskClear] = useState('');
@@ -295,7 +295,7 @@ export default function Viewer3D({ job = '' }) {
   layerRef.current = layer;
   const modeRef = useRef(mode);
   modeRef.current = mode;
-  if (typeof window !== 'undefined') { window.__ssMode = mode; try { sessionStorage.setItem('ss-mode:' + job, mode); } catch (e) {} }
+  if (typeof window !== 'undefined') { window.__ssMode = mode; try { localStorage.setItem('ss-mode:' + job, mode); } catch (e) {} }
   const pollT = useRef(null);
   async function loadLayer() {
     try { const r = await fetch('/api/layer?job=' + encodeURIComponent(job), { cache: 'no-store' }); if (r.ok) { const j = await r.json(); setLayer(j); return j; } } catch (e) {}
@@ -362,7 +362,7 @@ export default function Viewer3D({ job = '' }) {
     setVOpen(false); setVq('');
     const vw = viewer.current;
     if (!vw || !vw.model) return;
-    window.__ssView = name; setCurView(name); try { sessionStorage.setItem('ss-view:' + job, name); } catch (e) {}
+    window.__ssView = name; setCurView(name); try { localStorage.setItem('ss-view:' + job, name); } catch (e) {}
     resetLook(vw);
     await applyLook(vw, job, modeRef.current === 'user' ? layerRef.current : null);
   }

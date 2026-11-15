@@ -7,8 +7,8 @@ function initials(n) {
   return (p.length > 1 ? p[0][0] + p[1][0] : (p[0] || '?')[0]).toUpperCase();
 }
 
-// Remembers where the person was while the browser stays open (sessionStorage): the tab of a job, the last job page (for the way back from Admin) and the scroll place of a page.
-const ss = { get(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} } };
+// Remembers where the person was while the browser stays open (localStorage): the tab of a job, the last job page (for the way back from Admin) and the scroll place of a page.
+const ss = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
 
 export default function MobileShell({ name, role, admin }) {
   const [open, setOpen] = useState(false);
@@ -106,6 +106,12 @@ export default function MobileShell({ name, role, admin }) {
       t0 = setInterval(() => { window.scrollTo(0, y); if (Math.abs((window.scrollY || 0) - y) < 4 || ++n > 15) clearInterval(t0); }, 200);
     }
     return () => { window.removeEventListener('scroll', save); clearTimeout(tm); if (t0) clearInterval(t0); };
+  }, []);
+  // a fresh start of the app on the first page: open the last job page again (only once per start, so the Home button still works)
+  useEffect(() => {
+    let started = false; try { started = !!sessionStorage.getItem('ms-started'); sessionStorage.setItem('ms-started', '1'); } catch (e) {}
+    const last = ss.get('ms-last');
+    if (!started && location.pathname === '/' && !location.search && last && /^\/j\//.test(last)) { ss.set('ms-return', last.split('?')[0]); location.replace(last); }
   }, []);
   const back = () => { const last = ss.get('ms-last'); if (/^\/admin/.test(location.pathname) && last) { ss.set('ms-return', last.split('?')[0]); location.href = last; return; } if (history.length > 1) history.back(); else location.href = '/'; };
   return (
