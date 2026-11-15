@@ -18,6 +18,11 @@ export async function GET(req) {
     const look = await lookOf(sql, job);
     if (look && Array.isArray(look.filters) && look.filters.length) { rules = fromLook(look); await putColorRules(sql, job, rules); }
   }
+  // copied from Revit before the add-in sent the conditions: take them as soon as Revit has sent them (rules edited on the website are never replaced)
+  if (rules && rules.from === 'revit' && !rules.filters.some((f) => f.tree && f.tree.items && f.tree.items.length)) {
+    const look = await lookOf(sql, job);
+    if (look && Array.isArray(look.filters) && look.filters.some((f) => f.rules && f.rules.items && f.rules.items.length)) { rules = fromLook(look); await putColorRules(sql, job, rules); }
+  }
   if (!rules) return Response.json({ rules: null, colors: {} });
   if (u.searchParams.get('compute') !== '1') return Response.json({ rules });
   const rows = await sql`select r.element_id, r.vals from rows r join schedules s on s.id = r.schedule_id where s.job = ${job} order by s.name`;
