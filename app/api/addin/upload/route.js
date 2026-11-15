@@ -1,10 +1,12 @@
 import { db, isAddin, deny } from '../../../../lib/db';
 import { bumpRev } from '../../../../lib/rev';
+import { blocked } from '../../../../lib/jobstate';
 // Add-in sends: { id, name, hash, columns:[{name,type:'bool'|'number'|'text',readOnly,unit?}], rows:[{elementId, values:{col:value}}] }
 export async function POST(req) {
   if (!isAddin(req)) return deny();
   const { id, name, hash, columns, rows, job, src } = await req.json();
   const sql = await db();
+  if (await blocked(sql, job)) return Response.json({ changed: false, inactive: true }); // inactive / deleted job: nothing is stored
   const [old] = await sql`select hash from schedules where id=${id}`;
   if (old && old.hash === hash) { if (src) await sql`update schedules set src=${src} where id=${id}`; return Response.json({ changed: false }); }
   await sql`insert into schedules(id,name,columns,hash,updated_at,job,src) values(${id},${name},${JSON.stringify(columns)}::jsonb,${hash},now(),${job || null},${src || null})
