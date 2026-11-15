@@ -33,7 +33,8 @@ export default function JobList({ jobs, admin }) {
       <ul className="list">
         {shown.map((j) => (
           <li key={j.slug}>
-            <a href={'/j/' + encodeURIComponent(j.slug)}>{j.label}</a>
+            <a href={'/j/' + encodeURIComponent(j.slug)} style={j.state ? { opacity: 0.6 } : undefined}>{j.label}</a>
+            {j.state && <b style={{ fontSize: 11, color: '#b00020', border: '1px solid #e3b4b9', borderRadius: 999, padding: '1px 8px' }}>{j.state === 'deleted' ? 'Project deleted in Revit' : 'Inactive'}</b>}
             <span className="muted">{j.n} schedule{j.n === 1 ? '' : 's'}{j.model ? ' · 3D model' : ''}</span>
             {admin && j.slug !== '_none' && (
               <button type="button" onClick={() => del(j)} disabled={busy === j.slug}
