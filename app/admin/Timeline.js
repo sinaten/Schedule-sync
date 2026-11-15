@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Viewer3D from '../Viewer3D';
 import { computeColors } from '../../lib/colorrules';
-import { hatchColor } from '../../lib/hatch';
+const GREY = '9a9a9a'; // parts that match no colour filter
 
 const inp = { padding: '6px 8px', fontSize: 14, border: '1px solid #cfd8dc', borderRadius: 6, background: '#fff' };
 const btn = { padding: '7px 14px', fontSize: 14, fontWeight: 600, border: '1px solid #cfd8dc', borderRadius: 18, background: '#fff', cursor: 'pointer' };
@@ -18,7 +18,6 @@ export default function Timeline() {
   const [job, setJob] = useState('');
   const [data, setData] = useState(null);
   const [look, setLook] = useState(null);
-  const [hatch, setHatch] = useState(null);
   const [msg, setMsg] = useState('');
   const [mode, setMode] = useState('all');
   const [user, setUser] = useState('');
@@ -35,7 +34,6 @@ export default function Timeline() {
     setData(null); setLook(null); setMsg('Loading…'); setStep(0); setPlaying(false); setUser(''); setFrom(''); setTo('');
     fetch('/api/admin/timeline?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j.events) { setData(j); setMsg(j.events.length ? '' : 'No saved changes for this project yet.'); } else setMsg(j.error || 'Could not load.'); }).catch(() => setMsg('Could not load.'));
     fetch('/api/aps?look=1&job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then(setLook).catch(() => {});
-    fetch('/api/hatch', { cache: 'no-store' }).then((r) => r.json()).then((j) => setHatch(j.settings)).catch(() => {});
   }, [open, job]);
 
   const list = useMemo(() => {
@@ -63,15 +61,13 @@ export default function Timeline() {
     for (let i = 0; i < step && i < list.length; i++) { const e = list[i]; const r = m.get(e.element) || {}; r[e.param] = e.to; m.set(e.element, r); }
     const cols = computeColors(data.rules, [...m].map(([element_id, vals]) => ({ element_id, vals })));
     const fin = {};
-    const mat = {};
-    for (const hx in look.matColors || {}) look.matColors[hx].forEach((i) => { mat[i] = hx; });
-    look.visible.forEach((i) => { fin[i] = hatchColor(mat[i] || null, hatch); });
+    look.visible.forEach((i) => { fin[i] = GREY; });
     for (const hx in cols) cols[hx].forEach((i) => { fin[i] = hx; });
     const id = ++paint.current;
     const go = () => { if (id === paint.current) window.dispatchEvent(new CustomEvent('ss-paint', { detail: { fin } })); };
     go(); const t1 = setTimeout(go, 600); const t2 = setTimeout(go, 2000); // the model may still be loading
     return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [base, step, list, data, look, hatch]);
+  }, [base, step, list, data, look]);
 
   // play: next change after a pause that follows the real gap, but never longer than "gap" seconds
   useEffect(() => {

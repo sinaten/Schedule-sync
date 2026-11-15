@@ -1,11 +1,11 @@
 'use client';
 import IssuePanel from './IssuePanel';
 import Snapshots from './Snapshots';
-import { hatchColor, stripeLine, cleanHatch } from '../lib/hatch';
 import { useEffect, useRef, useState } from 'react';
 
 const VIEWER = 'https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/';
 const CHUNK = 20 * 1024 * 1024;
+const GREY = '9a9a9a'; // parts that match no colour filter
 
 function loadAssets() {
   if (window.__apsAssets) return window.__apsAssets;
@@ -59,84 +59,9 @@ function setAlpha(vw, ids, a) {
   } catch (e) {}
 }
 
-// Real hatch for parts that match no colour filter: the part itself is themed plain grey (always works), and its own surface is
-// drawn once more in a separate overlay layer that shows only the lines, in the part's own Revit colour.
-// Autodesk's viewer cannot show Revit fill patterns, and it bundles parts together for speed (so a part's material cannot be swapped);
-// the overlay copies each part's geometry instead, so the lines stick to the part and turn with the model. If it fails, parts just stay grey.
-const HATCH_SCENE = 'ss-hatch';
-const STRIPE_VS = 'varying vec3 vW;\nvoid main() {\n  vec4 w = modelMatrix * vec4(position, 1.0);\n  vW = w.xyz;\n  gl_Position = projectionMatrix * viewMatrix * w;\n}\n';
-const STRIPE_FS = [
-  'uniform vec3 uLine;', 'uniform float uSpacing;', 'uniform float uFrac;', 'uniform vec3 uDir;',
-  'varying vec3 vW;',
-  'void main() {',
-  '  float t = dot(vW, uDir) / uSpacing;',
-  '  float aa = 0.0;',
-  '#if (__VERSION__ >= 300) || defined(GL_OES_standard_derivatives)',
-  '  aa = fwidth(t);',
-  '  if (aa > 0.35) discard;', // too far away: lines would flicker, show plain grey
-  '#endif',
-  '  if (fract(t) > uFrac + aa) discard;',
-  '  gl_FragColor = vec4(uLine, 1.0);',
-  '}',
-].join('\n');
-
-function clearStripes(vw) {
-  try {
-    if (!window.__ssHatchOn) return;
-    window.__ssHatchOn = false;
-    vw.impl.removeOverlayScene(HATCH_SCENE);
-    vw.impl.invalidate(true, true, true);
-  } catch (e) {}
-}
-
-// groups = { lineHex: [dbId, ...] }
-function applyStripes(vw, groups, hatch) {
-  try {
-    const T = window.THREE;
-    const c = cleanHatch(hatch);
-    const m = vw.model;
-    const tree = m.getInstanceTree();
-    const inch = 0.0254 / ((m.getUnitScale && m.getUnitScale()) || 0.3048); // model units per inch
-    const a = (c.stripe.angle * Math.PI) / 180;
-    const dir = new T.Vector3(Math.cos(a), Math.sin(a), 0.7).normalize();
-    clearStripes(vw);
-    vw.impl.createOverlayScene(HATCH_SCENE);
-    window.__ssHatchOn = true;
-    for (const line in groups) {
-      const n = parseInt(line, 16);
-      const mat = new T.ShaderMaterial({
-        uniforms: {
-          uLine: { type: 'v3', value: new T.Vector3(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255) },
-          uSpacing: { type: 'f', value: c.stripe.spacing * inch },
-          uFrac: { type: 'f', value: c.stripe.width / 100 },
-          uDir: { type: 'v3', value: dir },
-        },
-        vertexShader: STRIPE_VS,
-        fragmentShader: STRIPE_FS,
-        side: T.DoubleSide,
-        depthWrite: false,
-        polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4, // drawn just in front of the part's own surface
-      });
-      mat.derivatives = true; // three r71 name
-      mat.extensions = { derivatives: true }; // newer name
-      groups[line].forEach((d) => tree.enumNodeFragments(d, (f) => {
-        const p = vw.impl.getRenderProxy(m, f);
-        if (!p || !p.geometry) return;
-        const mesh = new T.Mesh(p.geometry, mat);
-        mesh.matrix.copy(p.matrixWorld);
-        mesh.matrixAutoUpdate = false;
-        mesh.frustumCulled = false;
-        vw.impl.addOverlay(HATCH_SCENE, mesh);
-      }, true));
-    }
-    vw.impl.invalidate(true, true, true);
-  } catch (e) { clearStripes(vw); }
-}
-
 // Undo the colours and see-through parts, so the look can be applied again without reloading the model.
 function resetLook(vw) {
   try {
-    clearStripes(vw);
     vw.clearThemingColors(vw.model);
     const fl = vw.model.getFragmentList();
     if (window.__ssOrig) {
@@ -237,8 +162,6 @@ async function applyLook(vw, job, layer, keepView) {
     }
     let site = null;
     try { const rc = await fetch('/api/colorrules?job=' + encodeURIComponent(job) + '&compute=1' + (layer ? '&layer=1' : ''), { cache: 'no-store' }); if (rc.ok) site = await rc.json(); } catch (e) { /* no site colours: Revit's own colours stay */ }
-    let hatch = null;
-    try { const rh = await fetch('/api/hatch', { cache: 'no-store' }); if (rh.ok) hatch = (await rh.json()).settings; } catch (e) { /* defaults */ }
     const A = window.Autodesk.Viewing;
     await new Promise((res) => {
       if (vw.model && vw.model.getInstanceTree && vw.model.getInstanceTree()) res();
@@ -261,17 +184,11 @@ async function applyLook(vw, job, layer, keepView) {
         (layer.edits || []).forEach((e) => { delete fin[parseInt(e.elementId, 10)]; });
         for (const hex in layer.look.colors) layer.look.colors[hex].forEach((i) => { fin[i] = hex; });
       }
-      clearStripes(vw); // parts may have a filter colour now
-      const stripes = {};
       // the website works the colours out itself from the colour rules: a part with a filter gets that colour, every other part is grey
       if (site && site.has) {
         for (const k in fin) delete fin[k];
         for (const hex in site.colors) site.colors[hex].forEach((i) => { fin[i] = hex; });
-        const mat = {};
-        for (const hex in look.matColors || {}) look.matColors[hex].forEach((i) => { mat[i] = hex; });
-        if (cleanHatch(hatch).mode === 'stripe') {
-          look.visible.forEach((i) => { if (!fin[i]) { fin[i] = cleanHatch(hatch).grey; const l = stripeLine(mat[i] || null, hatch); (stripes[l] = stripes[l] || []).push(i); } });
-        } else look.visible.forEach((i) => { if (!fin[i]) fin[i] = hatchColor(mat[i] || null, hatch); });
+        look.visible.forEach((i) => { if (!fin[i]) fin[i] = GREY; });
       }
       const byHex = {};
       for (const i in fin) (byHex[fin[i]] = byHex[fin[i]] || []).push(parseInt(i, 10));
@@ -281,9 +198,6 @@ async function applyLook(vw, job, layer, keepView) {
         const col = new T.Vector4(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1);
         dbIds(byHex[hex]).forEach((d) => vw.setThemingColor(d, col, vw.model, true));
       }
-      const sg = {};
-      for (const l in stripes) { const d = dbIds(stripes[l]); if (d.length) sg[l] = d; }
-      if (Object.keys(sg).length) applyStripes(vw, sg, hatch);
     }, () => {});
   } catch (e) {}
 }
@@ -399,7 +313,6 @@ export default function Viewer3D({ job = '' }) {
       const vw = viewer.current; const fin = ev.detail && ev.detail.fin; const byId = window.__ssById;
       if (!vw || !vw.model || !fin || !byId) return;
       try {
-        clearStripes(vw); // the Timeline uses plain colours
         vw.clearThemingColors(vw.model);
         const T = window.THREE; const byHex = {};
         for (const i in fin) (byHex[fin[i]] = byHex[fin[i]] || []).push(byId[i]);
