@@ -1,4 +1,5 @@
 import { db, isAddin, deny } from '../../../../lib/db';
+import { bumpRev } from '../../../../lib/rev';
 // Add-in sends: { id, name, hash, columns:[{name,type:'bool'|'number'|'text',readOnly,unit?}], rows:[{elementId, values:{col:value}}] }
 export async function POST(req) {
   if (!isAddin(req)) return deny();
@@ -10,5 +11,6 @@ export async function POST(req) {
             on conflict(id) do update set name=excluded.name, columns=excluded.columns, hash=excluded.hash, job=excluded.job, src=excluded.src, updated_at=now()`;
   await sql`delete from rows where schedule_id=${id}`;
   await sql`insert into rows(schedule_id,element_id,vals) select ${id}, r->>'elementId', r->'values' from jsonb_array_elements(${JSON.stringify(rows)}::jsonb) r`;
+  await bumpRev(sql, job, false); // other people on this job bring their page up to date
   return Response.json({ changed: true, rows: rows.length });
 }
