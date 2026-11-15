@@ -182,8 +182,11 @@ async function applyLook(vw, job, layer, keepView) {
       }
       const byHex = {};
       for (const i in fin) (byHex[fin[i]] = byHex[fin[i]] || []).push(parseInt(i, 10));
-      // the model's own colours are switched off: everything is light grey first, so only the status colours below show
-      try { const root = vw.model.getInstanceTree().getRootId(); vw.setThemingColor(root, new T.Vector4(0.78, 0.8, 0.82, 1), vw.model, true); } catch (e) { /* keep the model's own colours */ }
+      // glass: the model keeps its own colours but everything is see-through; only the parts with a status colour are solid
+      try {
+        const solid = new Set(Object.keys(fin).map((i) => byId[parseInt(i, 10)]).filter(Boolean));
+        setAlpha(vw, shown.filter((d) => !solid.has(d)), 0.3);
+      } catch (e) { /* keep the model as it is */ }
       for (const hex in byHex) {
         const [h] = hex.split('_');
         const n = parseInt(h, 16);
