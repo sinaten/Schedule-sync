@@ -29,33 +29,34 @@ async function post(body) {
   return j;
 }
 
-// Glass look: a colour key like "ff0000_70" means 70 % transparent in Revit. The viewer's theming colour cannot be see-through, so the material of those parts is cloned with an opacity.
-function setAlpha(vw, ids, a) {
-  try {
-    const fl = vw.model.getFragmentList();
-    const tree = vw.model.getInstanceTree();
-    const mm = vw.impl.matman();
-    const cache = {};
-    ids.forEach((d) => tree.enumNodeFragments(d, (f) => {
+// Glass: the parts keep their own colours from the model, but their material is cloned see-through (opacity a).
+// Done in small chunks so the page stays responsive; a newer look cancels the older one (token).
+async function setGlass(vw, ids, a, token) {
+  const fl = vw.model.getFragmentList();
+  const tree = vw.model.getInstanceTree();
+  const mm = vw.impl.matman();
+  const cache = {};
+  window.__ssOrig = window.__ssOrig || new Map();
+  for (let i = 0; i < ids.length; i += 1500) {
+    if (window.__ssTok !== token) return false;
+    ids.slice(i, i + 1500).forEach((d) => tree.enumNodeFragments(d, (f) => {
       const base = fl.getMaterial(f);
       if (!base) return;
-      window.__ssOrig = window.__ssOrig || new Map();
       if (!window.__ssOrig.has(f)) window.__ssOrig.set(f, base);
       const key = 'ss-' + base.uuid + '-' + a;
       let m = cache[key];
       if (!m) {
         m = base.clone();
-        m.transparent = true;
-        m.opacity = a;
-        m.depthWrite = false;
-        m.needsUpdate = true;
+        m.transparent = true; m.opacity = a; m.depthWrite = false; m.needsUpdate = true;
         try { mm.addMaterial(key, m, true); } catch (e) {}
         cache[key] = m;
       }
       fl.setMaterial(f, m);
     }, true));
-    vw.impl.invalidate(true, true, true);
-  } catch (e) {}
+    await new Promise((r) => requestAnimationFrame(() => r()));
+  }
+  vw.impl.invalidate(true, true, true);
+  return true;
 }
 
 // Undo the colours and see-through parts, so the look can be applied again without reloading the model.
@@ -182,22 +183,25 @@ async function applyLook(vw, job, layer, keepView) {
       }
       const byHex = {};
       for (const i in fin) (byHex[fin[i]] = byHex[fin[i]] || []).push(parseInt(i, 10));
-      // desktop: the model keeps its own colours as glass, only status colours are solid.
-      // phone: glass on ~39,000 parts is too heavy for the browser (page freezes), so everything is light grey instead.
-      const phone = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-      if (phone) {
-        try { const root = vw.model.getInstanceTree().getRootId(); vw.setThemingColor(root, new T.Vector4(0.78, 0.8, 0.82, 1), vw.model, true); } catch (e) { /* keep the model's own colours */ }
-      } else {
-        try {
-          const solid = new Set(Object.keys(fin).map((i) => byId[parseInt(i, 10)]).filter(Boolean));
-          setAlpha(vw, shown.filter((d) => !solid.has(d)), 0.3);
-        } catch (e) { /* keep the model as it is */ }
-      }
+      // 1) parts with a filter colour: solid, in the filter's colour
       for (const hex in byHex) {
         const [h] = hex.split('_');
         const n = parseInt(h, 16);
         const col = new T.Vector4(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1);
         dbIds(byHex[hex]).forEach((d) => vw.setThemingColor(d, col, vw.model, true));
+      }
+      // 2) every other part: its own colour from the model, as glass.
+      // If glass ever froze this browser (flag left on "busy"), it is skipped here and the parts stay normal. ?glass=1 switches it on again.
+      const token = (window.__ssTok = (window.__ssTok || 0) + 1);
+      let flag = '';
+      try { flag = localStorage.getItem('ssGlass') || ''; if (/[?&]glass=1/.test(location.search)) flag = ''; } catch (e) {}
+      if (flag === 'busy') { try { localStorage.setItem('ssGlass', 'crashed'); } catch (e) {} } // the last run never finished: do not try again
+      if (flag !== 'busy' && flag !== 'crashed') {
+        try { localStorage.setItem('ssGlass', 'busy'); } catch (e) {}
+        const solid = new Set(Object.keys(fin).map((i) => byId[parseInt(i, 10)]).filter(Boolean));
+        setGlass(vw, shown.filter((d) => !solid.has(d)), 0.3, token)
+          .then((ok) => { if (ok) { try { localStorage.setItem('ssGlass', 'ok'); } catch (e) {} } })
+          .catch(() => { try { localStorage.setItem('ssGlass', 'crashed'); } catch (e) {} });
       }
     }, () => {});
   } catch (e) {}
