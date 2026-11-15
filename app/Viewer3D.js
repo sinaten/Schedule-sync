@@ -182,11 +182,17 @@ async function applyLook(vw, job, layer, keepView) {
       }
       const byHex = {};
       for (const i in fin) (byHex[fin[i]] = byHex[fin[i]] || []).push(parseInt(i, 10));
-      // glass: the model keeps its own colours but everything is see-through; only the parts with a status colour are solid
-      try {
-        const solid = new Set(Object.keys(fin).map((i) => byId[parseInt(i, 10)]).filter(Boolean));
-        setAlpha(vw, shown.filter((d) => !solid.has(d)), 0.3);
-      } catch (e) { /* keep the model as it is */ }
+      // desktop: the model keeps its own colours as glass, only status colours are solid.
+      // phone: glass on ~39,000 parts is too heavy for the browser (page freezes), so everything is light grey instead.
+      const phone = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+      if (phone) {
+        try { const root = vw.model.getInstanceTree().getRootId(); vw.setThemingColor(root, new T.Vector4(0.78, 0.8, 0.82, 1), vw.model, true); } catch (e) { /* keep the model's own colours */ }
+      } else {
+        try {
+          const solid = new Set(Object.keys(fin).map((i) => byId[parseInt(i, 10)]).filter(Boolean));
+          setAlpha(vw, shown.filter((d) => !solid.has(d)), 0.3);
+        } catch (e) { /* keep the model as it is */ }
+      }
       for (const hex in byHex) {
         const [h] = hex.split('_');
         const n = parseInt(h, 16);
