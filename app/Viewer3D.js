@@ -1,6 +1,7 @@
 'use client';
 import IssuePanel from './IssuePanel';
 import Snapshots from './Snapshots';
+import { hatchColor } from '../lib/hatch';
 import { useEffect, useRef, useState } from 'react';
 
 const VIEWER = 'https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/';
@@ -161,6 +162,8 @@ async function applyLook(vw, job, layer, keepView) {
     }
     let site = null;
     try { const rc = await fetch('/api/colorrules?job=' + encodeURIComponent(job) + '&compute=1' + (layer ? '&layer=1' : ''), { cache: 'no-store' }); if (rc.ok) site = await rc.json(); } catch (e) { /* no site colours: Revit's own colours stay */ }
+    let hatch = null;
+    try { const rh = await fetch('/api/hatch', { cache: 'no-store' }); if (rh.ok) hatch = (await rh.json()).settings; } catch (e) { /* defaults */ }
     const A = window.Autodesk.Viewing;
     await new Promise((res) => {
       if (vw.model && vw.model.getInstanceTree && vw.model.getInstanceTree()) res();
@@ -186,7 +189,9 @@ async function applyLook(vw, job, layer, keepView) {
       if (site && site.has) {
         for (const k in fin) delete fin[k];
         for (const hex in site.colors) site.colors[hex].forEach((i) => { fin[i] = hex; });
-        look.visible.forEach((i) => { if (!fin[i]) fin[i] = '9a9a9a'; });
+        const mat = {};
+        for (const hex in look.matColors || {}) look.matColors[hex].forEach((i) => { mat[i] = hex; });
+        look.visible.forEach((i) => { if (!fin[i]) fin[i] = hatchColor(mat[i] || null, hatch); });
       }
       const byHex = {};
       for (const i in fin) (byHex[fin[i]] = byHex[fin[i]] || []).push(parseInt(i, 10));
