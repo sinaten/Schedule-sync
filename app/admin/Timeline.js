@@ -65,10 +65,10 @@ export default function Timeline() {
     const fin = {};
     const mat = {};
     for (const hx in look.matColors || {}) look.matColors[hx].forEach((i) => { mat[i] = hx; });
-    look.visible.forEach((i) => { fin[i] = fadeColor(mat[i] || null, fade); });
+    look.visible.forEach((i) => { fin[i] = mat[i] ? fadeColor(mat[i], fade) : 'm'; }); // 'm': the 3D view takes the model's own colour
     for (const hx in cols) cols[hx].forEach((i) => { fin[i] = hx; });
     const id = ++paint.current;
-    const go = () => { if (id === paint.current) window.dispatchEvent(new CustomEvent('ss-paint', { detail: { fin } })); };
+    const go = () => { if (id === paint.current) window.dispatchEvent(new CustomEvent('ss-paint', { detail: { fin, fade } })); };
     go(); const t1 = setTimeout(go, 600); const t2 = setTimeout(go, 2000); // the model may still be loading
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [base, step, list, data, look, fade]);

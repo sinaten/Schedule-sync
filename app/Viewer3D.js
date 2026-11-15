@@ -59,6 +59,28 @@ function setAlpha(vw, ids, a) {
   } catch (e) {}
 }
 
+// The part's colour as the 3D model itself has it (from Revit's export). Used when the add-in sends no material colour for a part:
+// ducts, pipes, cable trays… get their colour from their System Type in Revit, which the add-in does not read, but the model has it.
+// Of the part's pieces, the most colourful one wins (plain greys are the default/edge pieces). Remembered per model.
+function modelColor(vw, dbId) {
+  try {
+    const m = vw.model;
+    if (!m.__ssCol) m.__ssCol = new Map();
+    if (m.__ssCol.has(dbId)) return m.__ssCol.get(dbId);
+    const fl = m.getFragmentList(), tree = m.getInstanceTree();
+    let best = null, bestSat = -1;
+    tree.enumNodeFragments(dbId, (f) => {
+      const mt = (window.__ssOrig && window.__ssOrig.get(f)) || fl.getMaterial(f);
+      if (!mt || !mt.color) return;
+      const c = mt.color, mx = Math.max(c.r, c.g, c.b), mn = Math.min(c.r, c.g, c.b);
+      const sat = mx - mn;
+      if (sat > bestSat) { bestSat = sat; best = mt.color.getHexString(); }
+    }, true);
+    m.__ssCol.set(dbId, best);
+    return best;
+  } catch (e) { return null; }
+}
+
 // Undo the colours and see-through parts, so the look can be applied again without reloading the model.
 function resetLook(vw) {
   try {
@@ -192,7 +214,7 @@ async function applyLook(vw, job, layer, keepView) {
         for (const hex in site.colors) site.colors[hex].forEach((i) => { fin[i] = hex; });
         const mat = {};
         for (const hex in look.matColors || {}) look.matColors[hex].forEach((i) => { mat[i] = hex; });
-        look.visible.forEach((i) => { if (!fin[i]) fin[i] = fadeColor(mat[i] || null, fade); }); // no filter: own Revit colour, faded toward white
+        look.visible.forEach((i) => { if (!fin[i]) fin[i] = fadeColor(mat[i] || (byId[i] ? modelColor(vw, byId[i]) : null), fade); }); // no filter: own Revit colour (or the model's own), faded toward white
       }
       const byHex = {};
       for (const i in fin) (byHex[fin[i]] = byHex[fin[i]] || []).push(parseInt(i, 10));
@@ -319,7 +341,7 @@ export default function Viewer3D({ job = '' }) {
       try {
         vw.clearThemingColors(vw.model);
         const T = window.THREE; const byHex = {};
-        for (const i in fin) (byHex[fin[i]] = byHex[fin[i]] || []).push(byId[i]);
+        for (const i in fin) { const hx = fin[i] === 'm' ? fadeColor(byId[i] ? modelColor(vw, byId[i]) : null, ev.detail.fade) : fin[i]; (byHex[hx] = byHex[hx] || []).push(byId[i]); } // 'm' = no Revit colour: take the model's own, faded
         for (const hex in byHex) { const n = parseInt(hex, 16); const col = new T.Vector4(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1); byHex[hex].filter(Boolean).forEach((d) => vw.setThemingColor(d, col, vw.model, true)); }
         vw.impl.invalidate(true, true, true);
       } catch (e) {}
