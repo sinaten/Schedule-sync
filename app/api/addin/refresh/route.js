@@ -20,6 +20,6 @@ export async function POST(req) {
   const [old] = await sql`select value from settings where key = ${'refresh:' + job}`;
   await put(sql, 'refresh:' + job, { mode: (old && old.value && old.value.mode) || 'full', state: String(state || ''), msg: String(msg || ''), pct: Number.isFinite(Number(pct)) && Number(pct) >= 0 ? Number(pct) : null, at: Date.now() });
   // the publish finished: everybody on this job gets the new change
-  if (String(state) === 'done') await bumpRev(sql, job, ((old && old.value && old.value.mode) || 'full') === 'full');
+  if (String(state) === 'done') await bumpRev(sql, job, ((old && old.value && old.value.mode) || 'full') === 'full', (old && old.value && old.value.by) || 'Revit');
   return Response.json({ ok: true });
 }
