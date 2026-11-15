@@ -23,6 +23,10 @@ function Bars({ items, h = 110 }) {
   );
 }
 function Usage({ u }) {
+  const [who, setWho] = useState(null);
+  const [log, setLog] = useState(null);
+  const open = (w) => { if (who === w) { setWho(null); return; } setWho(w); setLog(null); fetch('/api/admin/analysis?log=' + encodeURIComponent(w), { cache: 'no-store' }).then((r) => r.json()).then((j) => setLog(j.log || [])).catch(() => setLog([])); };
+  const kindName = { change: 'change', model: 'model (tokens)', view: 'view' };
   const th = { textAlign: 'left', padding: '8px 10px', fontSize: 12, fontWeight: 600, color: '#6b7b83', borderBottom: '1px solid #e1e5e8', whiteSpace: 'nowrap' };
   const td = { padding: '10px', fontSize: 14, borderBottom: '1px solid #eef1f3' };
   const today = new Date();
@@ -46,7 +50,7 @@ function Usage({ u }) {
       <div style={{ overflowX: 'auto', marginTop: 20 }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 560 }}>
           <thead>
-            <tr><th style={th}>User</th><th style={th}>Notes</th><th style={th}>Changes</th><th style={th}>Models</th><th style={th}>Active hours</th><th style={th}>Last activity</th></tr>
+            <tr><th style={th}>User</th><th style={th}>Notes</th><th style={th}>Changes</th><th style={th}>Models</th><th style={th}>Active hours</th><th style={th}>Last activity</th><th style={th}>History</th></tr>
           </thead>
           <tbody>
             {u.people.map((p) => (
@@ -57,12 +61,35 @@ function Usage({ u }) {
                 <td style={{ ...td, color: p.models ? RED : undefined, fontWeight: p.models ? 600 : 400 }}>{p.models}</td>
                 <td style={td}>{p.hours}</td>
                 <td style={{ ...td, color: '#45565e' }}>{ago(p.last)}</td>
+                <td style={td}><button type="button" onClick={() => open(p.username)} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid #cfd6da', background: who === p.username ? '#e6eef3' : '#fff', cursor: 'pointer' }}>{who === p.username ? 'Hide' : 'History'}</button></td>
               </tr>
             ))}
-            {!u.people.length && <tr><td style={td} colSpan={6}><span className="muted">No activity yet.</span></td></tr>}
+            {!u.people.length && <tr><td style={td} colSpan={7}><span className="muted">No activity yet.</span></td></tr>}
           </tbody>
         </table>
       </div>
+      <div style={{ marginTop: 10 }}>
+        <button type="button" onClick={() => open('*')} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid #cfd6da', background: who === '*' ? '#e6eef3' : '#fff', cursor: 'pointer' }}>{who === '*' ? 'Hide full history' : 'Full history (everyone)'}</button>
+      </div>
+      {who && (
+        <div style={{ marginTop: 10, border: '1px solid #e1e5e8', borderRadius: 8, maxHeight: 360, overflow: 'auto' }}>
+          <div style={{ padding: '8px 10px', fontSize: 12, fontWeight: 600, color: '#6b7b83', borderBottom: '1px solid #e1e5e8' }}>History &middot; {who === '*' ? 'everyone' : who} &middot; Columbus time</div>
+          {!log ? <p className="muted" style={{ padding: 10, fontSize: 13, margin: 0 }}>Loading…</p> : !log.length ? <p className="muted" style={{ padding: 10, fontSize: 13, margin: 0 }}>Nothing recorded yet.</p> : (
+            <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+              <tbody>
+                {log.map((r) => (
+                  <tr key={r.id}>
+                    <td style={{ ...td, fontSize: 13, whiteSpace: 'nowrap' }}>{r.t}</td>
+                    <td style={{ ...td, fontSize: 13, fontWeight: 600 }}>{r.who || '\u2014'}</td>
+                    <td style={{ ...td, fontSize: 13, color: '#45565e' }}>{r.job || '\u2014'}</td>
+                    <td style={{ ...td, fontSize: 13, color: r.kind === 'model' ? RED : BLUE, fontWeight: 600 }}>{kindName[r.kind] || r.kind}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
     </div>
   );
 }
