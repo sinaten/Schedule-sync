@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Timeline from './Timeline';
 
 // Admin only: one row per person. Photos & videos = how many were taken near the QR location (green), a bit away (orange) or far (red).
 const GREEN = '#2e9d57', ORANGE = '#f08c1a', RED = '#d93025';
@@ -155,6 +156,7 @@ export default function Analysis() {
           </tbody>
         </table>
       </div>
+      <Timeline />
       {d.usage && <Usage u={d.usage} />}
     </div>
   );

@@ -172,6 +172,7 @@ async function applyLook(vw, job, layer, keepView) {
     vw.model.getExternalIdMapping((map) => {
       const byId = {};
       for (const k in map) byId[parseInt(k.slice(-8), 16)] = map[k];
+      window.__ssById = byId;
       const dbIds = (ids) => ids.map((i) => byId[i]).filter(Boolean);
       const shown = dbIds(look.visible);
       applyCut(vw, look.box);
@@ -308,6 +309,23 @@ export default function Viewer3D({ job = '' }) {
     const f = () => saveRef.current && saveRef.current();
     window.addEventListener('ss-save', f);
     return () => window.removeEventListener('ss-save', f);
+  }, []);
+
+  // The Timeline (Admin > Analysis) paints the model itself: detail.fin = { partId: 'rrggbb' }
+  useEffect(() => {
+    const f = (ev) => {
+      const vw = viewer.current; const fin = ev.detail && ev.detail.fin; const byId = window.__ssById;
+      if (!vw || !vw.model || !fin || !byId) return;
+      try {
+        vw.clearThemingColors(vw.model);
+        const T = window.THREE; const byHex = {};
+        for (const i in fin) (byHex[fin[i]] = byHex[fin[i]] || []).push(byId[i]);
+        for (const hex in byHex) { const n = parseInt(hex, 16); const col = new T.Vector4(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1); byHex[hex].filter(Boolean).forEach((d) => vw.setThemingColor(d, col, vw.model, true)); }
+        vw.impl.invalidate(true, true, true);
+      } catch (e) {}
+    };
+    window.addEventListener('ss-paint', f);
+    return () => window.removeEventListener('ss-paint', f);
   }, []);
 
   useEffect(() => {
