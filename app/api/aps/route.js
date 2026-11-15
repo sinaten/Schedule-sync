@@ -1,5 +1,6 @@
 import { db, isAddin, deny } from '../../../lib/db';
 import { currentUser, canJob } from '../../../lib/user';
+import { bumpRev } from '../../../lib/rev';
 export const dynamic = 'force-dynamic';
 
 // 3D model support through Autodesk Platform Services (APS).
@@ -141,6 +142,7 @@ export async function POST(req) {
       const lsql = await settings();
       const lv = JSON.stringify(body.look || null);
       await lsql`insert into settings(key, value) values(${'look:' + String(body.job || '')}, ${lv}::jsonb) on conflict (key) do update set value = excluded.value`;
+      await bumpRev(lsql, String(body.job || ''), false); // colours changed: other pages bring themselves up to date
       if (body.looks && typeof body.looks === 'object') {
         const lk = JSON.stringify(body.looks);
         await lsql`insert into settings(key, value) values(${'looks:' + String(body.job || '')}, ${lk}::jsonb) on conflict (key) do update set value = excluded.value`;
@@ -193,6 +195,7 @@ export async function POST(req) {
       const prev = ex && ex.value && ex.value.urn ? { urn: ex.value.urn, name: ex.value.name, view: ex.value.view || '', views: ex.value.views || [] } : null;
       const value = JSON.stringify({ prev, urn, name: body.name || 'Model', uploadedAt: new Date().toISOString(), view: String(body.view || ''), views: Array.isArray(body.views) ? body.views.map(String) : [] });
       await sql`insert into settings(key, value) values(${body.job ? 'model:' + body.job : 'model'}, ${value}::jsonb) on conflict (key) do update set value = excluded.value`;
+      await bumpRev(sql, String(body.job || ''), true); // a new 3D model: other pages reload when it is ready
       return Response.json({ ok: true });
     }
 
