@@ -1,7 +1,7 @@
 'use client';
 import IssuePanel from './IssuePanel';
 import Snapshots from './Snapshots';
-import { hatchColor } from '../lib/hatch';
+import { hatchColor, stripeLine, cleanHatch } from '../lib/hatch';
 import { useEffect, useRef, useState } from 'react';
 
 const VIEWER = 'https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/';
@@ -59,9 +59,79 @@ function setAlpha(vw, ids, a) {
   } catch (e) {}
 }
 
+// Real hatch for parts that match no colour filter: grey with diagonal lines in the part's own colour.
+// Autodesk's viewer cannot show Revit fill patterns, so the lines are drawn here with a small shader.
+// The lines are in screen pixels (like Revit drafting patterns), so they keep the same size at any zoom. Light comes from the camera so the parts still look 3D.
+const STRIPE_VS = 'varying vec3 vView;\nvoid main() {\n  vec4 mv = modelViewMatrix * vec4(position, 1.0);\n  vView = mv.xyz;\n  gl_Position = projectionMatrix * mv;\n}\n';
+const STRIPE_FS = [
+  'uniform vec3 uBase;', 'uniform vec3 uLine;', 'uniform float uSpacing;', 'uniform float uWidth;', 'uniform vec2 uNorm;', 'uniform float uPx;',
+  'varying vec3 vView;',
+  'void main() {',
+  '  float shade = 1.0;',
+  '#if defined(GL_OES_standard_derivatives) || (__VERSION__ >= 300)',
+  '  vec3 n = normalize(cross(dFdx(vView), dFdy(vView)));',
+  '  shade = 0.6 + 0.4 * abs(n.z);',
+  '#endif',
+  '  float d = mod(dot(gl_FragCoord.xy / uPx, uNorm), uSpacing);',
+  '  vec3 c = d < uWidth ? uLine : uBase;',
+  '  gl_FragColor = vec4(c * shade, 1.0);',
+  '}',
+].join('\n');
+
+function clearStripes(vw) {
+  try {
+    if (!window.__ssStripe || !window.__ssStripe.size) return;
+    const fl = vw.model.getFragmentList();
+    window.__ssStripe.forEach((m, f) => { try { fl.setMaterial(f, m); } catch (e) {} });
+    window.__ssStripe.clear();
+    vw.impl.invalidate(true, true, true);
+  } catch (e) {}
+}
+
+// groups = { lineHex: [dbId, ...] }
+function applyStripes(vw, groups, hatch) {
+  try {
+    const T = window.THREE;
+    const c = cleanHatch(hatch);
+    const fl = vw.model.getFragmentList();
+    const tree = vw.model.getInstanceTree();
+    const mm = vw.impl.matman();
+    try { if (vw.model.unconsolidate) vw.model.unconsolidate(); } catch (e) { /* the custom material needs the parts drawn one by one */ }
+    let px = window.devicePixelRatio || 1;
+    try { const r = vw.impl.glrenderer(); if (r && r.getPixelRatio) px = r.getPixelRatio() || px; } catch (e) {}
+    const a = (c.stripe.angle * Math.PI) / 180;
+    const col = (h) => { const n = parseInt(h, 16); return new T.Vector3(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255); };
+    window.__ssStripe = window.__ssStripe || new Map();
+    for (const line in groups) {
+      const m = new T.ShaderMaterial({
+        uniforms: {
+          uBase: { type: 'v3', value: col(c.grey) },
+          uLine: { type: 'v3', value: col(line) },
+          uSpacing: { type: 'f', value: c.stripe.spacing },
+          uWidth: { type: 'f', value: Math.min(c.stripe.width, c.stripe.spacing - 1) },
+          uNorm: { type: 'v2', value: new T.Vector2(-Math.sin(a), Math.cos(a)) },
+          uPx: { type: 'f', value: px },
+        },
+        vertexShader: STRIPE_VS,
+        fragmentShader: STRIPE_FS,
+        side: T.DoubleSide,
+      });
+      m.derivatives = true; // three r71 name
+      m.extensions = { derivatives: true }; // newer name
+      try { mm.addMaterial('ss-stripe-' + line + '-' + c.stripe.spacing + '-' + c.stripe.width + '-' + c.stripe.angle + '-' + c.grey, m, true); } catch (e) {}
+      groups[line].forEach((d) => tree.enumNodeFragments(d, (f) => {
+        if (!window.__ssStripe.has(f)) { const base = fl.getMaterial(f); if (base) window.__ssStripe.set(f, base); }
+        fl.setMaterial(f, m);
+      }, true));
+    }
+    vw.impl.invalidate(true, true, true);
+  } catch (e) {}
+}
+
 // Undo the colours and see-through parts, so the look can be applied again without reloading the model.
 function resetLook(vw) {
   try {
+    clearStripes(vw);
     vw.clearThemingColors(vw.model);
     const fl = vw.model.getFragmentList();
     if (window.__ssOrig) {
@@ -186,13 +256,17 @@ async function applyLook(vw, job, layer, keepView) {
         (layer.edits || []).forEach((e) => { delete fin[parseInt(e.elementId, 10)]; });
         for (const hex in layer.look.colors) layer.look.colors[hex].forEach((i) => { fin[i] = hex; });
       }
+      clearStripes(vw); // parts may have a filter colour now
+      const stripes = {};
       // the website works the colours out itself from the colour rules: a part with a filter gets that colour, every other part is grey
       if (site && site.has) {
         for (const k in fin) delete fin[k];
         for (const hex in site.colors) site.colors[hex].forEach((i) => { fin[i] = hex; });
         const mat = {};
         for (const hex in look.matColors || {}) look.matColors[hex].forEach((i) => { mat[i] = hex; });
-        look.visible.forEach((i) => { if (!fin[i]) fin[i] = hatchColor(mat[i] || null, hatch); });
+        if (cleanHatch(hatch).mode === 'stripe') {
+          look.visible.forEach((i) => { if (!fin[i]) { const l = stripeLine(mat[i] || null, hatch); (stripes[l] = stripes[l] || []).push(i); } });
+        } else look.visible.forEach((i) => { if (!fin[i]) fin[i] = hatchColor(mat[i] || null, hatch); });
       }
       const byHex = {};
       for (const i in fin) (byHex[fin[i]] = byHex[fin[i]] || []).push(parseInt(i, 10));
@@ -202,6 +276,9 @@ async function applyLook(vw, job, layer, keepView) {
         const col = new T.Vector4(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1);
         dbIds(byHex[hex]).forEach((d) => vw.setThemingColor(d, col, vw.model, true));
       }
+      const sg = {};
+      for (const l in stripes) { const d = dbIds(stripes[l]); if (d.length) sg[l] = d; }
+      if (Object.keys(sg).length) applyStripes(vw, sg, hatch);
     }, () => {});
   } catch (e) {}
 }
@@ -317,6 +394,7 @@ export default function Viewer3D({ job = '' }) {
       const vw = viewer.current; const fin = ev.detail && ev.detail.fin; const byId = window.__ssById;
       if (!vw || !vw.model || !fin || !byId) return;
       try {
+        clearStripes(vw); // the Timeline uses plain colours
         vw.clearThemingColors(vw.model);
         const T = window.THREE; const byHex = {};
         for (const i in fin) (byHex[fin[i]] = byHex[fin[i]] || []).push(byId[i]);
