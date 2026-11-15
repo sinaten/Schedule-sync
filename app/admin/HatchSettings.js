@@ -1,8 +1,7 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { hatchColor, cleanHatch, stripeCss, HATCH_DEFAULTS } from '../../lib/hatch';
 const inp = { padding: '6px 8px', fontSize: 14, border: '1px solid #cfd8dc', borderRadius: 6, background: '#fff' };
-const btn = { padding: '6px 12px', fontSize: 13, fontWeight: 600, border: '1px solid #cfd8dc', borderRadius: 16, background: '#fff', cursor: 'pointer' };
 const SAMPLES = ['c04030', '3070c0', '40a050', 'd0a020', '808080'];
 
 // Admin > Settings: how parts without a colour filter look (grey, mixed with their own Revit colour). The preview shows the result.
@@ -11,11 +10,18 @@ export default function HatchSettings() {
   const [msg, setMsg] = useState('');
   const [dirty, setDirty] = useState(false);
   useEffect(() => { fetch('/api/hatch', { cache: 'no-store' }).then((r) => r.json()).then((j) => setS(j.settings || HATCH_DEFAULTS)).catch(() => setS(HATCH_DEFAULTS)); }, []);
-  const set = (p) => { setS((x) => cleanHatch({ ...x, ...p })); setDirty(true); };
+  const timer = useRef(null);
+  const latest = useRef(null);
+  latest.current = s;
+  // every change is saved by itself a moment later, so nothing is lost on refresh; the Save button at the bottom saves right away
+  const set = (p) => { setS((x) => cleanHatch({ ...x, ...p })); setDirty(true); setMsg('Not saved yet…'); clearTimeout(timer.current); timer.current = setTimeout(() => save(), 800); };
   async function save() {
+    clearTimeout(timer.current);
     setMsg('Saving…');
-    const r = await fetch('/api/hatch', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ settings: s }) });
-    if (r.ok) { setDirty(false); setMsg('Saved. Open the 3D view again to see it.'); } else setMsg('Could not save.');
+    try {
+      const r = await fetch('/api/hatch', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ settings: latest.current }) });
+      if (r.ok) { setDirty(false); setMsg('Saved ✓ Open the 3D view again to see it.'); } else setMsg('Could not save (' + r.status + ').');
+    } catch (e) { setMsg('Could not save (no connection).'); }
   }
   if (!s) return null;
   return (
@@ -31,12 +37,14 @@ export default function HatchSettings() {
           <label style={{ fontSize: 14 }}>Line thickness {s.stripe.width}px <input type="range" min="1" max="20" value={s.stripe.width} onChange={(e) => set({ stripe: { ...s.stripe, width: +e.target.value } })} /></label>
           <label style={{ fontSize: 14 }}>Angle {s.stripe.angle}° <input type="range" min="0" max="180" step="15" value={s.stripe.angle} onChange={(e) => set({ stripe: { ...s.stripe, angle: +e.target.value } })} /></label>
         </>}
-        <button type="button" style={{ ...btn, background: dirty ? '#16262e' : '#fff', color: dirty ? '#fff' : '#16262e' }} onClick={save}>Save</button>
-        {msg && <span style={{ fontSize: 13, color: '#455a64' }}>{msg}</span>}
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center' }}>
         <span style={{ fontSize: 13, color: '#546e7a' }}>Preview (Revit colour → shown):</span>
         {SAMPLES.map((m) => (<span key={m} style={{ display: 'inline-flex', gap: 2 }}><span style={{ width: 22, height: 22, background: '#' + m, borderRadius: 4 }} /><span style={{ width: s.mode === 'stripe' ? 44 : 22, height: s.mode === 'stripe' ? 44 : 22, background: s.mode === 'stripe' ? stripeCss(m, s) : '#' + hatchColor(m, s), borderRadius: 4, border: '1px solid #cfd8dc' }} /></span>))}
+      </div>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 14 }}>
+        <button type="button" onClick={save} style={{ padding: '10px 28px', fontSize: 15, fontWeight: 700, border: 'none', borderRadius: 20, background: dirty ? '#e8590c' : '#16262e', color: '#fff', cursor: 'pointer' }}>Save</button>
+        {msg && <span style={{ fontSize: 13, color: '#455a64' }}>{msg}</span>}
       </div>
     </div>
   );
