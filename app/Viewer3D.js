@@ -475,7 +475,7 @@ export default function Viewer3D({ job = '' }) {
   const wrap = { margin: '0 0 24px', border: '1px solid #cfd8dc', borderRadius: 8, background: '#fff', overflow: 'hidden' };
   const bar = { display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#16262e', color: '#fff', fontSize: 14 };
   return (
-    <section style={wrap}>
+    <section className="v3-wrap" style={wrap}>
       <div style={bar}>
         <strong>3D model{m ? ': ' + m.name : ''}</strong>
         {m && m.converting && <span style={{ marginLeft: 10, fontSize: 12, opacity: 0.85 }}>Updating: {m.converting}</span>}
@@ -504,7 +504,7 @@ export default function Viewer3D({ job = '' }) {
         );
       })()}
       <div style={{ position: 'relative' }}>
-        <div ref={box} style={{ position: 'relative', height: ready ? 480 : 0, touchAction: 'none' }} />
+        <div ref={box} className="v3-box" style={{ position: 'relative', height: ready ? 480 : 0, touchAction: 'none' }} />
         {ready && (
           <div
             style={{ position: 'absolute', right: 0, top: 230, height: 170, width: 44, touchAction: 'pan-y', zIndex: 10, background: 'rgba(22,38,46,.18)', borderLeft: '1px solid rgba(22,38,46,.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16262e', fontSize: 18, lineHeight: 1.1, textAlign: 'center', userSelect: 'none' }}
@@ -540,7 +540,7 @@ export default function Viewer3D({ job = '' }) {
           );
           const row = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '9px 14px', fontSize: 12.5, borderBottom: '1px solid #f4f2ea' };
           return (
-            <div style={{ background: '#fff', borderRadius: '22px 22px 0 0', boxShadow: '0 -8px 24px rgba(20,20,19,.12)', padding: '6px 0 12px', maxHeight: 380, overflow: 'auto', maxWidth: 520, margin: '0 auto', fontSize: 13, color: '#141413' }}>
+            <div className="v3-sheet" style={{ background: '#fff', borderRadius: '22px 22px 0 0', boxShadow: '0 -8px 24px rgba(20,20,19,.12)', padding: '6px 0 12px', maxHeight: 380, overflow: 'auto', maxWidth: 520, margin: '0 auto', fontSize: 13, color: '#141413' }}>
               <div style={{ width: 38, height: 4, borderRadius: 4, background: '#d9d5c8', margin: '4px auto 8px' }} />
               <div style={{ padding: '2px 16px 10px', fontWeight: 700, fontSize: 14 }}>{pp.id ? 'Element ' + pp.id : 'No element selected'}</div>
               {pp.id && pp.tables.length === 0 && <p style={{ margin: 0, padding: '4px 16px 10px', color: '#8a8576' }}>No schedule row for this part.</p>}
