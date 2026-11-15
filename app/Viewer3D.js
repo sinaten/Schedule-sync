@@ -264,12 +264,7 @@ export default function Viewer3D({ job = '' }) {
     try { const r = await fetch('/api/layer?job=' + encodeURIComponent(job), { cache: 'no-store' }); if (r.ok) { const j = await r.json(); setLayer(j); return j; } } catch (e) {}
     return null;
   }
-  function pollLayer() {
-    clearInterval(pollT.current);
-    let n = 0;
-    pollT.current = setInterval(async () => { n++; const j = await loadLayer(); if ((j && !j.pending) || n > 40) clearInterval(pollT.current); }, 3000);
-  }
-  useEffect(() => { loadLayer().then((j) => { if (j && j.pending) pollLayer(); }); return () => clearInterval(pollT.current); }, [job]);
+  useEffect(() => { loadLayer(); }, [job]); // no 3 s timer: the layer is read when the page opens and after a save
   useEffect(() => {
     const vw = viewer.current;
     if (!vw || !vw.model) return;
@@ -334,7 +329,6 @@ export default function Viewer3D({ job = '' }) {
     setDraft({});
     setMsg(bad ? 'You cannot change ' + bad : 'Saved in your own layer. The main model is not changed.');
     await loadLayer();
-    pollLayer();
   }
 
   async function refresh() {
