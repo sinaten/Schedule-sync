@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { upload as blobUpload } from '@vercel/blob/client';
+import { CAM_ICONS, TOKEN } from '../lib/camviews';
 
 const OR = '#e8710a';
 const when = (t) => { const d = new Date(t); return d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) + ' · ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
@@ -44,6 +45,10 @@ function Sheet({ children, name, foot, close, dock }) {
 export default function IssuePanel({ job, element, onMsg }) {
   const [d, setD] = useState(null);
   const [text, setText] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [cvs, setCvs] = useState({ views: [], editor: false });
+  const [pickV, setPickV] = useState(false);
+  const taRef = useRef(null), caret = useRef(null);
   const [sheet, setSheet] = useState('');
   const [chat, setChat] = useState('');
   const [busy, setBusy] = useState(false);
@@ -55,6 +60,36 @@ export default function IssuePanel({ job, element, onMsg }) {
   const mediaRef = useRef(null), anyRef = useRef(null);
   const photoRef = useRef(null), fileRef = useRef(null), chatPhotoRef = useRef(null), endRef = useRef(null), loaded = useRef('');
   const q = '?job=' + encodeURIComponent(job) + '&element=' + encodeURIComponent(element);
+
+  useEffect(() => {
+    const f = () => fetch('/api/camviews?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j.views) setCvs(j); }).catch(() => {});
+    f();
+    window.addEventListener('ss-camviews-changed', f);
+    return () => window.removeEventListener('ss-camviews-changed', f);
+  }, [job]);
+  // the words of the issue with every [[view:ID]] drawn as its icon, the same size as the letters
+  const rich = (t) => {
+    const out = []; let last = 0, m, k = 0;
+    const re = new RegExp(TOKEN.source, 'gi');
+    while ((m = re.exec(t))) {
+      if (m.index > last) out.push(<span key={k++}>{t.slice(last, m.index)}</span>);
+      const v = cvs.views.find((x) => x.id === m[1]);
+      out.push(v
+        ? <button key={k++} type="button" title={v.name} aria-label={'View: ' + v.name} onClick={() => window.dispatchEvent(new CustomEvent('ss-goto-view', { detail: { id: v.id } }))} style={{ display: 'inline', border: 0, background: 'none', padding: '0 1px', margin: 0, font: 'inherit', fontSize: '1em', lineHeight: 'inherit', cursor: 'pointer', verticalAlign: 'baseline' }}>{CAM_ICONS[v.icon] || CAM_ICONS.camera}</button>
+        : <span key={k++} title="This view was deleted" style={{ opacity: 0.4 }}>{'\u{1F6AB}'}</span>);
+      last = m.index + m[0].length;
+    }
+    if (last < t.length) out.push(<span key={k++}>{t.slice(last)}</span>);
+    return out;
+  };
+  const addView = (v) => {
+    const ta = taRef.current, tok = '[[view:' + v.id + ']]';
+    const at = ta && typeof ta.selectionStart === 'number' ? ta.selectionStart : (caret.current != null ? caret.current : text.length);
+    setText((t) => t.slice(0, at) + tok + t.slice(at));
+    caret.current = at + tok.length;
+    setPickV(false); setEditing(true);
+    setTimeout(() => { const e = taRef.current; if (e) { e.focus(); try { e.setSelectionRange(caret.current, caret.current); } catch (x) {} } }, 30);
+  };
 
   const load = async () => {
     try {
@@ -153,11 +188,28 @@ export default function IssuePanel({ job, element, onMsg }) {
         {d && d.issue ? 'Issue by ' + d.issue.author + ' · ' + when(d.issue.created_at) : d ? 'Issue by ' + (me || 'you') : 'Loading…'}
       </div>
       <div style={{ border: '1px solid #e7e3d8', borderRadius: 12, background: '#fff', padding: 8 }}>
-        <textarea value={text} onChange={(e) => setText(e.target.value)} onBlur={saveText} readOnly={locked} placeholder={locked ? 'No description yet.' : 'Describe the issue…'} rows={4}
-          style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: 0, outline: 'none', resize: 'none', font: 'inherit', fontSize: 14, color: '#141413', background: 'transparent' }} />
+        {locked || !editing ? (
+          <div onClick={() => { if (!locked) { setEditing(true); setTimeout(() => taRef.current && taRef.current.focus(), 30); } }}
+            style={{ minHeight: 88, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 14, lineHeight: 1.5, color: '#141413', cursor: locked ? 'default' : 'text' }}>
+            {text ? rich(text) : <span style={{ color: '#9a9686' }}>{locked ? 'No description yet.' : 'Describe the issue…'}</span>}
+          </div>
+        ) : (
+          <textarea ref={taRef} value={text} onChange={(e) => setText(e.target.value)} onSelect={(e) => { caret.current = e.target.selectionStart; }} onBlur={() => { saveText(); setEditing(false); }} rows={4} placeholder="Describe the issue…"
+            style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: 0, outline: 'none', resize: 'none', font: 'inherit', fontSize: 14, color: '#141413', background: 'transparent' }} />
+        )}
         {!locked && (
           <div style={{ marginTop: 4 }}>
             <button type="button" disabled={busy} onClick={() => openCam()} style={pill(true)}>Add photos and videos</button>
+            {cvs.views.length > 0 && (
+              <span style={{ position: 'relative', display: 'inline-block', marginLeft: 6 }}>
+                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => setPickV((o) => !o)} style={pill(true)}>{'\u{1F4F7}'} Attach view</button>
+                {pickV && (
+                  <div style={{ position: 'absolute', left: 0, bottom: '110%', minWidth: 190, background: '#fff', border: '1px solid #efece3', borderRadius: 14, boxShadow: '0 6px 24px rgba(0,0,0,.22)', overflow: 'hidden', zIndex: 8 }}>
+                    {cvs.views.map((v) => (<button key={v.id} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => addView(v)} style={{ display: 'block', width: '100%', textAlign: 'left', border: 0, borderBottom: '1px solid #f1ede4', background: '#fff', padding: '10px 14px', font: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{CAM_ICONS[v.icon] || CAM_ICONS.camera} {v.name}</button>))}
+                  </div>
+                )}
+              </span>
+            )}
           </div>
         )}
       </div>

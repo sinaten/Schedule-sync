@@ -1,6 +1,7 @@
 'use client';
 import IssuePanel from './IssuePanel';
 import Snapshots from './Snapshots';
+import CamViews from './CamViews';
 import { useEffect, useRef, useState } from 'react';
 import { fadeColor } from '../lib/fade';
 
@@ -374,6 +375,25 @@ export default function Viewer3D({ job = '' }) {
     return () => window.removeEventListener('ss-reload-look', f);
   }, [job]);
 
+  // saved camera views: read where the camera stands / move it there (also switches to the Revit view the angle was made in)
+  const getCam = () => {
+    const vw = viewer.current;
+    if (!vw || !vw.model) return null;
+    try { const n = vw.navigation, p = n.getPosition(), t = n.getTarget(), u = n.getCameraUpVector(); return { pos: [p.x, p.y, p.z], target: [t.x, t.y, t.z], up: [u.x, u.y, u.z], persp: !!(vw.navigation.getCamera && vw.navigation.getCamera().isPerspective !== false) }; } catch (e) { return null; }
+  };
+  const goCam = async (cv) => {
+    const vw = viewer.current;
+    if (!vw || !vw.model || !cv || !cv.cam) return;
+    if (cv.view && cv.view !== (window.__ssView || '')) { try { await switchView(cv.view); await new Promise((r) => setTimeout(r, 700)); } catch (e) {} }
+    try {
+      const T = window.THREE, c = cv.cam, n = vw.navigation;
+      c.persp ? n.toPerspective() : n.toOrthographic();
+      n.setView(new T.Vector3(...c.pos), new T.Vector3(...c.target));
+      n.setCameraUpVector(new T.Vector3(...c.up));
+      vw.impl.invalidate(true, true, true);
+    } catch (e) {}
+  };
+
   // pick another Revit 3D view of this job. The model on the site is the whole building; a view is recreated from what it shows and its colours.
   async function switchView(name) {
     setVOpen(false); setVq('');
@@ -520,6 +540,7 @@ export default function Viewer3D({ job = '' }) {
           </div>
         );
       })()}
+      {ready && <CamViews job={job} getCam={getCam} goCam={goCam} />}
       <div style={{ position: 'relative' }}>
         <div ref={box} className="v3-box" style={{ position: 'relative', height: ready ? 480 : 0, touchAction: 'none' }} />
         {ready && (
