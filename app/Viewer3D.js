@@ -182,6 +182,8 @@ async function applyLook(vw, job, layer, keepView) {
       }
       const byHex = {};
       for (const i in fin) (byHex[fin[i]] = byHex[fin[i]] || []).push(parseInt(i, 10));
+      // the model's own colours are switched off: everything is light grey first, so only the status colours below show
+      try { const root = vw.model.getInstanceTree().getRootId(); vw.setThemingColor(root, new T.Vector4(0.78, 0.8, 0.82, 1), vw.model, true); } catch (e) { /* keep the model's own colours */ }
       for (const hex in byHex) {
         const [h] = hex.split('_');
         const n = parseInt(h, 16);
