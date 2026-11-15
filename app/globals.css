@@ -29,7 +29,7 @@ tr.rowp td:first-child{box-shadow:inset 4px 0 var(--amber)}
 
 /* Phone chrome: only on touch screens up to phone/small-tablet width. Laptops keep the normal top bar. */
 .ms-top,.ms-spacer,.ms-bot{display:none}
-@media (pointer:coarse) and (max-width:940px){
+@media (pointer:coarse) and (max-width:1024px){
   nav.deskbar{display:none!important}
   :root{--ms-sm:44px;--ms-big:90px}
   .ms-top{display:flex;position:sticky;top:0;z-index:50;justify-content:space-between;align-items:center;gap:10px;padding:max(env(safe-area-inset-top),10px) max(16px,env(safe-area-inset-right)) 14px max(16px,env(safe-area-inset-left));background:#fff;border-bottom:1px solid #f0eee6}
@@ -90,7 +90,7 @@ tr.rowp td:first-child{box-shadow:inset 4px 0 var(--amber)}
 
 /* Issues / Follow-up switch under the phone top bar (only on a job page; stays put while scrolling) */
 .ms-tabs-wrap{display:none}
-@media (pointer:coarse) and (max-width:940px){
+@media (pointer:coarse) and (max-width:1024px){
   .ms-tabs-wrap{display:block;position:sticky;top:calc(max(env(safe-area-inset-top),10px) + 61px);z-index:45;background:#fff;padding:10px max(16px,env(safe-area-inset-right)) 8px max(16px,env(safe-area-inset-left))}
   .ms-tabs{display:flex;gap:3px;padding:3px;background:#f4f3ee;border-radius:14px}
   .ms-tab{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:9px 0;border:0;border-radius:11px;background:transparent;font:inherit;font-size:14.5px;font-weight:500;color:#8a877b;cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -103,4 +103,15 @@ tr.rowp td:first-child{box-shadow:inset 4px 0 var(--amber)}
   .ms-tab-f.on{color:#1e9e5a}
   /* Issues tab: the page below is empty for now */
   body[data-ms-tab="follow"] > :not(header):not(nav):not(.ms-tabs-wrap):not(.ms-spacer):not(script){position:fixed!important;left:-200vw!important;top:0!important;width:100vw!important;visibility:hidden!important;pointer-events:none!important}
+}
+
+/* Laptop / desktop / tablet held sideways: the five round buttons stand in one column on the left of the page and stay put while it scrolls. Only on a job page (not in Admin). */
+@media not all and (pointer:coarse) and (max-width:1024px){
+  .ms-bot.ms-job{display:flex;position:fixed;left:14px;top:50%;transform:translateY(-50%);z-index:40;flex-direction:column;align-items:center;gap:16px;padding:0;background:transparent;border:0}
+  .ms-bot.ms-job::after{display:none}
+  .ms-bot.ms-job{--ms-sm:46px;--ms-big:84px}
+  .ms-sm{width:var(--ms-sm);height:var(--ms-sm);border-radius:50%;border:1px solid #f0eee6;background:#fff;box-shadow:0 3px 10px rgba(20,20,19,.07),0 1px 2px rgba(20,20,19,.05);flex:none}
+  .ms-qr{width:var(--ms-big,84px);height:var(--ms-big,84px);border-radius:50%;border:1px solid #f0eee6;background:#fff;box-shadow:0 8px 22px rgba(20,20,19,.09),0 1px 3px rgba(20,20,19,.06);display:flex;align-items:center;justify-content:center;flex:none}
+  .ms-bot.ms-job .ms-toast{left:96px;transform:none;bottom:auto;top:50%}
+  body[data-ms-job] > :not(header):not(nav):not(script){margin-left:92px}
 }
