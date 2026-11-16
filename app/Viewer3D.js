@@ -242,6 +242,7 @@ async function attachPopup(vw, job, setPopup) {
     const tree = vw.model.getInstanceTree();
     if (vw.__ssSel) vw.removeEventListener(A.SELECTION_CHANGED_EVENT, vw.__ssSel);
     vw.addEventListener(A.SELECTION_CHANGED_EVENT, vw.__ssSel = async (e) => {
+      if (window.__ssKiosk) return; // a scanned camera view is for looking only
       const sel = e.dbIdArray || [];
       if (!sel.length) return; // clicking empty space keeps the current popup
       const cands = [];
@@ -270,7 +271,7 @@ function show(v) {
   return s;
 }
 
-export default function Viewer3D({ job = '' }) {
+export default function Viewer3D({ job = '', kiosk = null }) {
   const box = useRef(null);
   const viewer = useRef(null);
   const shownUrn = useRef(null);
@@ -394,6 +395,20 @@ export default function Viewer3D({ job = '' }) {
     } catch (e) {}
   };
 
+  // scanned QR of a saved camera view: go to its angle once the model is there
+  useEffect(() => {
+    if (!kiosk) return;
+    let v = null, tries = 0;
+    fetch('/api/camviews?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { v = (j.views || []).find((x) => x.id === kiosk.viewId) || null; }).catch(() => {});
+    const t = setInterval(() => {
+      const vw = viewer.current;
+      if (!v || !vw || !vw.model) return;
+      tries++; goCam(v);
+      if (tries >= 4) clearInterval(t);
+    }, 1400);
+    return () => clearInterval(t);
+  }, [kiosk && kiosk.viewId, job]);
+
   // pick another Revit 3D view of this job. The model on the site is the whole building; a view is recreated from what it shows and its colours.
   async function switchView(name) {
     setVOpen(false); setVq('');
@@ -511,6 +526,17 @@ export default function Viewer3D({ job = '' }) {
   const ready = m && m.status === 'success';
   const wrap = { margin: '0 0 24px', border: '1px solid #cfd8dc', borderRadius: 8, background: '#fff', overflow: 'hidden' };
   const bar = { display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#16262e', color: '#fff', fontSize: 14 };
+  if (typeof window !== 'undefined') window.__ssKiosk = !!kiosk;
+  if (kiosk) {
+    const closeCam = () => { let to = ''; try { to = sessionStorage.getItem('scan-from') || ''; } catch (e) {} location.replace(to || '/'); };
+    return (
+      <section style={{ position: 'fixed', left: 0, top: 0, width: '100vw', height: '100vh', zIndex: 100000, background: '#fff' }}>
+        <div ref={box} className="v3-box" style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', touchAction: 'none' }} />
+        {!ready && <div style={{ position: 'absolute', left: 0, right: 0, top: '45%', textAlign: 'center', color: '#8a8576', fontSize: 15 }}>Loading the model…</div>}
+        <button type="button" onClick={closeCam} aria-label="Close" style={{ position: 'absolute', right: 14, top: 14, width: 46, height: 46, borderRadius: 23, border: 0, background: 'rgba(20,20,19,.78)', color: '#fff', fontSize: 22, cursor: 'pointer', zIndex: 5 }}>{'\u2715'}</button>
+      </section>
+    );
+  }
   return (
     <section className="v3-wrap" style={wrap}>
       <div style={bar}>

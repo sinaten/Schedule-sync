@@ -12,9 +12,9 @@ export default function CamQrTable() {
     fetch('/api/admin/camqr', { cache: 'no-store' }).then((r) => r.json()).then(async (j) => {
       const list = j.items || [];
       setItems(list);
-      const QR = (await import('qrcode')).default;
+      const { camQrPng } = await import('../../lib/camqrimg');
       const m = {};
-      for (const x of list) m[x.qr] = await QR.toDataURL(location.origin + '/q/' + x.qr, { width: 256, margin: 2, errorCorrectionLevel: 'M' });
+      for (const x of list) m[x.qr] = await camQrPng(location.origin + '/cv/' + x.qr, x.n, x.name);
       setImg(m);
     }).catch(() => setItems([]));
   }, []);
@@ -27,7 +27,7 @@ export default function CamQrTable() {
     } catch (e) { flash('Could not copy the image. Use Download.'); }
   }
   async function copyLink(x) {
-    try { await navigator.clipboard.writeText(location.origin + '/q/' + x.qr); flash('Link copied'); } catch (e) { flash('Could not copy.'); }
+    try { await navigator.clipboard.writeText(location.origin + '/cv/' + x.qr); flash('Link copied'); } catch (e) { flash('Could not copy.'); }
   }
   return (
     <div style={{ marginTop: 28 }}>
@@ -43,7 +43,7 @@ export default function CamQrTable() {
                   <td style={cell}>{i + 1}</td>
                   <td style={cell}>{x.job}</td>
                   <td style={cell}><b>{x.n ? x.n + ' ' : ''}</b>{x.name}</td>
-                  <td style={cell}>{img[x.qr] ? <img src={img[x.qr]} alt={'QR code for ' + x.name} width={72} height={72} style={{ display: 'block', border: '1px solid #cfd8dc' }} /> : '...'}</td>
+                  <td style={cell}>{img[x.qr] ? <img src={img[x.qr]} alt={'QR code for ' + x.name} width={110} style={{ display: 'block', height: 'auto', border: '1px solid #cfd8dc' }} /> : '...'}</td>
                   <td style={cell}>
                     <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
                       <button type="button" style={btn} onClick={() => copyImg(x)} disabled={!img[x.qr]}>Copy QR</button>

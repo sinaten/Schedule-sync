@@ -91,6 +91,15 @@ export default function Scan() {
   }
 
   useEffect(() => {
+    // remember the page the scan button was pressed on, so a camera-view QR can bring the person back there
+    try {
+      if (document.referrer && window.parent === window) {
+        const r = new URL(document.referrer);
+        if (r.origin === location.origin && !/^\/(scan|cv)(\/|$)/.test(r.pathname)) sessionStorage.setItem('scan-from', r.pathname + r.search);
+      }
+    } catch (e) { /* optional */ }
+  }, []);
+  useEffect(() => {
     const prev = document.documentElement.style.background;
     document.documentElement.style.background = '#141413';
     start();

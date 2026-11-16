@@ -76,10 +76,10 @@ export default function CamViews({ job, getCam, goCam }) {
     if (j) { changed(j.views); flash('QR made'); }
   }
   async function copyQr() {
-    const url = location.origin + '/q/' + v.qr;
+    const url = location.origin + '/cv/' + v.qr;
     try {
-      const QR = (await import('qrcode')).default;
-      const png = await QR.toDataURL(url, { width: 512, margin: 2, errorCorrectionLevel: 'M' });
+      const { camQrPng } = await import('../lib/camqrimg');
+      const png = await camQrPng(url, v.n, v.name);
       const blob = await (await fetch(png)).blob();
       await navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })]);
       flash('QR image copied');
