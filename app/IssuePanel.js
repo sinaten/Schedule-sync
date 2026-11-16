@@ -45,14 +45,14 @@ function Sheet({ children, name, foot, close, dock }) {
 }
 
 // Issue card of one part: description, comments chat, files and photos.
-export default function IssuePanel({ job, element, onMsg }) {
+export default function IssuePanel({ job, element, onMsg, initialSheet = '', onClose }) {
   const [d, setD] = useState(null);
   const [text, setText] = useState('');
   const [editing, setEditing] = useState(false);
   const [cvs, setCvs] = useState({ views: [], editor: false });
   const [pickV, setPickV] = useState(false);
   const taRef = useRef(null), caret = useRef(null);
-  const [sheet, setSheet] = useState('');
+  const [sheet, setSheet] = useState(initialSheet);
   const [chat, setChat] = useState('');
   const [busy, setBusy] = useState(false);
   const [cam, setCam] = useState(false);
@@ -107,7 +107,7 @@ export default function IssuePanel({ job, element, onMsg }) {
       if (loaded.current !== element) { loaded.current = element; setText((j.issue && j.issue.description) || ''); }
     } catch (e) {}
   };
-  useEffect(() => { loaded.current = ''; setD(null); setSheet(''); load(); }, [job, element]);
+  useEffect(() => { loaded.current = ''; setD(null); setSheet(initialSheet); load(); }, [job, element]);
   useEffect(() => { if (sheet !== 'comments') return; const t = setInterval(load, 6000); return () => clearInterval(t); }, [sheet, job, element]);
   useEffect(() => { if (sheet === 'comments' && endRef.current) endRef.current.scrollIntoView({ block: 'end' }); }, [sheet, d, sending, err]);
 
@@ -270,7 +270,7 @@ export default function IssuePanel({ job, element, onMsg }) {
         </div>
       )}
       {sheet === 'comments' && (
-        <Sheet dock close={() => setSheet('')} name="Comments" foot={
+        <Sheet dock close={() => { setSheet(''); onClose && onClose(); }} name="Comments" foot={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px calc(10px + env(safe-area-inset-bottom))', borderTop: '1px solid #efece3', position: 'relative' }}>
             {menu && (
               <div style={{ position: 'absolute', left: 12, bottom: 58, width: 220, background: '#fff', borderRadius: 16, boxShadow: '0 6px 24px rgba(0,0,0,.22)', border: '1px solid #efece3', overflow: 'hidden', zIndex: 5 }}>
@@ -313,7 +313,7 @@ export default function IssuePanel({ job, element, onMsg }) {
         </Sheet>
       )}
       {sheet === 'files' && (
-        <Sheet close={() => setSheet('')} name="Files">
+        <Sheet close={() => { setSheet(''); onClose && onClose(); }} name="Files">
           {files.length === 0 && <p style={{ textAlign: 'center', color: '#9a9686', fontSize: 13 }}>No files yet.</p>}
           {files.map((f) => (
             <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid #f1ede4' }}>
@@ -326,7 +326,7 @@ export default function IssuePanel({ job, element, onMsg }) {
         </Sheet>
       )}
       {sheet === 'photos' && (
-        <Sheet close={() => setSheet('')} name="Gallery">
+        <Sheet close={() => { setSheet(''); onClose && onClose(); }} name="Gallery">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
             <button type="button" disabled={busy} onClick={() => photoRef.current && photoRef.current.click()} style={{ aspectRatio: '1', border: '2px dashed ' + OR, borderRadius: 12, background: '#fff7ef', color: OR, font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 6 }}>{'＋'}<br />Add picture<br /><span style={{ fontWeight: 500, fontSize: 11, color: '#8a8576' }}>or press Ctrl+V</span></button>
             {photos.map((p) => (

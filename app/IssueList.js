@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { TOKEN, camToEdit, camFromEdit } from '../lib/camviews';
 import CamIcon from './CamIcon';
 import { goPart, linkNums, useModelIds } from './ElemLinks';
+import IssuePanel from './IssuePanel';
 
 // Status model of an issue (same words as Procore).
 export const ST = {
@@ -53,6 +54,7 @@ export default function IssueList({ job }) {
   const [f, setF] = useState('all');
   const [newest, setNewest] = useState(true);
   const [open, setOpen] = useState(true);
+  const [pan, setPan] = useState(null); // Comments / Files / Gallery of one card: { element, sheet }
   const [nw, setNw] = useState(null); // new issue without an element: { text, pr }
   const [ed, setEd] = useState(null); // the card being edited: { element_id, text, pr }
   useModelIds();
@@ -175,13 +177,21 @@ export default function IssueList({ job }) {
                     {info('Identified on', when(r.created_at))}
                   </div>
                   <div style={{ display: 'flex', gap: 14, padding: '7px 12px', borderTop: '1px solid #efece3', fontSize: 12.5 }}>
-                    <span>Comments <b>{r.comments}</b></span><span>Files <b>{r.files}</b></span><span>Gallery <b>{r.photos}</b></span>
+                    {[['comments', 'Comments', r.comments], ['files', 'Files', r.files], ['photos', 'Gallery', r.photos]].map(([k, l, n]) => (
+                      <button key={k} type="button" onClick={() => setPan({ element: r.element_id, sheet: k })} style={{ border: 0, background: 'none', padding: 0, font: 'inherit', fontSize: 12.5, color: '#141413', cursor: 'pointer' }}>{l} <b style={{ background: n ? '#e8710a' : '#e7e3d8', color: n ? '#fff' : '#8a8576', borderRadius: 9, padding: '1px 7px', fontSize: 11.5, fontWeight: 600 }}>{n}</b></button>
+                    ))}
                   </div>
                 </div>
               );
             })}
           </div>
         </>
+      )}
+      {pan && (
+        // the same Comments / Files / Gallery spaces as in the part panel; the panel's own card stays hidden (clipped), only its spaces open
+        <div style={{ position: 'fixed', left: 0, top: 0, width: 0, height: 0, overflow: 'hidden' }}>
+          <IssuePanel key={pan.element + pan.sheet} job={job} element={pan.element} initialSheet={pan.sheet} onMsg={() => {}} onClose={() => { setPan(null); load(); }} />
+        </div>
       )}
     </section>
   );
