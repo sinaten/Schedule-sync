@@ -4,6 +4,7 @@ import { TOKEN, camToEdit, camFromEdit } from '../lib/camviews';
 import CamIcon from './CamIcon';
 import { goPart, linkNums, useModelIds } from './ElemLinks';
 import IssuePanel from './IssuePanel';
+import WeatherTab from './WeatherTab';
 
 // Status model of an issue (same words as Procore).
 export const ST = {
@@ -89,6 +90,7 @@ function ActionPlan({ job, r, can, post, reload, openPan }) {
       </div>
       {o && (
         <div style={{ padding: '4px 12px 12px' }}>
+          <WeatherTab job={job} />
           <div style={lab}>Job number</div>
           {can ? <input value={jno} onChange={(e) => setJno(e.target.value)} onBlur={() => { if (jno.trim() && jno !== ap.jobNo) save({ job_no: jno }); }} placeholder="Job number" style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #cfe9d6', borderRadius: 10, height: 34, padding: '0 10px', margin: '4px 0 10px', font: 'inherit', fontSize: 14, outline: 'none', background: '#fff' }} /> : <div style={{ fontSize: 14, margin: '4px 0 10px' }}>{ap.jobNo}</div>}
           <div style={lab}>How to solve it</div>

@@ -28,6 +28,32 @@ export async function GET(req) {
     if (process.env.ADMIN_USER && !list.some((x) => x.n === process.env.ADMIN_USER)) list.unshift({ n: process.env.ADMIN_USER, role: 'admin', access: true });
     return Response.json({ users: list });
   }
+  if (p.get('weather')) {
+    // the forecast at the place of the project (the saved location of its sections), with a go / caution / no-go word for each day
+    const d = await db();
+    const pts = await d`select lat, lng from sections where job = ${job} and lat is not null and lng is not null`;
+    if (!pts.length) return Response.json({ none: true });
+    const lat = pts.reduce((a, x) => a + Number(x.lat), 0) / pts.length, lng = pts.reduce((a, x) => a + Number(x.lng), 0) / pts.length;
+    try {
+      const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat.toFixed(4) + '&longitude=' + lng.toFixed(4) + '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,snowfall_sum,wind_gusts_10m_max&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=6';
+      const r = await fetch(url, { next: { revalidate: 1800 } });
+      if (!r.ok) throw new Error('weather ' + r.status);
+      const w = (await r.json()).daily;
+      const days = w.time.map((t, i) => {
+        const code = w.weather_code[i], prob = w.precipitation_probability_max[i] || 0, rain = w.precipitation_sum[i] || 0, snow = w.snowfall_sum[i] || 0, gust = w.wind_gusts_10m_max[i] || 0, hi = w.temperature_2m_max[i], lo = w.temperature_2m_min[i];
+        const wet = (code >= 51 && code <= 67) || (code >= 71 && code <= 77) || (code >= 80 && code <= 99);
+        const why = [];
+        let level = 'ok';
+        if (wet || rain >= 0.02 || snow > 0 || prob >= 50) { level = 'no'; why.push(snow > 0 || (code >= 71 && code <= 77) || code === 85 || code === 86 ? 'snow' : code >= 95 ? 'thunderstorm' : 'rain'); }
+        else if (prob >= 25) { level = 'caution'; why.push('chance of rain ' + prob + '%'); }
+        if (gust >= 30) { if (level === 'ok') level = 'caution'; why.push('wind gusts ' + Math.round(gust) + ' mph'); }
+        if (hi >= 90) { if (level === 'ok') level = 'caution'; why.push('hot, ' + Math.round(hi) + ' F'); }
+        if (lo <= 32) { if (level === 'ok') level = 'caution'; why.push('freezing, ' + Math.round(lo) + ' F'); }
+        return { date: t, code, hi: Math.round(hi), lo: Math.round(lo), prob, rain, snow, gust: Math.round(gust), level, why };
+      });
+      return Response.json({ lat: Number(lat.toFixed(4)), lng: Number(lng.toFixed(4)), days });
+    } catch (e) { return Response.json({ error: 'Could not get the forecast' }); }
+  }
   if (p.get('aps')) {
     // the action plans this person may see (all for managers and editors, only the assigned ones for the others), newest first
     const aps = await sql`select a.element_id, a.no, a.body, a.status, a.assignees, a.author, a.created_at, a.updated_at, a.updated_by, a.job_no, i.no as issue_no, i.description, i.priority,
