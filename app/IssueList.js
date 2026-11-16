@@ -281,7 +281,7 @@ export default function IssueList({ job }) {
       )}
       {pan && (
         // the same Comments / Files / Gallery spaces as in the part panel; the panel's own card is parked far above the screen, only its spaces (fixed to the screen) open
-        <div style={{ position: 'fixed', left: 0, top: -6000, width: '100vw' }}>
+        <div style={{ position: 'fixed', left: 0, top: -6000, width: '100vw', zIndex: 2500 }}>
           <IssuePanel key={pan.element + pan.sheet + (pan.cam ? 'c' : '') + (pan.scope || '')} job={job} element={pan.element} scope={pan.scope || 'issue'} initialSheet={pan.sheet} autoCam={!!pan.cam} onMsg={() => {}} onClose={() => { setPan(null); load(); }} />
         </div>
       )}
