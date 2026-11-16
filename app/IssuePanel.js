@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { upload as blobUpload } from '@vercel/blob/client';
 import { TOKEN } from '../lib/camviews';
 import CamIcon from './CamIcon';
+import { linkNums, useModelIds } from './ElemLinks';
 
 const OR = '#e8710a';
 const when = (t) => { const d = new Date(t); return d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) + ' · ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
@@ -69,18 +70,19 @@ export default function IssuePanel({ job, element, onMsg }) {
     return () => window.removeEventListener('ss-camviews-changed', f);
   }, [job]);
   // the words of the issue with every [[view:ID]] drawn as its icon, the same size as the letters
+  useModelIds();
   const rich = (t) => {
     const out = []; let last = 0, m, k = 0;
     const re = new RegExp(TOKEN.source, 'gi');
     while ((m = re.exec(t))) {
-      if (m.index > last) out.push(<span key={k++}>{t.slice(last, m.index)}</span>);
+      if (m.index > last) out.push(<span key={k++}>{linkNums(t.slice(last, m.index), 'a' + k)}</span>);
       const v = cvs.views.find((x) => x.id === m[1]);
       out.push(v
         ? <button key={k++} type="button" title={v.name} aria-label={'View: ' + v.name} onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('ss-goto-view', { detail: { id: v.id } })); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (x) {} }} style={{ display: 'inline', border: 0, background: 'none', padding: 0, margin: 0, font: 'inherit', fontSize: '1em', lineHeight: 'inherit', cursor: 'pointer', verticalAlign: 'baseline' }}><CamIcon n={v.n} /></button>
         : <span key={k++} title="This view was deleted" style={{ opacity: 0.4 }}>{'\u{1F6AB}'}</span>);
       last = m.index + m[0].length;
     }
-    if (last < t.length) out.push(<span key={k++}>{t.slice(last)}</span>);
+    if (last < t.length) out.push(<span key={k++}>{linkNums(t.slice(last), 'z' + k)}</span>);
     return out;
   };
   const addView = (v) => {
@@ -279,7 +281,7 @@ export default function IssuePanel({ job, element, onMsg }) {
               <div key={c.id} style={{ display: 'flex', flexDirection: 'column', alignItems: mine ? 'flex-end' : 'flex-start', marginBottom: 10 }}>
                 <div style={{ fontSize: 11.5, color: '#8a8576', margin: '0 6px 2px' }}>{c.author} {'·'} {new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                 <div onDoubleClick={() => (mine ? del(c.id) : null)} style={{ maxWidth: '80%', padding: c.kind === 'comment' ? '8px 12px' : 4, borderRadius: 16, background: mine ? OR : '#eeece5', color: mine ? '#fff' : '#141413', fontSize: 14, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                  {c.kind === 'comment' ? c.body : /^video\//.test(c.content_type || '') ? (
+                  {c.kind === 'comment' ? linkNums(c.body, 'c' + c.id) : /^video\//.test(c.content_type || '') ? (
                     <button type="button" onClick={() => setView({ kind: 'video', pathname: c.pathname })} style={{ display: 'block', position: 'relative', padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}>
                       <video src={url(c.pathname) + '#t=0.1'} preload="metadata" muted playsInline style={{ display: 'block', width: 180, maxWidth: '100%', borderRadius: 12, background: '#141413' }} />
                       <span style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: 34, height: 34, borderRadius: 17, background: 'rgba(20,20,19,.6)', color: '#fff', lineHeight: '34px', fontSize: 13 }}>{'▶'}</span>
