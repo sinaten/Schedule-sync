@@ -58,8 +58,9 @@ function ActionPlan({ job, r, can, post, reload, openPan }) {
   const [pick, setPick] = useState(false);
   const [users, setUsers] = useState(null);
   const [guest, setGuest] = useState('');
-  const [saved, setSaved] = useState(false);
+  const [jno, setJno] = useState('');
   useEffect(() => { setBody(ap ? ap.body : ''); }, [ap && ap.body]);
+  useEffect(() => { setJno(ap ? ap.jobNo : ''); }, [ap && ap.jobNo]);
   if (!ap) {
     if (!can) return null;
     return (
@@ -88,6 +89,8 @@ function ActionPlan({ job, r, can, post, reload, openPan }) {
       </div>
       {o && (
         <div style={{ padding: '4px 12px 12px' }}>
+          <div style={lab}>Job number</div>
+          {can ? <input value={jno} onChange={(e) => setJno(e.target.value)} onBlur={() => { if (jno.trim() && jno !== ap.jobNo) save({ job_no: jno }); }} placeholder="Job number" style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #cfe9d6', borderRadius: 10, height: 34, padding: '0 10px', margin: '4px 0 10px', font: 'inherit', fontSize: 14, outline: 'none', background: '#fff' }} /> : <div style={{ fontSize: 14, margin: '4px 0 10px' }}>{ap.jobNo}</div>}
           <div style={lab}>How to solve it</div>
           {can ? (
             <textarea value={body} onChange={(e) => setBody(e.target.value)} onBlur={() => { if (body !== ap.body) save({ body }); }} rows={3} placeholder="How should this be solved?" style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #cfe9d6', borderRadius: 10, padding: 8, margin: '4px 0 10px', font: 'inherit', fontSize: 14, resize: 'vertical', outline: 'none', background: '#fff' }} />
@@ -112,7 +115,7 @@ function ActionPlan({ job, r, can, post, reload, openPan }) {
           )}
           {can && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
-              <button type="button" onClick={async () => { setPick(false); await save({ body }); setO(false); }} style={{ border: 0, background: '#2e9e5b', color: '#fff', borderRadius: 14, padding: '7px 22px', font: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Save</button>
+              <button type="button" onClick={async () => { setPick(false); await save({ body, job_no: jno }); setO(false); }} style={{ border: 0, background: '#2e9e5b', color: '#fff', borderRadius: 14, padding: '7px 22px', font: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Save</button>
             </div>
           )}
         </div>

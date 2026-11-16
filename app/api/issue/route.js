@@ -30,7 +30,7 @@ export async function GET(req) {
   }
   if (p.get('aps')) {
     // the action plans this person may see (all for managers and editors, only the assigned ones for the others), newest first
-    const aps = await sql`select a.element_id, a.no, a.body, a.status, a.assignees, a.author, a.created_at, a.updated_at, a.updated_by, i.no as issue_no, i.description, i.priority,
+    const aps = await sql`select a.element_id, a.no, a.body, a.status, a.assignees, a.author, a.created_at, a.updated_at, a.updated_by, a.job_no, i.no as issue_no, i.description, i.priority,
       (select count(*)::int from issue_items t where t.job = a.job and t.element_id = a.element_id and t.scope = 'ap' and t.kind = 'file') as files,
       (select count(*)::int from issue_items t where t.job = a.job and t.element_id = a.element_id and t.scope = 'ap' and t.kind in ('photo','video')) as photos,
       (select count(*)::int from issue_items t where t.job = a.job and t.element_id = a.element_id and t.scope = 'issue' and (t.kind in ('comment','chat') or (t.kind = 'photo' and t.body = 'chat'))) as i_comments,
@@ -43,7 +43,7 @@ export async function GET(req) {
         (select max(t.created_at) from issue_items t where t.job = a.job and t.element_id = a.element_id)
       ) as fresh_at
       from action_plans a join issues i on i.job = a.job and i.element_id = a.element_id where a.job = ${job} order by a.no desc`;
-    return Response.json({ me: nm(u), can: canEdit(u), aps: aps.filter((a) => canSeeAp(a, u)).map((a) => ({ ...a, jobNo: jobNo(a.no), card: cardNo(a.issue_no) })) });
+    return Response.json({ me: nm(u), can: canEdit(u), aps: aps.filter((a) => canSeeAp(a, u)).map((a) => ({ ...a, jobNo: a.job_no || jobNo(a.no), card: cardNo(a.issue_no) })) });
   }
   if (p.get('list')) {
     // every issue of the job with its card number, status and the counts shown on the card
@@ -53,11 +53,11 @@ export async function GET(req) {
       (select count(*)::int from issue_items t where t.job = i.job and t.element_id = i.element_id and t.scope = 'issue' and t.kind in ('photo','video') and coalesce(t.body,'') <> 'chat') as photos
       from issues i where i.job = ${job} order by i.no desc`;
     // Discipline and Asset: read from the part's schedule row (the columns named Discipline / Asset that this person may see)
-    const aps = await sql`select a.element_id, a.no, a.body, a.status, a.assignees, a.author, a.created_at, a.updated_at, a.updated_by,
+    const aps = await sql`select a.element_id, a.no, a.body, a.status, a.assignees, a.author, a.created_at, a.updated_at, a.updated_by, a.job_no,
       (select count(*)::int from issue_items t where t.job = a.job and t.element_id = a.element_id and t.scope = 'ap' and t.kind = 'file') as files,
       (select count(*)::int from issue_items t where t.job = a.job and t.element_id = a.element_id and t.scope = 'ap' and t.kind in ('photo','video')) as photos
       from action_plans a where a.job = ${job}`;
-    const apBy = {}; aps.forEach((a) => { if (canSeeAp(a, u)) apBy[a.element_id] = { ...a, jobNo: jobNo(a.no) }; });
+    const apBy = {}; aps.forEach((a) => { if (canSeeAp(a, u)) apBy[a.element_id] = { ...a, jobNo: a.job_no || jobNo(a.no) }; });
     const els = rows.map((r) => r.element_id);
     const rr = els.length ? await sql`select r.element_id, r.vals from rows r join schedules s on s.id = r.schedule_id where s.job = ${job} and r.element_id = any(${els}::text[])` : [];
     const only = allowedCols(u, await getColPerms());
@@ -122,13 +122,14 @@ export async function POST(req) {
       await sql`insert into action_plans(job, element_id, no, body, author, updated_by) values(${job}, ${el}, (select coalesce(max(no), 0) + 1 from action_plans where job = ${job}), '', ${nm(u)}, ${nm(u)}) on conflict (job, element_id) do nothing`;
       return Response.json({ ok: true });
     }
-    const [cur] = await sql`select body, status, assignees from action_plans where job = ${job} and element_id = ${el}`;
+    const [cur] = await sql`select body, status, assignees, job_no from action_plans where job = ${job} and element_id = ${el}`;
     if (!cur) return Response.json({ error: 'No action plan' }, { status: 404 });
     const body = typeof b.body === 'string' ? b.body.slice(0, 5000) : cur.body;
     const status = STATUSES.includes(String(b.status)) ? String(b.status) : cur.status;
+    const jno = typeof b.job_no === 'string' ? (b.job_no.trim().slice(0, 30) || null) : cur.job_no;
     let as = cur.assignees;
     if (Array.isArray(b.assignees)) as = b.assignees.slice(0, 30).map((a) => ({ n: String((a && a.n) || '').trim().slice(0, 80), u: a && a.u ? 1 : 0 })).filter((a) => a.n);
-    await sql`update action_plans set body = ${body}, status = ${status}, assignees = ${JSON.stringify(as)}::jsonb, updated_at = now(), updated_by = ${nm(u)} where job = ${job} and element_id = ${el}`;
+    await sql`update action_plans set body = ${body}, status = ${status}, job_no = ${jno}, assignees = ${JSON.stringify(as)}::jsonb, updated_at = now(), updated_by = ${nm(u)} where job = ${job} and element_id = ${el}`;
     return Response.json({ ok: true });
   }
   if (b.action === 'priority') {

@@ -97,13 +97,15 @@ export default function FollowUp({ job }) {
                     const as = Array.isArray(a.assignees) ? a.assignees : [];
                     return (
                       <div key={a.element_id} style={{ marginTop: 8, border: '1px solid #bfe0c8', borderRadius: 12, background: '#eef8f0', overflow: 'hidden' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', flexWrap: 'wrap' }}>
-                          <b style={{ fontSize: 13.5 }}>{a.jobNo}</b>{isNew(a) && <span style={{ background: '#c0392b', color: '#fff', borderRadius: 5, padding: '1px 6px', fontSize: 10, fontWeight: 700 }}>NEW</span>}
-                          <StatusChip st={a.status} onPick={(k) => apStatus(a, k)} locked={!who.can} />
-                          <PriorityTag pr={a.priority} />
-                          <span style={{ flex: 1 }} />
-                          {(isNew(a) || unread(a.element_id, 'issue', 'comments', a.i_comments) || unread(a.element_id, 'issue', 'files', a.i_files) || unread(a.element_id, 'issue', 'photos', a.i_photos) || unread(a.element_id, 'ap', 'files', a.files) || unread(a.element_id, 'ap', 'photos', a.photos)) && <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#c0392b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-label="Changed" style={{ flex: 'none', order: 99 }}><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" /><path d="M9 17v1a3 3 0 0 0 6 0v-1" /></svg>}
-                          <span style={{ fontSize: 11.5, color: '#8a8576' }}>from {a.card}</span>
+                        <div style={{ padding: '9px 12px 6px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <b style={{ fontSize: 18, letterSpacing: 0.2 }}>{a.card}</b>{isNew(a) && <span style={{ background: '#c0392b', color: '#fff', borderRadius: 5, padding: '1px 6px', fontSize: 10, fontWeight: 700 }}>NEW</span>}
+                            <StatusChip st={a.status} onPick={(k) => apStatus(a, k)} locked={!who.can} />
+                            <PriorityTag pr={a.priority} />
+                            <span style={{ flex: 1 }} />
+                            {(isNew(a) || unread(a.element_id, 'issue', 'comments', a.i_comments) || unread(a.element_id, 'issue', 'files', a.i_files) || unread(a.element_id, 'issue', 'photos', a.i_photos) || unread(a.element_id, 'ap', 'files', a.files) || unread(a.element_id, 'ap', 'photos', a.photos)) && <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#c0392b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-label="Changed" style={{ flex: 'none', order: 99 }}><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" /><path d="M9 17v1a3 3 0 0 0 6 0v-1" /></svg>}
+                          </div>
+                          <div style={{ fontSize: 12.5, color: '#2c7a47', fontWeight: 700, marginTop: 2 }}>{a.jobNo}</div>
                         </div>
                         <div style={{ padding: '0 12px 8px', fontSize: 13, lineHeight: 1.5, color: '#6b675c', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}><b style={{ fontWeight: 600, color: '#8a8576', fontSize: 11, letterSpacing: 0.3 }}>ISSUE </b>{a.description || 'No description.'}</div>
                         <div style={{ padding: '0 12px 8px', fontSize: 14, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}><b style={{ fontWeight: 600, color: '#a85a08', fontSize: 11, letterSpacing: 0.3 }}>HOW TO SOLVE IT </b>{a.body || <span style={{ color: '#9a9686' }}>Not written yet.</span>}</div>
