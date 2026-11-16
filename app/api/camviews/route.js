@@ -26,6 +26,24 @@ export async function GET(req) {
   }
   return Response.json({ views: list, admin: isAdmin(u), editor: canEdit(u), sections });
 }
+// Generate QR: makes a new section (= a QR code, listed in Admin) with the view's name and connects it to the view.
+async function makeQr(job, id) {
+  const sql = await db();
+  await sql`create table if not exists sections(id text primary key, job text not null, name text not null, pos int default 0, created_at timestamptz default now())`;
+  const list = await getCamViews(sql, job);
+  const v = list.find((x) => x.id === id);
+  if (!v) return Response.json({ error: 'View not found.' }, { status: 404 });
+  if (v.qr) {
+    const [ex] = await sql`select id from sections where id = ${v.qr}`;
+    if (ex) return Response.json({ ok: true, views: list });
+  }
+  const [m] = await sql`select coalesce(max(pos), 0) as m from sections where job = ${job}`;
+  const sid = crypto.randomUUID().replace(/-/g, '').slice(0, 10);
+  await sql`insert into sections(id, job, name, pos) values(${sid}, ${job}, ${v.name}, ${Number(m.m) + 1})`;
+  v.qr = sid; v.qrName = v.name;
+  await putCamViews(sql, job, list);
+  return Response.json({ ok: true, views: list });
+}
 // PATCH  admin: { job, id, name? , qr? }   rename a view (unique name) and/or connect a QR section to it ('' = disconnect).
 export async function PATCH(req) {
   const u = await currentUser();
@@ -41,6 +59,7 @@ export async function PATCH(req) {
     if (!name) return Response.json({ error: 'A name is needed.' }, { status: 400 });
     if (list.some((x) => x.id !== v.id && x.name.toLowerCase() === name.toLowerCase())) return Response.json({ error: 'A view with this name already exists.' }, { status: 409 });
     v.name = name;
+    if (v.qr) { await sql`update sections set name = ${name} where id = ${v.qr}`; v.qrName = name; }
   }
   if (typeof b.qr === 'string') {
     if (b.qr) {
@@ -57,6 +76,7 @@ export async function POST(req) {
   if (!isAdmin(u)) return Response.json({ error: 'Admins only' }, { status: 403 });
   const b = await req.json().catch(() => ({}));
   const job = String(b.job || '');
+  if (b.action === 'qr') return makeQr(job, String(b.id || ''));
   const name = String(b.name || '').trim().slice(0, 60);
   if (!job || !name) return Response.json({ error: 'A name is needed.' }, { status: 400 });
   const c = b.cam || {};

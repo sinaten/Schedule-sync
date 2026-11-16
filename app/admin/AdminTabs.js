@@ -12,6 +12,7 @@ import HistoryRules from './HistoryRules';
 import UserManage from './UserManage';
 import ColourRules from './ColourRules';
 import FadeSettings from './FadeSettings';
+import CamQrTable from './CamQrTable';
 
 export default function AdminTabs({ initialTab, media }) {
   const [tab, setTab] = useState(['users', 'projects', 'media', 'analysis', 'manage', 'settings'].includes(initialTab) ? initialTab : 'users');
@@ -21,7 +22,7 @@ export default function AdminTabs({ initialTab, media }) {
   return (
     <>
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>{t('users', 'Users')}{t('projects', 'Projects')}{t('media', 'Photos & videos')}{t('analysis', 'Analysis')}{t('manage', 'User manage')}{t('settings', 'Settings')}</div>
-      {tab === 'users' ? <Users /> : tab === 'projects' ? <Projects /> : tab === 'media' ? media : tab === 'analysis' ? <Analysis /> : tab === 'manage' ? <UserManage /> : <><Settings /><ColourRules /><FadeSettings /><div style={{ marginTop: 28 }}><MediaRules /></div><LocationRules /><AccessRules /><UserAccess /><HistoryRules /></>}
+      {tab === 'users' ? <Users /> : tab === 'projects' ? <Projects /> : tab === 'media' ? media : tab === 'analysis' ? <Analysis /> : tab === 'manage' ? <UserManage /> : <><Settings /><CamQrTable /><ColourRules /><FadeSettings /><div style={{ marginTop: 28 }}><MediaRules /></div><LocationRules /><AccessRules /><UserAccess /><HistoryRules /></>}
     </>
   );
 }
