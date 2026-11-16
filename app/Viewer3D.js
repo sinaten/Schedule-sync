@@ -302,6 +302,7 @@ export default function Viewer3D({ job = '', kiosk = null }) {
   const modeRef = useRef(mode);
   modeRef.current = mode;
   if (typeof window !== 'undefined') { window.__ssMode = mode; try { localStorage.setItem('ss-mode:' + job, mode); } catch (e) {} }
+  useEffect(() => { window.dispatchEvent(new CustomEvent('ss-mode', { detail: mode })); }, [mode]);
   const pollT = useRef(null);
   async function loadLayer() {
     try { const r = await fetch('/api/layer?job=' + encodeURIComponent(job), { cache: 'no-store' }); if (r.ok) { const j = await r.json(); setLayer(j); return j; } } catch (e) {}
@@ -753,7 +754,7 @@ export default function Viewer3D({ job = '', kiosk = null }) {
                   ))}
                 </div>
               )))}
-              {bar('ok', me, openMe, setOpenMe, mine.length === 0 ? <div style={{ ...row, color: '#8a8576' }}>{pp.id ? 'Nothing to change here.' : 'Select a part in the model.'}</div> : mine.map(({ tb, c, ed }) => (
+              {bar('ok', 'Issue', openMe, setOpenMe, mine.length === 0 ? <div style={{ ...row, color: '#8a8576' }}>{pp.id ? 'Nothing to change here.' : 'Select a part in the model.'}</div> : mine.map(({ tb, c, ed }) => (
                 <div key={tb.id + '|' + c.name} style={row}>
                   <span>{c.name}</span>
                   {ed ? <input type="checkbox" aria-label={c.name} checked={(tb.id + '|' + tb.element_id + '|' + c.name) in draft ? !!draft[tb.id + '|' + tb.element_id + '|' + c.name].value : !!(tb.vals && tb.vals[c.name] === true)} onChange={(e) => toggle(tb, c.name, e.target.checked)} style={{ width: 22, height: 22, accentColor: '#2e9e5b' }} /> : <span style={{ color: '#9a9686', textAlign: 'right' }}>{val(tb, c)}</span>}

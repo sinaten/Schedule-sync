@@ -133,6 +133,9 @@ export default function IssueList({ job }) {
   const [f, setF] = useState('all');
   const [newest, setNewest] = useState(true);
   const [open, setOpen] = useState(true);
+  // Source view = real data only: the list folds into a grey bar until the Issue bar is chosen
+  const [src, setSrc] = useState(() => { try { return typeof window !== 'undefined' && (window.__ssMode || localStorage.getItem('ss-mode:' + job)) === 'source'; } catch (e) { return false; } });
+  useEffect(() => { const f = (e) => setSrc(e.detail === 'source'); window.addEventListener('ss-mode', f); return () => window.removeEventListener('ss-mode', f); }, []);
   const [pan, setPan] = useState(null); // Comments / Files / Gallery of one card: { element, sheet }
   const [nw, setNw] = useState(null); // new issue without an element: { text, pr }
   const [ed, setEd] = useState(null); // the card being edited: { element_id, text, pr }
@@ -187,6 +190,13 @@ export default function IssueList({ job }) {
   const chip = (k, label) => <button key={k} type="button" onClick={() => setF(k)} style={{ border: 0, borderRadius: 14, padding: '5px 12px', font: 'inherit', fontSize: 12.5, cursor: 'pointer', background: f === k ? 'rgba(20,20,19,.82)' : '#f4f3ee', color: f === k ? '#fff' : '#141413', fontWeight: f === k ? 600 : 500 }}>{label}</button>;
   return (
     <section style={{ margin: '18px 0', maxWidth: 560 }}>
+      {src && (
+        <div aria-disabled="true" title="Choose the Issue bar under the model to use the issues" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', border: '1px solid #e7e3d8', borderRadius: 14, background: '#f1f0ec', color: '#a8a496', cursor: 'default' }}>
+          <span style={{ fontSize: 15.5, fontWeight: 600 }}>Issues</span>
+          <span style={{ fontSize: 12 }}>Choose the Issue bar</span>
+        </div>
+      )}
+      {!src && <>
       <button type="button" onClick={() => setOpen((o) => !o)} style={{ display: 'flex', width: '100%', alignItems: 'baseline', justifyContent: 'space-between', border: 0, background: 'none', padding: '0 2px', font: 'inherit', cursor: 'pointer', color: '#141413' }}>
         <span style={{ fontSize: 17, fontWeight: 600 }}>Issues</span>
         <span style={{ fontSize: 12.5, color: '#8a8576' }}>{list.length} of {rows.length} {open ? '▴' : '▾'}</span>
@@ -280,6 +290,7 @@ export default function IssueList({ job }) {
           <IssuePanel key={pan.element + pan.sheet + (pan.cam ? 'c' : '') + (pan.scope || '')} job={job} element={pan.element} scope={pan.scope || 'issue'} initialSheet={pan.sheet} autoCam={!!pan.cam} onMsg={() => {}} onClose={() => { setPan(null); load(); }} />
         </div>
       )}
+      </>}
     </section>
   );
 }
