@@ -23,9 +23,10 @@ export async function GET(req) {
     if (!canEdit(u)) return no();
     const d = await db();
     const us = await d`select username, role, jobs from users order by username`;
-    const names = us.filter((x) => x.role === 'admin' || (Array.isArray(x.jobs) && x.jobs.includes(job))).map((x) => x.username);
-    if (process.env.ADMIN_USER && !names.includes(process.env.ADMIN_USER)) names.unshift(process.env.ADMIN_USER);
-    return Response.json({ users: names });
+    // every user of the site; access = may open this job (someone without access would not see the action plan)
+    const list = us.map((x) => ({ n: x.username, role: x.role, access: x.role === 'admin' || (Array.isArray(x.jobs) && x.jobs.includes(job)) }));
+    if (process.env.ADMIN_USER && !list.some((x) => x.n === process.env.ADMIN_USER)) list.unshift({ n: process.env.ADMIN_USER, role: 'admin', access: true });
+    return Response.json({ users: list });
   }
   if (p.get('aps')) {
     // the action plans this person may see (all for managers and editors, only the assigned ones for the others), newest first

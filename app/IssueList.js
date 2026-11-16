@@ -58,6 +58,7 @@ function ActionPlan({ job, r, can, post, reload, openPan }) {
   const [pick, setPick] = useState(false);
   const [users, setUsers] = useState(null);
   const [guest, setGuest] = useState('');
+  const [saved, setSaved] = useState(false);
   useEffect(() => { setBody(ap ? ap.body : ''); }, [ap && ap.body]);
   if (!ap) {
     if (!can) return null;
@@ -76,20 +77,20 @@ function ActionPlan({ job, r, can, post, reload, openPan }) {
   const toggleUser = (n) => save({ assignees: as.some((a) => a.u && a.n === n) ? as.filter((a) => !(a.u && a.n === n)) : [...as, { n, u: 1 }] });
   const lab = { fontSize: 11, fontWeight: 700, letterSpacing: 0.3, color: '#8a8576', textTransform: 'uppercase' };
   return (
-    <div style={{ borderTop: '1.5px solid #e8710a', background: '#fff7ef', borderRadius: '0 0 11px 11px' }}>
+    <div style={{ borderTop: '1.5px solid #8fcfa2', background: '#eef8f0', borderRadius: '0 0 11px 11px' }}>
       <div role="button" tabIndex={0} onClick={() => setO((x) => !x)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', cursor: 'pointer', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, color: '#a85a08' }}>ACTION PLAN</span>
+        <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, color: '#2c7a47' }}>ACTION PLAN</span>
         <b style={{ fontSize: 13 }}>{ap.jobNo}</b>
         <span onClick={(e) => e.stopPropagation()}><StatusChip st={ap.status} onPick={(k) => save({ status: k })} locked={!can} /></span>
         <span style={{ flex: 1 }} />
-        <span style={{ display: 'flex' }}>{as.map((a, i) => <span key={i} title={a.n} style={{ width: 22, height: 22, borderRadius: 11, marginLeft: -6, border: '1.5px solid #fff7ef', boxSizing: 'border-box', background: a.u ? '#e8710a' : '#f4f3ee', color: a.u ? '#fff' : '#6b675c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600 }}>{a.u ? a.n[0].toUpperCase() : '?'}</span>)}</span>
+        <span style={{ display: 'flex' }}>{as.map((a, i) => <span key={i} title={a.n} style={{ width: 22, height: 22, borderRadius: 11, marginLeft: -6, border: '1.5px solid #eef8f0', boxSizing: 'border-box', background: a.u ? '#e8710a' : '#f4f3ee', color: a.u ? '#fff' : '#6b675c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600 }}>{a.u ? a.n[0].toUpperCase() : '?'}</span>)}</span>
         <span style={{ color: '#9a9686', fontSize: 12 }}>{o ? '▴' : '▾'}</span>
       </div>
       {o && (
         <div style={{ padding: '4px 12px 12px' }}>
           <div style={lab}>How to solve it</div>
           {can ? (
-            <textarea value={body} onChange={(e) => setBody(e.target.value)} onBlur={() => { if (body !== ap.body) save({ body }); }} rows={3} placeholder="How should this be solved?" style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #e8dcc8', borderRadius: 10, padding: 8, margin: '4px 0 10px', font: 'inherit', fontSize: 14, resize: 'vertical', outline: 'none', background: '#fff' }} />
+            <textarea value={body} onChange={(e) => setBody(e.target.value)} onBlur={() => { if (body !== ap.body) save({ body }); }} rows={3} placeholder="How should this be solved?" style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #cfe9d6', borderRadius: 10, padding: 8, margin: '4px 0 10px', font: 'inherit', fontSize: 14, resize: 'vertical', outline: 'none', background: '#fff' }} />
           ) : <div style={{ fontSize: 14, lineHeight: 1.55, whiteSpace: 'pre-wrap', margin: '4px 0 10px' }}>{ap.body ? linkNums(ap.body, 'ap' + r.no) : <span style={{ color: '#9a9686' }}>Not written yet.</span>}</div>}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={lab}>Assigned to</span>
@@ -100,7 +101,7 @@ function ActionPlan({ job, r, can, post, reload, openPan }) {
             <div style={{ marginTop: 8, border: '1px solid #e0dccf', borderRadius: 10, padding: 8, background: '#fff' }}>
               <div style={lab}>Site users</div>
               {users === null && <div style={{ fontSize: 13, color: '#9a9686', padding: 4 }}>Loading…</div>}
-              {(users || []).map((n) => <label key={n} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 2px', fontSize: 13.5 }}><input type="checkbox" checked={as.some((a) => a.u && a.n === n)} onChange={() => toggleUser(n)} />{n}</label>)}
+              {(users || []).map((x) => <label key={x.n} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 2px', fontSize: 13.5 }}><input type="checkbox" checked={as.some((a) => a.u && a.n === x.n)} onChange={() => toggleUser(x.n)} /><span style={{ flex: 1 }}>{x.n}</span><span style={{ fontSize: 10.5, color: '#8a8576' }}>{x.role}</span>{!x.access && <span title="This person cannot open this job yet, so they will not see the action plan" style={{ fontSize: 10, color: '#a86400', background: '#fff3dc', borderRadius: 6, padding: '0 5px' }}>NO ACCESS TO THIS JOB</span>}</label>)}
               <div style={{ ...lab, margin: '8px 0 4px' }}>Someone who is not a user</div>
               <div style={{ display: 'flex', gap: 6 }}>
                 <input value={guest} onChange={(e) => setGuest(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && guest.trim()) { save({ assignees: [...as, { n: guest.trim(), u: 0 }] }); setGuest(''); } }} placeholder="Name, company" style={{ flex: 1, minWidth: 0, height: 32, border: '1.5px solid #e0dccf', borderRadius: 16, padding: '0 12px', font: 'inherit', fontSize: 13, outline: 'none' }} />
@@ -109,7 +110,7 @@ function ActionPlan({ job, r, can, post, reload, openPan }) {
               {as.filter((a) => !a.u).map((a, i) => <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, fontSize: 13 }}><span style={{ flex: 1 }}>{a.n} <span style={{ fontSize: 10, color: '#6b675c' }}>(not a user)</span></span><button type="button" onClick={() => save({ assignees: as.filter((x) => x !== a) })} style={{ border: 0, background: 'none', color: '#9a9686', cursor: 'pointer' }}>{'✕'}</button></div>)}
             </div>
           )}
-          <div style={{ marginTop: 12, background: '#eef8f0', border: '1px solid #cfe9d6', borderTop: '1.5px solid #8fcfa2', borderRadius: 10, overflow: 'hidden' }}>
+          <div style={{ marginTop: 12, background: '#e1f3e6', border: '1px solid #bfe0c8', borderRadius: 10, overflow: 'hidden' }}>
             <div style={{ padding: '6px 10px 0', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, color: '#2c7a47' }}>FOR THE ACTION PLAN</div>
             {can && (
               <div style={{ display: 'flex', gap: 8, padding: '6px 10px', flexWrap: 'wrap' }}>
@@ -123,6 +124,12 @@ function ActionPlan({ job, r, can, post, reload, openPan }) {
               ))}
             </div>
           </div>
+          {can && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
+              <button type="button" onClick={async () => { setPick(false); await save({ body }); setSaved(true); setTimeout(() => setSaved(false), 2000); }} style={{ border: 0, background: '#2e9e5b', color: '#fff', borderRadius: 14, padding: '7px 22px', font: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Save</button>
+              {saved && <span style={{ fontSize: 12.5, color: '#2c7a47', fontWeight: 600 }}>{'\u2713'} Saved</span>}
+            </div>
+          )}
         </div>
       )}
     </div>
