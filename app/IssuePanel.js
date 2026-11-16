@@ -23,11 +23,31 @@ async function shrink(file) {
 }
 
 const titleSt = { position: 'sticky', top: 0, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #efece3', fontWeight: 700, fontSize: 14.5 };
+// How high the phone's bottom bar (QR, home, refresh) stands: a docked space opens above its top line, never under it.
+function useBarTop() {
+  const [b, setB] = useState(0);
+  useEffect(() => {
+    const m = () => {
+      const el = document.querySelector('.ms-bot');
+      if (!el) { setB(0); return; }
+      const cs = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      // only a bar lying along the bottom edge counts (on a laptop it is a small column on the left)
+      if (cs.display === 'none' || cs.position !== 'fixed' || r.width < window.innerWidth * 0.8 || r.top < window.innerHeight * 0.5) { setB(0); return; }
+      setB(Math.max(0, Math.round(window.innerHeight - r.top)));
+    };
+    m();
+    window.addEventListener('resize', m);
+    return () => window.removeEventListener('resize', m);
+  }, []);
+  return b;
+}
 // Bottom sheet (defined outside the panel so typing in it never loses focus).
 function Sheet({ children, name, foot, close, dock }) {
+  const barTop = useBarTop();
   // dock: a space under the page (no dimmed backdrop), so the model above stays visible
   if (dock) return (
-    <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 2000, height: '42vh', background: '#fff', borderTop: '2px solid #e8710a', borderRadius: '18px 18px 0 0', boxShadow: '0 -4px 14px rgba(0,0,0,.12)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ position: 'fixed', left: 0, right: 0, bottom: barTop, zIndex: 2000, height: barTop ? 'min(46vh, calc(100vh - ' + barTop + 'px - 90px))' : '42vh', background: '#fff', borderTop: '2px solid #e8710a', borderRadius: '18px 18px 0 0', boxShadow: '0 -4px 14px rgba(0,0,0,.12)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={titleSt}><span>{name}</span><button type="button" onClick={close} aria-label="Close" style={{ border: 0, background: '#f1ede4', width: 30, height: 30, borderRadius: 15, fontSize: 16, cursor: 'pointer' }}>{'✕'}</button></div>
       <div style={{ flex: 1, overflowY: 'auto', padding: 14 }}>{children}</div>
       {foot}
