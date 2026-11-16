@@ -397,6 +397,27 @@ export default function Viewer3D({ job = '', kiosk = null }) {
   };
 
   const [kmode, setKmode] = useState('issue');
+  const [qlv, setQlv] = useState(() => { try { return Math.min(10, Math.max(1, Number(localStorage.getItem('ss-q')) || 6)); } catch (e) { return 6; } });
+  // scanned view: the image-quality slider (1 = fastest, 10 = sharpest): the canvas resolution, plus smooth edges and shadows at the top
+  useEffect(() => {
+    if (!kiosk) return;
+    try { localStorage.setItem('ss-q', String(qlv)); } catch (e) {}
+    const apply = () => {
+      const vw = viewer.current;
+      if (!vw || !vw.model) return false;
+      try {
+        const top = Math.min(3, (window.devicePixelRatio || 1) * 1.5);
+        vw.impl.glrenderer().setPixelRatio(0.5 + (qlv - 1) * ((top - 0.5) / 9));
+        vw.setQualityLevel(qlv >= 8, qlv >= 4);
+        vw.resize();
+        vw.impl.invalidate(true, true, true);
+      } catch (e) {}
+      return true;
+    };
+    if (apply()) return;
+    const t = setInterval(() => { if (apply()) clearInterval(t); }, 700);
+    return () => clearInterval(t);
+  }, [qlv, kiosk && kiosk.viewId]);
   // scanned QR of a saved camera view: go to its angle once the model is there
   useEffect(() => {
     if (!kiosk) return;
@@ -541,17 +562,26 @@ export default function Viewer3D({ job = '', kiosk = null }) {
       await applyLook(vw, job, modeRef.current === 'user' ? layerRef.current : null, 'iso');
     };
     const band = 'max(env(safe-area-inset-top, 0px), 44px)';
+    const foot = 'calc(env(safe-area-inset-bottom, 0px) + 56px)';
     const tabK = (k, label) => (
       <button type="button" onClick={() => pickK(k)} aria-pressed={kmode === k} style={{ border: 0, borderRadius: 17, padding: '7px 15px', font: 'inherit', fontSize: 13, fontWeight: kmode === k ? 600 : 500, cursor: 'pointer', background: kmode === k ? 'rgba(20,20,19,.82)' : 'transparent', color: kmode === k ? '#fff' : '#141413' }}>{label}</button>
     );
+    const lab = { fontSize: 10.5, fontWeight: 600, letterSpacing: '.04em', color: 'rgba(20,20,19,.7)', textTransform: 'uppercase' };
     return (
       <section style={{ position: 'fixed', left: 0, top: 0, width: '100vw', height: '100vh', zIndex: 100000, background: '#fff' }}>
         <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: band, background: '#fff', borderBottom: '1px solid #efece3' }} />
-        <div ref={box} className="v3-box" style={{ position: 'absolute', left: 0, right: 0, top: band, bottom: 0, touchAction: 'none' }} />
+        <div ref={box} className="v3-box" style={{ position: 'absolute', left: 0, right: 0, top: band, bottom: foot, touchAction: 'none' }} />
         {!ready && <div style={{ position: 'absolute', left: 0, right: 0, top: '45%', textAlign: 'center', color: '#8a8576', fontSize: 15 }}>Loading the model…</div>}
         <button type="button" onClick={closeCam} aria-label="Close" style={{ position: 'absolute', right: 14, top: 'calc(env(safe-area-inset-top, 0px) + 60px)', width: 46, height: 46, borderRadius: 23, border: 0, background: 'rgba(20,20,19,.78)', color: '#fff', fontSize: 22, cursor: 'pointer', zIndex: 5 }}>{'\u2715'}</button>
-        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)', display: 'flex', justifyContent: 'center', zIndex: 5, pointerEvents: 'none' }}>
-          <div style={{ pointerEvents: 'auto', display: 'flex', gap: 2, padding: 3, borderRadius: 20, background: 'rgba(255,255,255,.74)', border: '1px solid rgba(20,20,19,.1)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}>
+        <div style={{ position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, zIndex: 5 }}>
+          <span style={lab}>Max</span>
+          <div style={{ position: 'relative', width: 34, height: 160 }}>
+            <input type="range" min="1" max="10" step="1" value={qlv} onChange={(e) => setQlv(Number(e.target.value))} aria-label="Image quality" style={{ position: 'absolute', left: '50%', top: '50%', width: 160, transform: 'translate(-50%,-50%) rotate(-90deg)', opacity: 0.75, margin: 0, touchAction: 'none' }} />
+          </div>
+          <span style={lab}>Min</span>
+        </div>
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: foot, paddingBottom: 'env(safe-area-inset-bottom, 0px)', boxSizing: 'border-box', background: '#fff', borderTop: '1px solid #efece3', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5 }}>
+          <div style={{ display: 'flex', gap: 2, padding: 3, borderRadius: 20, background: '#f6f4ec', border: '1px solid rgba(20,20,19,.1)' }}>
             {tabK('issue', 'Issue view')}{tabK('normal', 'Normal view')}
           </div>
         </div>
