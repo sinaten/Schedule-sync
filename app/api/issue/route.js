@@ -38,9 +38,9 @@ export async function GET(req) {
       (select count(*)::int from issue_items t where t.job = a.job and t.element_id = a.element_id and t.scope = 'issue' and t.kind in ('photo','video') and coalesce(t.body,'') <> 'chat') as i_photos,
       (select t.author || ': ' || left(t.body, 140) from issue_items t where t.job = a.job and t.element_id = a.element_id and t.scope = 'issue' and t.kind = 'comment' order by t.id desc limit 1) as i_last,
       greatest(
-        case when a.updated_by is distinct from ${nm(u)} then a.updated_at end,
-        case when i.author is distinct from ${nm(u)} then i.updated_at end,
-        (select max(t.created_at) from issue_items t where t.job = a.job and t.element_id = a.element_id and t.author is distinct from ${nm(u)})
+        a.updated_at,
+        i.updated_at,
+        (select max(t.created_at) from issue_items t where t.job = a.job and t.element_id = a.element_id)
       ) as fresh_at
       from action_plans a join issues i on i.job = a.job and i.element_id = a.element_id where a.job = ${job} order by a.no desc`;
     return Response.json({ me: nm(u), can: canEdit(u), aps: aps.filter((a) => canSeeAp(a, u)).map((a) => ({ ...a, jobNo: jobNo(a.no), card: cardNo(a.issue_no) })) });

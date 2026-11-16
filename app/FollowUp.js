@@ -43,7 +43,7 @@ export default function FollowUp({ job }) {
   // new = a change by someone else (the action plan itself, or a comment, file or photo of its issue) after the last time the bar was opened
   const isNew = (a) => !!a.fresh_at && new Date(a.fresh_at).getTime() > getSeen(job, 'Action Plan');
   const apFresh = () => aps.filter(isNew).length;
-  const fresh = (bar) => bar === 'Action Plan' ? apFresh() : of(bar).filter((x) => x.author !== who.me && new Date(x.created_at).getTime() > getSeen(job, bar)).length;
+  const fresh = (bar) => bar === 'Action Plan' ? apFresh() : of(bar).filter((x) => new Date(x.created_at).getTime() > getSeen(job, bar)).length;
   const toggle = (bar) => {
     const o = !open[bar];
     setOpen((s) => ({ ...s, [bar]: o }));
@@ -77,8 +77,7 @@ export default function FollowUp({ job }) {
               <div role="button" tabIndex={0} aria-expanded={o} onClick={() => toggle(bar)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggle(bar); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 12px', cursor: 'pointer', background: o ? '#f7f5ef' : '#fff', WebkitTapHighlightColor: 'transparent' }}>
                 <Bell n={n} />
                 <span style={{ flex: 1, fontSize: 15.5, fontWeight: 600, color: '#141413' }}>{bar}</span>
-                {bar !== 'Action Plan' && <button type="button" aria-label={'Add to ' + bar} onClick={(e) => { e.stopPropagation(); setOpen((s) => ({ ...s, [bar]: true })); setAdding(adding === bar ? null : bar); setText(''); }} style={{ width: 32, height: 32, borderRadius: 16, border: '1.5px solid #e8710a', background: adding === bar ? '#fff7ef' : '#fff', color: '#e8710a', fontSize: 22, lineHeight: '26px', padding: 0, cursor: 'pointer', flex: 'none' }}>+</button>}
-                <span style={{ color: '#9a9686', fontSize: 12 }}>{o ? '▴' : '▾'}</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e8710a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flex: 'none', transform: o ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="M6 9l6 6 6-6" /></svg>
               </div>
               {o && (
                 <div style={{ padding: '6px 12px 12px', borderTop: '1px solid #efece3' }}>
@@ -117,7 +116,7 @@ export default function FollowUp({ job }) {
                       <button type="button" onClick={() => add(bar)} disabled={!text.trim()} style={{ border: 0, borderRadius: 18, padding: '0 16px', background: text.trim() ? '#e8710a' : '#e7e3d8', color: '#fff', font: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: text.trim() ? 'pointer' : 'default' }}>Add</button>
                     </div>
                   )}
-                  {bar !== 'Action Plan' && list.length === 0 && adding !== bar && <div style={{ padding: '10px 2px', fontSize: 13, color: '#9a9686' }}>Nothing here yet. Press + to add.</div>}
+                  {bar !== 'Action Plan' && list.length === 0 && adding !== bar && <div style={{ padding: '10px 2px', fontSize: 13, color: '#9a9686' }}>Nothing here yet.</div>}
                   {bar !== 'Action Plan' && list.map((x) => (
                     <div key={x.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '9px 10px', marginTop: 6, borderRadius: 10, background: '#f7f5ef' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
