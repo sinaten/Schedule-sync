@@ -1,6 +1,6 @@
 import { del } from '@vercel/blob';
 import { currentUser, canJob, isAdmin } from '../../../lib/user';
-import { issuesDb } from '../../../lib/issues';
+import { issuesDb, STATUSES, cardNo } from '../../../lib/issues';
 export const dynamic = 'force-dynamic';
 const nm = (u) => (u && u.name) || 'admin';
 const no = () => Response.json({ error: 'No access' }, { status: 403 });
@@ -10,9 +10,20 @@ export async function GET(req) {
   const p = new URL(req.url).searchParams;
   const job = p.get('job') || '', el = p.get('element') || '';
   const u = await currentUser();
-  if (!u || !job || !el || !canJob(u, job)) return no();
+  if (!u || !job || !canJob(u, job)) return no();
   const sql = await issuesDb();
-  const [issue] = await sql`select description, author, created_at from issues where job = ${job} and element_id = ${el}`;
+  if (p.get('list')) {
+    // every issue of the job with its card number, status and the counts shown on the card
+    const rows = await sql`select i.no, i.element_id, i.description, i.author, i.created_at, i.status,
+      (select count(*)::int from issue_items t where t.job = i.job and t.element_id = i.element_id and (t.kind in ('comment','chat') or (t.kind = 'photo' and t.body = 'chat'))) as comments,
+      (select count(*)::int from issue_items t where t.job = i.job and t.element_id = i.element_id and t.kind = 'file') as files,
+      (select count(*)::int from issue_items t where t.job = i.job and t.element_id = i.element_id and t.kind in ('photo','video') and coalesce(t.body,'') <> 'chat') as photos
+      from issues i where i.job = ${job} order by i.no desc`;
+    return Response.json({ issues: rows.map((r) => ({ ...r, card: cardNo(r.no) })) });
+  }
+  if (!el) return no();
+  const [issue] = await sql`select description, author, created_at, no, status from issues where job = ${job} and element_id = ${el}`;
+  if (issue) issue.card = cardNo(issue.no);
   const items = await sql`select id, kind, author, body, pathname, name, content_type, created_at from issue_items where job = ${job} and element_id = ${el} order by id`;
   return Response.json({ me: nm(u), issue: issue || null, items });
 }
@@ -24,6 +35,14 @@ export async function POST(req) {
   const u = await currentUser();
   if (!u || !job || !el || !canJob(u, job)) return no();
   const sql = await issuesDb();
+  if (b.action === 'status') {
+    // any person with access to the job may change the status (Open, In Progress, Work Complete, Closed)
+    const st = String(b.status || '');
+    if (!STATUSES.includes(st)) return Response.json({ error: 'Bad status' }, { status: 400 });
+    const r = await sql`update issues set status = ${st}, updated_at = now() where job = ${job} and element_id = ${el} returning element_id`;
+    if (!r.length) return Response.json({ error: 'No such issue' }, { status: 404 });
+    return Response.json({ ok: true });
+  }
   if (b.action === 'attach') {
     // a photo, video or file sent in the chat (uploaded straight to storage); it stays in the chat, not in the Gallery
     const path = String(b.pathname || '');
@@ -47,7 +66,7 @@ export async function POST(req) {
   const d = String(b.description ?? '').slice(0, 5000);
   const [ex] = await sql`select author from issues where job = ${job} and element_id = ${el}`;
   if (ex && ex.author && ex.author !== nm(u) && !isAdmin(u)) return Response.json({ error: 'Only the author can change the issue text' }, { status: 403 });
-  await sql`insert into issues(job, element_id, description, author) values(${job}, ${el}, ${d}, ${nm(u)})
+  await sql`insert into issues(job, element_id, description, author, no) values(${job}, ${el}, ${d}, ${nm(u)}, (select coalesce(max(no), 0) + 1 from issues where job = ${job}))
     on conflict (job, element_id) do update set description = excluded.description, updated_at = now()`;
   return Response.json({ ok: true });
 }

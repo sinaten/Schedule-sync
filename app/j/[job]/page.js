@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import Viewer3D from '../../Viewer3D';
+import IssueList from '../../IssueList';
 import { currentUser, canJob } from '../../../lib/user';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -13,6 +14,7 @@ export default async function JobPage({ params }) {
       <p><a href="/">All jobs</a></p>
       <h1>{job || 'No job number yet'}</h1>
       <Viewer3D job={job} />
+      {job && <IssueList job={job} />}
     </main>
   );
 }

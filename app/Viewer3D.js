@@ -437,6 +437,33 @@ export default function Viewer3D({ job = '', kiosk = null }) {
     if (el) el.addEventListener('pointerdown', clear);
     return () => { clearInterval(t); if (el) el.removeEventListener('pointerdown', clear); };
   }, [!!frame]);
+  // Copy popup: next to the part that was clicked, one press copies its number to the clipboard (to paste in a comment or anywhere)
+  const [cp, setCp] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const popId = popup && popup.id;
+  useEffect(() => {
+    setCopied(false);
+    if (!popId) { setCp(null); return; }
+    const place = () => {
+      const vw = viewer.current, b = box.current;
+      const d = window.__ssById && window.__ssById[parseInt(popId, 10)];
+      const r = vw && vw.model && b && d ? elemRect(vw, d) : null;
+      if (!r) { setCp((o) => (o ? null : o)); return; }
+      const W = b.clientWidth, H = b.clientHeight;
+      const x = Math.round(Math.min(Math.max(r.x + r.w + 4, 4), W - 150)), y = Math.round(Math.min(Math.max(r.y, 4), H - 34));
+      setCp((o) => (o && o.x === x && o.y === y ? o : { x, y }));
+    };
+    place();
+    const t = setInterval(place, 200);
+    return () => clearInterval(t);
+  }, [popId]);
+  const copyId = async () => {
+    const t = String(popId || '');
+    try { await navigator.clipboard.writeText(t); } catch (e) {
+      try { const a = document.createElement('textarea'); a.value = t; a.style.position = 'fixed'; a.style.opacity = '0'; document.body.appendChild(a); a.select(); document.execCommand('copy'); document.body.removeChild(a); } catch (x) {}
+    }
+    setCopied(true); setTimeout(() => setCopied(false), 1600);
+  };
   const [kmode, setKmode] = useState('issue');
   const [qlv, setQlv] = useState(() => { try { return Math.min(10, Math.max(1, Number(localStorage.getItem('ss-q')) || 6)); } catch (e) { return 6; } });
   // scanned view: the image-quality slider (1 = fastest, 10 = sharpest): the canvas resolution, plus smooth edges and shadows at the top
@@ -661,6 +688,11 @@ export default function Viewer3D({ job = '', kiosk = null }) {
       {ready && <CamViews job={job} getCam={getCam} goCam={goCam} goEl={goElement} />}
       <div style={{ position: 'relative' }}>
         <div ref={box} className="v3-box" style={{ position: 'relative', height: ready ? 480 : 0, touchAction: 'none' }} />
+        {cp && popId && (
+          <button type="button" onClick={copyId} aria-label={'Copy element number ' + popId} style={{ position: 'absolute', left: cp.x, top: cp.y, zIndex: 11, display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 11px', border: 0, borderRadius: 15, background: copied ? '#2e9e5b' : 'rgba(20,20,19,.86)', color: '#fff', font: 'inherit', fontSize: 13, fontWeight: 600, boxShadow: '0 2px 8px rgba(0,0,0,.3)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            {copied ? '\u2713 Copied' : <><span style={{ fontSize: 14 }}>{'\u29C9'}</span>Copy {popId}</>}
+          </button>
+        )}
         {frame && <div style={{ position: 'absolute', left: frame.x, top: frame.y, width: frame.w, height: frame.h, border: '2.5px dashed #e8710a', borderRadius: 6, pointerEvents: 'none', zIndex: 9 }} />}
         {ready && (
           <div

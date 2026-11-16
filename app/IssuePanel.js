@@ -4,6 +4,7 @@ import { upload as blobUpload } from '@vercel/blob/client';
 import { TOKEN } from '../lib/camviews';
 import CamIcon from './CamIcon';
 import { linkNums, useModelIds } from './ElemLinks';
+import { StatusChip } from './IssueList';
 
 const OR = '#e8710a';
 const when = (t) => { const d = new Date(t); return d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) + ' · ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
@@ -200,6 +201,11 @@ export default function IssuePanel({ job, element, onMsg }) {
     } catch (e) { setErr('Not sent: ' + (e && e.message ? e.message : 'error')); }
     setSending(false);
   };
+  const setStatus = async (status) => {
+    setD((x) => (x && x.issue ? { ...x, issue: { ...x.issue, status } } : x));
+    const r = await fetch('/api/issue', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, element, action: 'status', status }) });
+    if (!r.ok) load();
+  };
   const del = async (id) => { if (!window.confirm('Delete this?')) return; await fetch('/api/issue?id=' + id, { method: 'DELETE' }); load(); };
 
   const pill = (on) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, border: '1.5px solid ' + (on ? OR : '#d9d5c8'), background: '#fff', color: on ? OR : '#6b675c', borderRadius: 14, padding: '4px 10px', font: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer' });
@@ -207,8 +213,10 @@ export default function IssuePanel({ job, element, onMsg }) {
   const cnt = (n) => <span style={{ marginLeft: 4, background: n ? OR : '#e7e3d8', color: n ? '#fff' : '#8a8576', borderRadius: 9, padding: '1px 7px', fontSize: 11.5 }}>{n}</span>;
   return (
     <div style={{ margin: '0 12px 10px', border: '1px solid #f0d9bf', borderRadius: 14, background: '#fffaf4', padding: 12 }}>
-      <div style={{ fontSize: 12.5, fontWeight: 600, color: '#8a4a0a', marginBottom: 8 }}>
-        {d && d.issue ? 'Issue by ' + d.issue.author + ' · ' + when(d.issue.created_at) : d ? 'Issue by ' + (me || 'you') : 'Loading…'}
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: '#8a4a0a', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        {d && d.issue && d.issue.card && <span style={{ color: '#141413', fontWeight: 700 }}>{d.issue.card}</span>}
+        {d && d.issue && <StatusChip st={d.issue.status || 'open'} onPick={setStatus} />}
+        <span>{d && d.issue ? 'Issue by ' + d.issue.author + ' · ' + when(d.issue.created_at) : d ? 'Issue by ' + (me || 'you') : 'Loading…'}</span>
       </div>
       <div style={{ border: '1px solid #e7e3d8', borderRadius: 12, background: '#fff', padding: 8 }}>
         {locked || !editing ? (
