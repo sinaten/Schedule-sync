@@ -53,6 +53,7 @@ export default function IssueList({ job }) {
   const [f, setF] = useState('all');
   const [newest, setNewest] = useState(true);
   const [open, setOpen] = useState(true);
+  const [nw, setNw] = useState(null); // new issue without an element: { text, pr }
   const [ed, setEd] = useState(null); // the card being edited: { element_id, text, pr }
   useModelIds();
   const load = () => fetch('/api/issue?list=1&job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j.issues) { setRows(j.issues); setWho({ me: j.me, can: !!j.can }); } }).catch(() => {});
@@ -70,6 +71,11 @@ export default function IssueList({ job }) {
     setRows((rs) => rs.map((x) => (x.element_id === r.element_id ? { ...x, status } : x)));
     const res = await fetch('/api/issue', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, element: r.element_id, action: 'status', status }) });
     if (!res.ok) load();
+  };
+  const createNew = async () => {
+    if (!nw || !nw.text.trim()) return;
+    const res = await fetch('/api/issue', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, action: 'create', description: nw.text, priority: nw.pr }) });
+    if (res.ok) { setNw(null); setQ(''); setF('all'); setNewest(true); load(); }
   };
   const saveEdit = async () => {
     const r = rows.find((x) => x.element_id === ed.element_id);
@@ -105,7 +111,24 @@ export default function IssueList({ job }) {
       </button>
       {open && (
         <>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search card no., text or element number" style={{ width: '100%', boxSizing: 'border-box', height: 34, margin: '8px 0', border: '1.5px solid #e0dccf', borderRadius: 17, padding: '0 14px', font: 'inherit', fontSize: 13.5, outline: 'none' }} />
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '8px 0' }}>
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search card no., text or element number" style={{ flex: 1, minWidth: 0, boxSizing: 'border-box', height: 34, border: '1.5px solid #e0dccf', borderRadius: 17, padding: '0 14px', font: 'inherit', fontSize: 13.5, outline: 'none' }} />
+            <button type="button" aria-label="New issue" title="New issue (no element needed)" onClick={() => setNw(nw ? null : { text: '', pr: 'noncritical' })} style={{ flex: 'none', width: 34, height: 34, borderRadius: 17, border: '1.5px solid #e8710a', background: nw ? '#fff7ef' : '#fff', color: '#e8710a', fontSize: 22, lineHeight: '28px', padding: 0, cursor: 'pointer' }}>+</button>
+          </div>
+          {nw && (
+            <div style={{ border: '1.5px solid #e8710a', borderRadius: 12, background: '#fffaf4', padding: 10, marginBottom: 10 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: '#8a4a0a', marginBottom: 6 }}>New issue</div>
+              <textarea autoFocus value={nw.text} onChange={(e) => setNw({ ...nw, text: e.target.value })} rows={4} placeholder="Describe the issue… (you can type element numbers in the text)" style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #e0dccf', borderRadius: 10, padding: 8, font: 'inherit', fontSize: 14, resize: 'vertical', outline: 'none', background: '#fff' }} />
+              <div style={{ display: 'flex', gap: 6, margin: '8px 0', alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: '#8a8576', marginRight: 4 }}>Importance</span>
+                {['critical', 'noncritical'].map((k) => <button key={k} type="button" onClick={() => setNw({ ...nw, pr: k })} style={{ border: '1.5px solid ' + (nw.pr === k ? PR[k].bg : '#e0dccf'), background: nw.pr === k ? PR[k].bg : '#fff', color: nw.pr === k ? '#fff' : '#141413', borderRadius: 12, padding: '3px 11px', font: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{PR[k].l}</button>)}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" onClick={createNew} disabled={!nw.text.trim()} style={{ border: 0, background: nw.text.trim() ? '#e8710a' : '#e7e3d8', color: '#fff', borderRadius: 14, padding: '6px 18px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: nw.text.trim() ? 'pointer' : 'default' }}>Create</button>
+                <button type="button" onClick={() => setNw(null)} style={{ border: '1px solid #d9d5c8', background: '#fff', borderRadius: 14, padding: '6px 16px', font: 'inherit', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+              </div>
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
             {chip('all', 'All')}{KEYS.map((k) => chip(k, ST[k].l))}
             <span style={{ flex: 1 }} />
@@ -125,7 +148,7 @@ export default function IssueList({ job }) {
                     <PriorityTag pr={r.priority} />
                     <span style={{ flex: 1 }} />
                     <button type="button" disabled={!can} title={can ? 'Edit this issue' : 'Only the author, an editor or a manager can edit'} onClick={() => setEd(mine ? null : { element_id: r.element_id, text: r.description || '', pr: r.priority || 'noncritical' })} style={{ border: '1px solid ' + (can ? '#e8710a' : '#d9d5c8'), background: '#fff', color: can ? '#e8710a' : '#b0ab9a', borderRadius: 12, padding: '3px 12px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: can ? 'pointer' : 'not-allowed' }}>Edit</button>
-                    <button type="button" onClick={() => goPart(r.element_id)} style={{ border: 0, background: 'none', font: 'inherit', fontSize: 12.5, color: '#6b675c', cursor: 'pointer' }}>{'▣'} Go to 3D</button>
+                    {/^\d+$/.test(r.element_id) && <button type="button" onClick={() => goPart(r.element_id)} style={{ border: 0, background: 'none', font: 'inherit', fontSize: 12.5, color: '#6b675c', cursor: 'pointer' }}>{'▣'} Go to 3D</button>}
                   </div>
                   {mine ? (
                     <div style={{ padding: 10 }}>
@@ -145,7 +168,7 @@ export default function IssueList({ job }) {
                     </div>
                   )}
                   <div style={{ padding: '4px 12px 8px', borderTop: '1px solid #f1ede4' }}>
-                    {info('Element', linkNums(r.element_id, 'e' + r.no, true))}
+                    {/^\d+$/.test(r.element_id) && info('Element', linkNums(r.element_id, 'e' + r.no, true))}
                     {info('Discipline', r.discipline)}
                     {info('Asset', r.asset)}
                     {info('Created by', r.author)}

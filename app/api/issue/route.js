@@ -48,10 +48,20 @@ export async function GET(req) {
 // action "comment": add a chat message. Otherwise: save the description.
 export async function POST(req) {
   const b = await req.json().catch(() => ({}));
-  const job = String(b.job || ''), el = String(b.element || '');
+  const job = String(b.job || ''); let el = String(b.element || '');
   const u = await currentUser();
-  if (!u || !job || !el || !canJob(u, job)) return no();
+  if (!u || !job || !canJob(u, job)) return no();
   const sql = await issuesDb();
+  if (b.action === 'create') {
+    // a new issue that is not tied to a part of the model: it gets its own id (n...) instead of an element number
+    const d = String(b.description || '').trim().slice(0, 5000);
+    if (!d) return Response.json({ error: 'Write the issue first' }, { status: 400 });
+    const pr = PRIORITIES.includes(String(b.priority)) ? String(b.priority) : 'noncritical';
+    const id = 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    await sql`insert into issues(job, element_id, description, author, priority, no) values(${job}, ${id}, ${d}, ${nm(u)}, ${pr}, (select coalesce(max(no), 0) + 1 from issues where job = ${job}))`;
+    return Response.json({ ok: true, element: id });
+  }
+  if (!el) return no();
   if (b.action === 'status') {
     // the author, an editor or a manager may change the status (Open, In Progress, Work Complete, Closed)
     const st = String(b.status || '');
