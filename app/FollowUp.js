@@ -38,12 +38,15 @@ export default function FollowUp({ job }) {
   }, [job]);
   const of = (bar) => items.filter((x) => x.bar === bar);
   // new = items from other people that came after the last time this bar was opened
-  const apFresh = () => aps.filter((a) => a.updated_by !== who.me && new Date(a.updated_at).getTime() > getSeen(job, 'Action Plan')).length;
+  // new = a change by someone else (the action plan itself, or a comment, file or photo of its issue) after the last time the bar was opened
+  const isNew = (a) => !!a.fresh_at && new Date(a.fresh_at).getTime() > getSeen(job, 'Action Plan');
+  const apFresh = () => aps.filter(isNew).length;
   const fresh = (bar) => bar === 'Action Plan' ? apFresh() : of(bar).filter((x) => x.author !== who.me && new Date(x.created_at).getTime() > getSeen(job, bar)).length;
   const toggle = (bar) => {
     const o = !open[bar];
     setOpen((s) => ({ ...s, [bar]: o }));
-    if (o) { const last = (bar === 'Action Plan' ? aps.map((a) => ({ created_at: a.updated_at })) : of(bar)).reduce((m, x) => Math.max(m, new Date(x.created_at).getTime()), 0); if (last) setSeen(job, bar, last); tick((n) => n + 1); }
+    if (o) load(); // look again at the issues every time a bar is opened
+    if (o) { const last = (bar === 'Action Plan' ? aps.map((a) => ({ created_at: a.fresh_at || a.updated_at })) : of(bar)).reduce((m, x) => Math.max(m, new Date(x.created_at).getTime()), 0); if (last) setSeen(job, bar, last); tick((n) => n + 1); }
   };
   const add = async (bar) => {
     const t = text.trim();
@@ -82,7 +85,7 @@ export default function FollowUp({ job }) {
                     return (
                       <div key={a.element_id} style={{ marginTop: 8, border: '1px solid #e8dcc8', borderRadius: 12, background: '#fff7ef', overflow: 'hidden' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', flexWrap: 'wrap' }}>
-                          <b style={{ fontSize: 13.5 }}>{a.jobNo}</b>
+                          <b style={{ fontSize: 13.5 }}>{a.jobNo}</b>{isNew(a) && <span style={{ background: '#c0392b', color: '#fff', borderRadius: 5, padding: '1px 6px', fontSize: 10, fontWeight: 700 }}>NEW</span>}
                           <StatusChip st={a.status} onPick={(k) => apStatus(a, k)} locked={!who.can} />
                           <PriorityTag pr={a.priority} />
                           <span style={{ flex: 1 }} />
@@ -91,7 +94,11 @@ export default function FollowUp({ job }) {
                         <div style={{ padding: '0 12px 8px', fontSize: 13, lineHeight: 1.5, color: '#6b675c', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}><b style={{ fontWeight: 600, color: '#8a8576', fontSize: 11, letterSpacing: 0.3 }}>ISSUE </b>{a.description || 'No description.'}</div>
                         <div style={{ padding: '0 12px 8px', fontSize: 14, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}><b style={{ fontWeight: 600, color: '#a85a08', fontSize: 11, letterSpacing: 0.3 }}>HOW TO SOLVE IT </b>{a.body || <span style={{ color: '#9a9686' }}>Not written yet.</span>}</div>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '0 12px 8px' }}>{as.length ? as.map((x, i) => <AssigneeChip key={i} a={x} />) : <span style={{ fontSize: 12.5, color: '#9a9686' }}>Nobody assigned yet</span>}</div>
-                        <div style={{ display: 'flex', gap: 14, padding: '6px 12px 8px', borderTop: '1px solid #e8dcc8', fontSize: 12.5, background: '#eef8f0' }}><span>Files <b>{a.files || 0}</b></span><span>Gallery <b>{a.photos || 0}</b></span><span style={{ flex: 1 }} /><span style={{ color: '#8a8576', fontSize: 11.5 }}>{a.updated_by || a.author || ''} {'\u00B7'} {when(a.updated_at)}</span></div>
+                        <div style={{ padding: '6px 12px', borderTop: '1px solid #e8dcc8', background: '#fff', fontSize: 12.5 }}>
+                          <div style={{ display: 'flex', gap: 14 }}><span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.3, color: '#8a8576' }}>ISSUE</span><span>Comments <b>{a.i_comments || 0}</b></span><span>Files <b>{a.i_files || 0}</b></span><span>Gallery <b>{a.i_photos || 0}</b></span></div>
+                          {a.i_last && <div style={{ marginTop: 3, color: '#6b675c', fontSize: 12.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{a.i_last}</div>}
+                        </div>
+                        <div style={{ display: 'flex', gap: 14, padding: '6px 12px 8px', borderTop: '1px solid #e8dcc8', fontSize: 12.5, background: '#eef8f0' }}><span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.3, color: '#2c7a47' }}>ACTION PLAN</span><span>Files <b>{a.files || 0}</b></span><span>Gallery <b>{a.photos || 0}</b></span><span style={{ flex: 1 }} /><span style={{ color: '#8a8576', fontSize: 11.5 }}>{a.updated_by || a.author || ''} {'\u00B7'} {when(a.updated_at)}</span></div>
                       </div>
                     );
                   })}
