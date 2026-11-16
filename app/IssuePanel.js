@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { upload as blobUpload } from '@vercel/blob/client';
-import { TOKEN } from '../lib/camviews';
+import { TOKEN, camToEdit, camFromEdit } from '../lib/camviews';
 import CamIcon from './CamIcon';
 import { linkNums, useModelIds } from './ElemLinks';
 import { StatusChip, PriorityTag } from './IssueList';
@@ -87,9 +87,12 @@ export default function IssuePanel({ job, element, onMsg }) {
     return out;
   };
   const addView = (v) => {
-    const ta = taRef.current, tok = '[[view:' + v.id + ']]';
-    const at = ta && typeof ta.selectionStart === 'number' ? ta.selectionStart : (caret.current != null ? caret.current : text.length);
-    setText((t) => t.slice(0, at) + tok + t.slice(at));
+    const ta = taRef.current;
+    const disp = camToEdit(text, cvs.views);
+    const at = ta && typeof ta.selectionStart === 'number' ? ta.selectionStart : (caret.current != null ? caret.current : disp.length);
+    // C + number; a space is added when a letter or digit touches it, so it still reads as a camera
+    const tok = (/\w$/.test(disp.slice(0, at)) ? ' ' : '') + 'C' + v.n + (/^\w/.test(disp.slice(at)) ? ' ' : '');
+    setText(camFromEdit(disp.slice(0, at) + tok + disp.slice(at), cvs.views));
     caret.current = at + tok.length;
     setPickV(false); setEditing(true);
     setTimeout(() => { const e = taRef.current; if (e) { e.focus(); try { e.setSelectionRange(caret.current, caret.current); } catch (x) {} } }, 30);
@@ -226,7 +229,7 @@ export default function IssuePanel({ job, element, onMsg }) {
             {text ? rich(text) : <span style={{ color: '#9a9686' }}>{locked ? 'No description yet.' : 'Describe the issue…'}</span>}
           </div>
         ) : (
-          <textarea ref={taRef} value={text} onChange={(e) => setText(e.target.value)} onSelect={(e) => { caret.current = e.target.selectionStart; }} onBlur={() => { saveText(); setEditing(false); }} rows={4} placeholder="Describe the issue…"
+          <textarea ref={taRef} value={camToEdit(text, cvs.views)} onChange={(e) => setText(camFromEdit(e.target.value, cvs.views))} onSelect={(e) => { caret.current = e.target.selectionStart; }} onBlur={() => { saveText(); setEditing(false); }} rows={4} placeholder="Describe the issue…"
             style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: 0, outline: 'none', resize: 'none', font: 'inherit', fontSize: 14, color: '#141413', background: 'transparent' }} />
         )}
         {!locked && (

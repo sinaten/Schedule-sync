@@ -731,7 +731,7 @@ export default function Viewer3D({ job = '', kiosk = null }) {
           return (
             <div className="v3-sheet" style={{ background: '#fff', borderRadius: '22px 22px 0 0', boxShadow: '0 -8px 24px rgba(20,20,19,.12)', padding: '6px 0 12px', maxHeight: 380, overflow: 'auto', maxWidth: 520, margin: '0 auto', fontSize: 13, color: '#141413' }}>
               <div style={{ width: 38, height: 4, borderRadius: 4, background: '#d9d5c8', margin: '4px auto 8px' }} />
-              <div style={{ padding: '2px 16px 10px', fontWeight: 700, fontSize: 14 }}>{pp.id ? <>{'Element '}{linkNums(pp.id, 'ttl')}</> : 'No element selected'}</div>
+              <div style={{ padding: '2px 16px 10px', fontWeight: 700, fontSize: 14 }}>{pp.id ? <>{'Element '}{linkNums(pp.id, 'ttl', true)}</> : 'No element selected'}</div>
               {pp.id && pp.tables.length === 0 && <p style={{ margin: 0, padding: '4px 16px 10px', color: '#8a8576' }}>No schedule row for this part.</p>}
               {bar('lock', 'Source', openSrc, setOpenSrc, pp.tables.length === 0 ? <div style={{ ...row, color: '#8a8576' }}>{pp.id ? 'Nothing is locked.' : 'Select a part in the model.'}</div> : pp.tables.map((tb) => (
                 <div key={tb.id}>

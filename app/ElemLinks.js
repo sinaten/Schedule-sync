@@ -20,16 +20,16 @@ export function goPart(n) {
   const r = window.__ssGoElement ? window.__ssGoElement(n) : null;
   if (r && !r.ok) window.dispatchEvent(new CustomEvent('ss-elem-msg', { detail: r.msg }));
 }
-export function linkNums(t, key) {
+export function linkNums(t, key, noE) {
   const s = String(t == null ? '' : t);
   const out = []; let last = 0, m, k = 0;
-  const re = /(?<![\w.])\d{5,9}(?![\w.])/g;
+  const re = /(?<![\w.])E?\d{5,9}(?![\w.])/g;
   while ((m = re.exec(s))) {
-    if (!isPart(m[0])) continue;
+    const n = m[0].replace(/^E/, '');
+    if (!isPart(n)) continue;
     if (m.index > last) out.push(<span key={key + 's' + k++}>{s.slice(last, m.index)}</span>);
-    const n = m[0];
-    out.push(<button key={key + 'n' + k++} type="button" title={'Show element ' + n + ' in the model'} onClick={(e) => { e.stopPropagation(); goPart(n); }} style={{ display: 'inline', border: 0, background: 'none', padding: 0, margin: 0, font: 'inherit', color: '#1a6fd4', textDecoration: 'underline', cursor: 'pointer' }}>{n}</button>);
-    last = m.index + n.length;
+    out.push(<button key={key + 'n' + k++} type="button" title={'Show element ' + n + ' in the model'} onClick={(e) => { e.stopPropagation(); goPart(n); }} style={{ display: 'inline', border: 0, background: 'none', padding: 0, margin: 0, font: 'inherit', color: '#1a6fd4', textDecoration: 'underline', cursor: 'pointer' }}>{noE ? n : 'E' + n}</button>);
+    last = m.index + m[0].length;
   }
   if (!out.length) return s;
   if (last < s.length) out.push(<span key={key + 's' + k++}>{s.slice(last)}</span>);

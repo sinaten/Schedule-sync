@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { TOKEN } from '../lib/camviews';
+import { TOKEN, camToEdit, camFromEdit } from '../lib/camviews';
 import CamIcon from './CamIcon';
 import { goPart, linkNums, useModelIds } from './ElemLinks';
 
@@ -129,7 +129,7 @@ export default function IssueList({ job }) {
                   </div>
                   {mine ? (
                     <div style={{ padding: 10 }}>
-                      <textarea value={ed.text} onChange={(e) => setEd({ ...ed, text: e.target.value })} rows={4} placeholder="Describe the issue…" style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #e0dccf', borderRadius: 10, padding: 8, font: 'inherit', fontSize: 14, resize: 'vertical', outline: 'none' }} />
+                      <textarea value={camToEdit(ed.text, cvs)} onChange={(e) => setEd({ ...ed, text: camFromEdit(e.target.value, cvs) })} rows={4} placeholder="Describe the issue…" style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #e0dccf', borderRadius: 10, padding: 8, font: 'inherit', fontSize: 14, resize: 'vertical', outline: 'none' }} />
                       <div style={{ display: 'flex', gap: 6, margin: '8px 0', alignItems: 'center' }}>
                         <span style={{ fontSize: 12, color: '#8a8576', marginRight: 4 }}>Importance</span>
                         {['critical', 'noncritical'].map((k) => <button key={k} type="button" onClick={() => setEd({ ...ed, pr: k })} style={{ border: '1.5px solid ' + (ed.pr === k ? PR[k].bg : '#e0dccf'), background: ed.pr === k ? PR[k].bg : '#fff', color: ed.pr === k ? '#fff' : '#141413', borderRadius: 12, padding: '3px 11px', font: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{PR[k].l}</button>)}
@@ -145,7 +145,7 @@ export default function IssueList({ job }) {
                     </div>
                   )}
                   <div style={{ padding: '4px 12px 8px', borderTop: '1px solid #f1ede4' }}>
-                    {info('Element', linkNums(r.element_id, 'e' + r.no))}
+                    {info('Element', linkNums(r.element_id, 'e' + r.no, true))}
                     {info('Discipline', r.discipline)}
                     {info('Asset', r.asset)}
                     {info('Created by', r.author)}
