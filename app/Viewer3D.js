@@ -519,6 +519,8 @@ export default function Viewer3D({ job = '', kiosk = null }) {
   }
 
   async function toggle(tb, col, value) {
+    // a tick belongs to the person's own layer, so show that layer (otherwise the saved tick and its colour are hidden behind the Source view)
+    if (modeRef.current !== 'user') { setMode('user'); setOpenSrc(false); setOpenMe(true); }
     setDraft((d) => ({ ...d, [tb.id + '|' + tb.element_id + '|' + col]: { id: tb.id, eid: tb.element_id, col, value } }));
   }
 
