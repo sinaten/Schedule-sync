@@ -217,6 +217,7 @@ async function applyLook(vw, job, layer, keepView) {
         for (const hex in look.matColors || {}) look.matColors[hex].forEach((i) => { mat[i] = hex; });
         look.visible.forEach((i) => { if (!fin[i]) fin[i] = fadeColor(mat[i] || (byId[i] ? modelColor(vw, byId[i]) : null), fade); }); // no filter: own Revit colour (or the model's own), faded toward white
       }
+      if (window.__ssNormal) { try { vw.clearThemingColors(vw.model); vw.impl.invalidate(true, true, true); } catch (e) {} return; } // Normal view: the model's own colours, nothing painted over
       const byHex = {};
       for (const i in fin) (byHex[fin[i]] = byHex[fin[i]] || []).push(parseInt(i, 10));
       for (const hex in byHex) {
@@ -395,6 +396,7 @@ export default function Viewer3D({ job = '', kiosk = null }) {
     } catch (e) {}
   };
 
+  const [kmode, setKmode] = useState('issue');
   // scanned QR of a saved camera view: go to its angle once the model is there
   useEffect(() => {
     if (!kiosk) return;
@@ -526,14 +528,33 @@ export default function Viewer3D({ job = '', kiosk = null }) {
   const ready = m && m.status === 'success';
   const wrap = { margin: '0 0 24px', border: '1px solid #cfd8dc', borderRadius: 8, background: '#fff', overflow: 'hidden' };
   const bar = { display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#16262e', color: '#fff', fontSize: 14 };
-  if (typeof window !== 'undefined') window.__ssKiosk = !!kiosk;
+  if (typeof window !== 'undefined') { window.__ssKiosk = !!kiosk; window.__ssNormal = !!kiosk && kmode === 'normal'; }
   if (kiosk) {
     const closeCam = () => { let to = ''; try { to = sessionStorage.getItem('scan-from') || ''; } catch (e) {} location.replace(to || '/'); };
+    // two looks of the scanned view: Issue view = the website's colours (filtered parts solid, the rest faded); Normal view = the model's own colours
+    const pickK = async (k) => {
+      if (k === kmode) return;
+      setKmode(k); window.__ssNormal = k === 'normal';
+      const vw = viewer.current;
+      if (!vw || !vw.model) return;
+      resetLook(vw);
+      await applyLook(vw, job, modeRef.current === 'user' ? layerRef.current : null, 'iso');
+    };
+    const band = 'max(env(safe-area-inset-top, 0px), 44px)';
+    const tabK = (k, label) => (
+      <button type="button" onClick={() => pickK(k)} aria-pressed={kmode === k} style={{ border: 0, borderRadius: 17, padding: '7px 15px', font: 'inherit', fontSize: 13, fontWeight: kmode === k ? 600 : 500, cursor: 'pointer', background: kmode === k ? 'rgba(20,20,19,.82)' : 'transparent', color: kmode === k ? '#fff' : '#141413' }}>{label}</button>
+    );
     return (
       <section style={{ position: 'fixed', left: 0, top: 0, width: '100vw', height: '100vh', zIndex: 100000, background: '#fff' }}>
-        <div ref={box} className="v3-box" style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', touchAction: 'none' }} />
+        <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: band, background: '#fff', borderBottom: '1px solid #efece3' }} />
+        <div ref={box} className="v3-box" style={{ position: 'absolute', left: 0, right: 0, top: band, bottom: 0, touchAction: 'none' }} />
         {!ready && <div style={{ position: 'absolute', left: 0, right: 0, top: '45%', textAlign: 'center', color: '#8a8576', fontSize: 15 }}>Loading the model…</div>}
         <button type="button" onClick={closeCam} aria-label="Close" style={{ position: 'absolute', right: 14, top: 'calc(env(safe-area-inset-top, 0px) + 60px)', width: 46, height: 46, borderRadius: 23, border: 0, background: 'rgba(20,20,19,.78)', color: '#fff', fontSize: 22, cursor: 'pointer', zIndex: 5 }}>{'\u2715'}</button>
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)', display: 'flex', justifyContent: 'center', zIndex: 5, pointerEvents: 'none' }}>
+          <div style={{ pointerEvents: 'auto', display: 'flex', gap: 2, padding: 3, borderRadius: 20, background: 'rgba(255,255,255,.74)', border: '1px solid rgba(20,20,19,.1)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}>
+            {tabK('issue', 'Issue view')}{tabK('normal', 'Normal view')}
+          </div>
+        </div>
       </section>
     );
   }
