@@ -118,6 +118,19 @@ export default function IssuePanel({ job, element, onMsg }) {
     return () => window.removeEventListener('message', f);
   }, [cam, job, element]);
 
+  // Gallery open: Ctrl+V (or paste on the phone) puts a copied picture, such as a QR code, straight into the gallery
+  useEffect(() => {
+    if (sheet !== 'photos' || locked) return;
+    const f = (e) => {
+      const its = Array.from((e.clipboardData && e.clipboardData.items) || []).filter((i) => i.kind === 'file' && /^image\//.test(i.type));
+      if (!its.length) return;
+      e.preventDefault();
+      its.forEach((i) => { const file = i.getAsFile(); if (file) upload(new File([file], 'pasted-' + Date.now() + '.' + (file.type.split('/')[1] || 'png'), { type: file.type }), 'photo'); });
+    };
+    window.addEventListener('paste', f);
+    return () => window.removeEventListener('paste', f);
+  });
+
   // while the comments space is open, leave room for it under the page
   useEffect(() => {
     if (sheet !== 'comments') return;
@@ -292,7 +305,7 @@ export default function IssuePanel({ job, element, onMsg }) {
       {sheet === 'photos' && (
         <Sheet close={() => setSheet('')} name="Gallery">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-            <button type="button" disabled={busy} onClick={() => openCam()} style={{ aspectRatio: '1', border: '2px dashed ' + OR, borderRadius: 12, background: '#fff7ef', color: OR, font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>{'＋'}<br />Add</button>
+            <button type="button" disabled={busy} onClick={() => photoRef.current && photoRef.current.click()} style={{ aspectRatio: '1', border: '2px dashed ' + OR, borderRadius: 12, background: '#fff7ef', color: OR, font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 6 }}>{'＋'}<br />Add picture<br /><span style={{ fontWeight: 500, fontSize: 11, color: '#8a8576' }}>or press Ctrl+V</span></button>
             {photos.map((p) => (
               <div key={p.id} style={{ position: 'relative' }}>
                 <button type="button" onClick={() => setView(p)} style={{ display: 'block', width: '100%', padding: 0, border: 0, background: 'transparent', cursor: 'pointer', position: 'relative' }}>
