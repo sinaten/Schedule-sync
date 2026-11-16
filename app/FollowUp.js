@@ -27,6 +27,13 @@ export default function FollowUp({ job }) {
   const [text, setText] = useState('');
   const [aps, setAps] = useState([]); // the action plans this person may see
   const [, tick] = useState(0);
+  const [top, setTop] = useState(0); // where the pinned bar header stops: just under the Issues / Follow-up tabs
+  useEffect(() => {
+    const f = () => { const t = document.querySelector('.ms-tabs-wrap'); if (!t) return; const cs = getComputedStyle(t); setTop((parseFloat(cs.top) || 0) + t.offsetHeight); };
+    f(); const id = setTimeout(f, 400);
+    window.addEventListener('resize', f);
+    return () => { clearTimeout(id); window.removeEventListener('resize', f); };
+  }, []);
   const [pan, setPan] = useState(null); // Comments / Files / Gallery of an issue or of its action plan
   const load = () => {
     fetch('/api/followup?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j.items) { setItems(j.items); setWho({ me: j.me, can: !!j.can }); } }).catch(() => {});
@@ -84,8 +91,8 @@ export default function FollowUp({ job }) {
         {BARS.map((bar) => {
           const o = !!open[bar], n = fresh(bar), list = of(bar);
           return (
-            <div key={bar} style={{ border: '1px solid #e7e3d8', borderRadius: 14, background: '#fff', overflow: 'hidden' }}>
-              <div role="button" tabIndex={0} aria-expanded={o} onClick={() => toggle(bar)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggle(bar); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 12px', cursor: 'pointer', background: o ? '#f7f5ef' : '#fff', WebkitTapHighlightColor: 'transparent' }}>
+            <div key={bar} style={{ border: '1px solid #e7e3d8', borderRadius: 14, background: '#fff' }}>
+              <div role="button" tabIndex={0} aria-expanded={o} onClick={() => toggle(bar)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggle(bar); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 12px', cursor: 'pointer', background: o ? '#f7f5ef' : '#fff', borderRadius: o ? '13px 13px 0 0' : 13, position: 'sticky', top, zIndex: 30, borderBottom: o ? '1px solid #efece3' : 0, WebkitTapHighlightColor: 'transparent' }}>
                 <Bell n={n} />
                 <span style={{ flex: 1, fontSize: 15.5, fontWeight: 600, color: '#141413' }}>{bar}</span>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e8710a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flex: 'none', transform: o ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="M6 9l6 6 6-6" /></svg>
