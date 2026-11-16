@@ -754,7 +754,7 @@ export default function Viewer3D({ job = '', kiosk = null }) {
               {bar('ok', me, openMe, setOpenMe, mine.length === 0 ? <div style={{ ...row, color: '#8a8576' }}>{pp.id ? 'Nothing to change here.' : 'Select a part in the model.'}</div> : mine.map(({ tb, c, ed }) => (
                 <div key={tb.id + '|' + c.name} style={row}>
                   <span>{c.name}</span>
-                  {ed ? <input type="checkbox" aria-label={c.name} checked={!!(tb.vals && tb.vals[c.name] === true)} onChange={(e) => toggle(tb, c.name, e.target.checked)} style={{ width: 22, height: 22, accentColor: '#2e9e5b' }} /> : <span style={{ color: '#9a9686', textAlign: 'right' }}>{val(tb, c)}</span>}
+                  {ed ? <input type="checkbox" aria-label={c.name} checked={(tb.id + '|' + tb.element_id + '|' + c.name) in draft ? !!draft[tb.id + '|' + tb.element_id + '|' + c.name].value : !!(tb.vals && tb.vals[c.name] === true)} onChange={(e) => toggle(tb, c.name, e.target.checked)} style={{ width: 22, height: 22, accentColor: '#2e9e5b' }} /> : <span style={{ color: '#9a9686', textAlign: 'right' }}>{val(tb, c)}</span>}
                 </div>
               )))}
               {pp.id && (() => {
