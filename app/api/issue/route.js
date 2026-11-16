@@ -1,11 +1,14 @@
 import { del } from '@vercel/blob';
-import { currentUser, canJob, canEdit } from '../../../lib/user';
+import { currentUser, canJob, canEdit, isAdmin } from '../../../lib/user';
 import { getColPerms, allowedCols } from '../../../lib/colperms';
 import { db } from '../../../lib/db';
 import { issuesDb, STATUSES, PRIORITIES, cardNo, jobNo } from '../../../lib/issues';
 export const dynamic = 'force-dynamic';
 const nm = (u) => (u && u.name) || 'admin';
 const nk = (x) => String(x ?? '').toLowerCase().replace(/[\s\-_]/g, '');
+const isMine = (ap, u) => !!ap && (Array.isArray(ap.assignees) ? ap.assignees : []).some((a) => a && a.u && a.n === nm(u));
+// an action plan is seen by managers and editors, and by the people it is assigned to
+const canSeeAp = (ap, u) => canEdit(u) || isMine(ap, u);
 const no = () => Response.json({ error: 'No access' }, { status: 403 });
 
 // One issue per part: description, who raised it and when, plus its comments, photos and files.
@@ -24,16 +27,27 @@ export async function GET(req) {
     if (process.env.ADMIN_USER && !names.includes(process.env.ADMIN_USER)) names.unshift(process.env.ADMIN_USER);
     return Response.json({ users: names });
   }
+  if (p.get('aps')) {
+    // the action plans this person may see (all for managers and editors, only the assigned ones for the others), newest first
+    const aps = await sql`select a.element_id, a.no, a.body, a.status, a.assignees, a.author, a.created_at, a.updated_at, a.updated_by, i.no as issue_no, i.description, i.priority,
+      (select count(*)::int from issue_items t where t.job = a.job and t.element_id = a.element_id and t.scope = 'ap' and t.kind = 'file') as files,
+      (select count(*)::int from issue_items t where t.job = a.job and t.element_id = a.element_id and t.scope = 'ap' and t.kind in ('photo','video')) as photos
+      from action_plans a join issues i on i.job = a.job and i.element_id = a.element_id where a.job = ${job} order by a.no desc`;
+    return Response.json({ me: nm(u), can: canEdit(u), aps: aps.filter((a) => canSeeAp(a, u)).map((a) => ({ ...a, jobNo: jobNo(a.no), card: cardNo(a.issue_no) })) });
+  }
   if (p.get('list')) {
     // every issue of the job with its card number, status and the counts shown on the card
     const rows = await sql`select i.no, i.element_id, i.description, i.author, i.created_at, i.status, i.priority,
-      (select count(*)::int from issue_items t where t.job = i.job and t.element_id = i.element_id and (t.kind in ('comment','chat') or (t.kind = 'photo' and t.body = 'chat'))) as comments,
-      (select count(*)::int from issue_items t where t.job = i.job and t.element_id = i.element_id and t.kind = 'file') as files,
-      (select count(*)::int from issue_items t where t.job = i.job and t.element_id = i.element_id and t.kind in ('photo','video') and coalesce(t.body,'') <> 'chat') as photos
+      (select count(*)::int from issue_items t where t.job = i.job and t.element_id = i.element_id and t.scope = 'issue' and (t.kind in ('comment','chat') or (t.kind = 'photo' and t.body = 'chat'))) as comments,
+      (select count(*)::int from issue_items t where t.job = i.job and t.element_id = i.element_id and t.scope = 'issue' and t.kind = 'file') as files,
+      (select count(*)::int from issue_items t where t.job = i.job and t.element_id = i.element_id and t.scope = 'issue' and t.kind in ('photo','video') and coalesce(t.body,'') <> 'chat') as photos
       from issues i where i.job = ${job} order by i.no desc`;
     // Discipline and Asset: read from the part's schedule row (the columns named Discipline / Asset that this person may see)
-    const aps = await sql`select element_id, no, body, status, assignees, author, created_at from action_plans where job = ${job}`;
-    const apBy = {}; aps.forEach((a) => { apBy[a.element_id] = { ...a, jobNo: jobNo(a.no) }; });
+    const aps = await sql`select a.element_id, a.no, a.body, a.status, a.assignees, a.author, a.created_at, a.updated_at, a.updated_by,
+      (select count(*)::int from issue_items t where t.job = a.job and t.element_id = a.element_id and t.scope = 'ap' and t.kind = 'file') as files,
+      (select count(*)::int from issue_items t where t.job = a.job and t.element_id = a.element_id and t.scope = 'ap' and t.kind in ('photo','video')) as photos
+      from action_plans a where a.job = ${job}`;
+    const apBy = {}; aps.forEach((a) => { if (canSeeAp(a, u)) apBy[a.element_id] = { ...a, jobNo: jobNo(a.no) }; });
     const els = rows.map((r) => r.element_id);
     const rr = els.length ? await sql`select r.element_id, r.vals from rows r join schedules s on s.id = r.schedule_id where s.job = ${job} and r.element_id = any(${els}::text[])` : [];
     const only = allowedCols(u, await getColPerms());
@@ -53,7 +67,12 @@ export async function GET(req) {
   if (!el) return no();
   const [issue] = await sql`select description, author, created_at, no, status, priority from issues where job = ${job} and element_id = ${el}`;
   if (issue) issue.card = cardNo(issue.no);
-  const items = await sql`select id, kind, author, body, pathname, name, content_type, created_at from issue_items where job = ${job} and element_id = ${el} order by id`;
+  const scope = p.get('scope') === 'ap' ? 'ap' : 'issue';
+  if (scope === 'ap') {
+    const [ap] = await sql`select assignees from action_plans where job = ${job} and element_id = ${el}`;
+    if (!ap || !canSeeAp(ap, u)) return no();
+  }
+  const items = await sql`select id, kind, author, body, pathname, name, content_type, created_at from issue_items where job = ${job} and element_id = ${el} and scope = ${scope} order by id`;
   return Response.json({ me: nm(u), can: canEdit(u), issue: issue || null, items });
 }
 
@@ -90,7 +109,7 @@ export async function POST(req) {
     const [iss] = await sql`select element_id from issues where job = ${job} and element_id = ${el}`;
     if (!iss) return Response.json({ error: 'No such issue' }, { status: 404 });
     if (b.action === 'ap-create') {
-      await sql`insert into action_plans(job, element_id, no, body, author) values(${job}, ${el}, (select coalesce(max(no), 0) + 1 from action_plans where job = ${job}), '', ${nm(u)}) on conflict (job, element_id) do nothing`;
+      await sql`insert into action_plans(job, element_id, no, body, author, updated_by) values(${job}, ${el}, (select coalesce(max(no), 0) + 1 from action_plans where job = ${job}), '', ${nm(u)}, ${nm(u)}) on conflict (job, element_id) do nothing`;
       return Response.json({ ok: true });
     }
     const [cur] = await sql`select body, status, assignees from action_plans where job = ${job} and element_id = ${el}`;
@@ -99,7 +118,7 @@ export async function POST(req) {
     const status = STATUSES.includes(String(b.status)) ? String(b.status) : cur.status;
     let as = cur.assignees;
     if (Array.isArray(b.assignees)) as = b.assignees.slice(0, 30).map((a) => ({ n: String((a && a.n) || '').trim().slice(0, 80), u: a && a.u ? 1 : 0 })).filter((a) => a.n);
-    await sql`update action_plans set body = ${body}, status = ${status}, assignees = ${JSON.stringify(as)}::jsonb, updated_at = now() where job = ${job} and element_id = ${el}`;
+    await sql`update action_plans set body = ${body}, status = ${status}, assignees = ${JSON.stringify(as)}::jsonb, updated_at = now(), updated_by = ${nm(u)} where job = ${job} and element_id = ${el}`;
     return Response.json({ ok: true });
   }
   if (b.action === 'priority') {
@@ -122,7 +141,12 @@ export async function POST(req) {
     // a photo taken in the camera flow (it also lives in the user's album)
     const [m] = await sql`select pathname from media where pathname = ${String(b.pathname || '')}`;
     if (!m) return Response.json({ error: 'Unknown photo' }, { status: 400 });
-    await sql`insert into issue_items(job, element_id, kind, author, name, pathname, content_type) values(${job}, ${el}, ${b.kind === 'video' ? 'video' : 'photo'}, ${nm(u)}, ${String(b.name || 'photo.jpg')}, ${m.pathname}, ${String(b.contentType || (b.kind === 'video' ? 'video/mp4' : 'image/jpeg'))})`;
+    const sc = b.scope === 'ap' ? 'ap' : 'issue';
+    if (sc === 'ap') {
+      if (!canEdit(u)) return no();
+      await sql`update action_plans set updated_at = now(), updated_by = ${nm(u)} where job = ${job} and element_id = ${el}`;
+    }
+    await sql`insert into issue_items(job, element_id, kind, author, name, pathname, content_type, scope) values(${job}, ${el}, ${b.kind === 'video' ? 'video' : 'photo'}, ${nm(u)}, ${String(b.name || 'photo.jpg')}, ${m.pathname}, ${String(b.contentType || (b.kind === 'video' ? 'video/mp4' : 'image/jpeg'))}, ${sc})`;
     return Response.json({ ok: true });
   }
   if (b.action === 'comment') {

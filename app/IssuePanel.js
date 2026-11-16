@@ -45,7 +45,7 @@ function Sheet({ children, name, foot, close, dock }) {
 }
 
 // Issue card of one part: description, comments chat, files and photos.
-export default function IssuePanel({ job, element, onMsg, initialSheet = '', autoCam = false, onClose }) {
+export default function IssuePanel({ job, element, onMsg, initialSheet = '', autoCam = false, scope = 'issue', onClose }) {
   const [d, setD] = useState(null);
   const [text, setText] = useState('');
   const [editing, setEditing] = useState(false);
@@ -62,7 +62,7 @@ export default function IssuePanel({ job, element, onMsg, initialSheet = '', aut
   const [err, setErr] = useState('');
   const mediaRef = useRef(null), anyRef = useRef(null);
   const photoRef = useRef(null), fileRef = useRef(null), chatPhotoRef = useRef(null), endRef = useRef(null), loaded = useRef('');
-  const q = '?job=' + encodeURIComponent(job) + '&element=' + encodeURIComponent(element);
+  const q = '?job=' + encodeURIComponent(job) + '&element=' + encodeURIComponent(element) + (scope === 'ap' ? '&scope=ap' : '');
 
   useEffect(() => {
     const f = () => fetch('/api/camviews?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j.views) setCvs(j); }).catch(() => {});
@@ -114,7 +114,7 @@ export default function IssuePanel({ job, element, onMsg, initialSheet = '', aut
   // Add photo = the same camera flow as the QR button: scan the section QR, then take photos into your folder; they also land in this issue.
   const openCam = async () => {
     if (!(d && d.issue)) { try { await fetch('/api/issue', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, element, description: text }) }); } catch (e) {} }
-    try { sessionStorage.setItem('issuectx', JSON.stringify({ job, element })); } catch (e) {}
+    try { sessionStorage.setItem('issuectx', JSON.stringify({ job, element, scope })); } catch (e) {}
     setCam(true);
   };
   const camStarted = useRef(false);
@@ -161,7 +161,7 @@ export default function IssuePanel({ job, element, onMsg, initialSheet = '', aut
   const files = items.filter((i) => i.kind === 'file');
   const photos = items.filter((i) => i.kind === 'photo' || i.kind === 'video');
   const author = d && d.issue ? d.issue.author : '';
-  const locked = !!author && author !== me && !(d && d.can); // the author, editors and managers may edit
+  const locked = scope === 'ap' ? !(d && d.can) : !!author && author !== me && !(d && d.can); // the author, editors and managers may edit
 
   const saveText = async () => {
     if (locked || !d || text === ((d.issue && d.issue.description) || '')) return;
@@ -177,7 +177,7 @@ export default function IssuePanel({ job, element, onMsg, initialSheet = '', aut
     try {
       if (!(d && d.issue)) await saveText0();
       const f = kind === 'photo' ? await shrink(file) : file;
-      const fd = new FormData(); fd.append('file', f); fd.append('job', job); fd.append('element', element); fd.append('kind', kind); if (asChat) fd.append('chat', '1');
+      const fd = new FormData(); fd.append('file', f); fd.append('job', job); fd.append('element', element); fd.append('kind', kind); if (scope === 'ap') fd.append('scope', 'ap'); if (asChat) fd.append('chat', '1');
       const r = await fetch('/api/issue/upload', { method: 'POST', body: fd });
       if (!r.ok) { const j = await r.json().catch(() => ({})); onMsg && onMsg(j.error || 'Upload failed.'); }
       await load();
@@ -315,7 +315,7 @@ export default function IssuePanel({ job, element, onMsg, initialSheet = '', aut
         </Sheet>
       )}
       {sheet === 'files' && (
-        <Sheet close={() => { setSheet(''); onClose && onClose(); }} name="Files">
+        <Sheet close={() => { setSheet(''); onClose && onClose(); }} name={scope === 'ap' ? 'Action plan \u00B7 Files' : 'Files'}>
           {files.length === 0 && <p style={{ textAlign: 'center', color: '#9a9686', fontSize: 13 }}>No files yet.</p>}
           {files.map((f) => (
             <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid #f1ede4' }}>
@@ -328,7 +328,7 @@ export default function IssuePanel({ job, element, onMsg, initialSheet = '', aut
         </Sheet>
       )}
       {sheet === 'photos' && (
-        <Sheet close={() => { setSheet(''); onClose && onClose(); }} name="Gallery">
+        <Sheet close={() => { setSheet(''); onClose && onClose(); }} name={scope === 'ap' ? 'Action plan \u00B7 Gallery' : 'Gallery'}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
             <button type="button" disabled={busy} onClick={() => photoRef.current && photoRef.current.click()} style={{ aspectRatio: '1', border: '2px dashed ' + OR, borderRadius: 12, background: '#fff7ef', color: OR, font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 6 }}>{'＋'}<br />Add picture<br /><span style={{ fontWeight: 500, fontSize: 11, color: '#8a8576' }}>or press Ctrl+V</span></button>
             {photos.map((p) => (

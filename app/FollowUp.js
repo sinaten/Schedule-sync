@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { StatusChip, PriorityTag, AssigneeChip } from './IssueList';
 
 const BARS = ['Action Plan', 'Workflow', 'Location', 'HSE', 'Communication', 'Orders', 'Utility'];
 const seenKey = (job, bar) => 'fu-seen:' + job + ':' + bar;
@@ -23,8 +24,12 @@ export default function FollowUp({ job }) {
   const [open, setOpen] = useState({});
   const [adding, setAdding] = useState(null); // bar name
   const [text, setText] = useState('');
+  const [aps, setAps] = useState([]); // the action plans this person may see
   const [, tick] = useState(0);
-  const load = () => fetch('/api/followup?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j.items) { setItems(j.items); setWho({ me: j.me, can: !!j.can }); } }).catch(() => {});
+  const load = () => {
+    fetch('/api/followup?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j.items) { setItems(j.items); setWho({ me: j.me, can: !!j.can }); } }).catch(() => {});
+    fetch('/api/issue?aps=1&job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j.aps) setAps(j.aps); }).catch(() => {});
+  };
   useEffect(() => {
     load();
     const t = setInterval(load, 20000);
@@ -33,17 +38,23 @@ export default function FollowUp({ job }) {
   }, [job]);
   const of = (bar) => items.filter((x) => x.bar === bar);
   // new = items from other people that came after the last time this bar was opened
-  const fresh = (bar) => of(bar).filter((x) => x.author !== who.me && new Date(x.created_at).getTime() > getSeen(job, bar)).length;
+  const apFresh = () => aps.filter((a) => a.updated_by !== who.me && new Date(a.updated_at).getTime() > getSeen(job, 'Action Plan')).length;
+  const fresh = (bar) => bar === 'Action Plan' ? apFresh() : of(bar).filter((x) => x.author !== who.me && new Date(x.created_at).getTime() > getSeen(job, bar)).length;
   const toggle = (bar) => {
     const o = !open[bar];
     setOpen((s) => ({ ...s, [bar]: o }));
-    if (o) { const last = of(bar).reduce((m, x) => Math.max(m, new Date(x.created_at).getTime()), 0); if (last) setSeen(job, bar, last); tick((n) => n + 1); }
+    if (o) { const last = (bar === 'Action Plan' ? aps.map((a) => ({ created_at: a.updated_at })) : of(bar)).reduce((m, x) => Math.max(m, new Date(x.created_at).getTime()), 0); if (last) setSeen(job, bar, last); tick((n) => n + 1); }
   };
   const add = async (bar) => {
     const t = text.trim();
     if (!t) return;
     const r = await fetch('/api/followup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, bar, text: t }) });
     if (r.ok) { setText(''); setAdding(null); await load(); }
+  };
+  const apStatus = async (a, status) => {
+    setAps((l) => l.map((x) => (x.element_id === a.element_id ? { ...x, status } : x)));
+    await fetch('/api/issue', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, element: a.element_id, action: 'ap-update', status }) });
+    load();
   };
   const remove = async (x) => {
     setItems((l) => l.filter((y) => y.id !== x.id));
@@ -60,19 +71,38 @@ export default function FollowUp({ job }) {
               <div role="button" tabIndex={0} aria-expanded={o} onClick={() => toggle(bar)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggle(bar); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 12px', cursor: 'pointer', background: o ? '#f7f5ef' : '#fff', WebkitTapHighlightColor: 'transparent' }}>
                 <Bell n={n} />
                 <span style={{ flex: 1, fontSize: 15.5, fontWeight: 600, color: '#141413' }}>{bar}</span>
-                <button type="button" aria-label={'Add to ' + bar} onClick={(e) => { e.stopPropagation(); setOpen((s) => ({ ...s, [bar]: true })); setAdding(adding === bar ? null : bar); setText(''); }} style={{ width: 32, height: 32, borderRadius: 16, border: '1.5px solid #e8710a', background: adding === bar ? '#fff7ef' : '#fff', color: '#e8710a', fontSize: 22, lineHeight: '26px', padding: 0, cursor: 'pointer', flex: 'none' }}>+</button>
+                {bar !== 'Action Plan' && <button type="button" aria-label={'Add to ' + bar} onClick={(e) => { e.stopPropagation(); setOpen((s) => ({ ...s, [bar]: true })); setAdding(adding === bar ? null : bar); setText(''); }} style={{ width: 32, height: 32, borderRadius: 16, border: '1.5px solid #e8710a', background: adding === bar ? '#fff7ef' : '#fff', color: '#e8710a', fontSize: 22, lineHeight: '26px', padding: 0, cursor: 'pointer', flex: 'none' }}>+</button>}
                 <span style={{ color: '#9a9686', fontSize: 12 }}>{o ? '▴' : '▾'}</span>
               </div>
               {o && (
                 <div style={{ padding: '6px 12px 12px', borderTop: '1px solid #efece3' }}>
-                  {adding === bar && (
+                  {bar === 'Action Plan' && aps.length === 0 && <div style={{ padding: '10px 2px', fontSize: 13, color: '#9a9686' }}>No action plans for you yet. A manager or an editor makes them from an issue.</div>}
+                  {bar === 'Action Plan' && aps.map((a) => {
+                    const as = Array.isArray(a.assignees) ? a.assignees : [];
+                    return (
+                      <div key={a.element_id} style={{ marginTop: 8, border: '1px solid #e8dcc8', borderRadius: 12, background: '#fff7ef', overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', flexWrap: 'wrap' }}>
+                          <b style={{ fontSize: 13.5 }}>{a.jobNo}</b>
+                          <StatusChip st={a.status} onPick={(k) => apStatus(a, k)} locked={!who.can} />
+                          <PriorityTag pr={a.priority} />
+                          <span style={{ flex: 1 }} />
+                          <span style={{ fontSize: 11.5, color: '#8a8576' }}>from {a.card}</span>
+                        </div>
+                        <div style={{ padding: '0 12px 8px', fontSize: 13, lineHeight: 1.5, color: '#6b675c', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}><b style={{ fontWeight: 600, color: '#8a8576', fontSize: 11, letterSpacing: 0.3 }}>ISSUE </b>{a.description || 'No description.'}</div>
+                        <div style={{ padding: '0 12px 8px', fontSize: 14, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}><b style={{ fontWeight: 600, color: '#a85a08', fontSize: 11, letterSpacing: 0.3 }}>HOW TO SOLVE IT </b>{a.body || <span style={{ color: '#9a9686' }}>Not written yet.</span>}</div>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '0 12px 8px' }}>{as.length ? as.map((x, i) => <AssigneeChip key={i} a={x} />) : <span style={{ fontSize: 12.5, color: '#9a9686' }}>Nobody assigned yet</span>}</div>
+                        <div style={{ display: 'flex', gap: 14, padding: '6px 12px 8px', borderTop: '1px solid #e8dcc8', fontSize: 12.5, background: '#eef8f0' }}><span>Files <b>{a.files || 0}</b></span><span>Gallery <b>{a.photos || 0}</b></span><span style={{ flex: 1 }} /><span style={{ color: '#8a8576', fontSize: 11.5 }}>{a.updated_by || a.author || ''} {'\u00B7'} {when(a.updated_at)}</span></div>
+                      </div>
+                    );
+                  })}
+                  {bar !== 'Action Plan' && adding === bar && (
                     <div style={{ display: 'flex', gap: 8, margin: '8px 0' }}>
                       <input autoFocus value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') add(bar); }} placeholder={'Add to ' + bar + '…'} style={{ flex: 1, minWidth: 0, height: 36, border: '1.5px solid #e0dccf', borderRadius: 18, padding: '0 14px', font: 'inherit', fontSize: 14, outline: 'none' }} />
                       <button type="button" onClick={() => add(bar)} disabled={!text.trim()} style={{ border: 0, borderRadius: 18, padding: '0 16px', background: text.trim() ? '#e8710a' : '#e7e3d8', color: '#fff', font: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: text.trim() ? 'pointer' : 'default' }}>Add</button>
                     </div>
                   )}
-                  {list.length === 0 && adding !== bar && <div style={{ padding: '10px 2px', fontSize: 13, color: '#9a9686' }}>Nothing here yet. Press + to add.</div>}
-                  {list.map((x) => (
+                  {bar !== 'Action Plan' && list.length === 0 && adding !== bar && <div style={{ padding: '10px 2px', fontSize: 13, color: '#9a9686' }}>Nothing here yet. Press + to add.</div>}
+                  {bar !== 'Action Plan' && list.map((x) => (
                     <div key={x.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '9px 10px', marginTop: 6, borderRadius: 10, background: '#f7f5ef' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: '#141413' }}>{x.body}</div>

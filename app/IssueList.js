@@ -47,11 +47,11 @@ export function StatusChip({ st, onPick, locked }) {
 
 
 // Action plan of an issue: one row under the issue, opens like a drawer. Only a manager or an editor issues or changes it.
-function AssigneeChip({ a }) {
+export function AssigneeChip({ a }) {
   if (a.u) return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 14, background: '#f4f3ee', padding: '2px 10px 2px 3px', fontSize: 12.5 }}><span style={{ width: 22, height: 22, borderRadius: 11, background: '#e8710a', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600 }}>{a.n[0].toUpperCase()}</span>{a.n}</span>;
   return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 14, border: '1px dashed #cfcab9', padding: '2px 10px 2px 3px', fontSize: 12.5 }}><span style={{ width: 22, height: 22, borderRadius: 11, background: '#f4f3ee', color: '#6b675c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>?</span>{a.n}<span style={{ fontSize: 10, color: '#6b675c', border: '1px solid #e7e3d8', borderRadius: 6, padding: '0 5px' }}>NOT A USER</span></span>;
 }
-function ActionPlan({ job, r, can, post, reload }) {
+function ActionPlan({ job, r, can, post, reload, openPan }) {
   const ap = r.ap;
   const [o, setO] = useState(false);
   const [body, setBody] = useState(ap ? ap.body : '');
@@ -109,7 +109,20 @@ function ActionPlan({ job, r, can, post, reload }) {
               {as.filter((a) => !a.u).map((a, i) => <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, fontSize: 13 }}><span style={{ flex: 1 }}>{a.n} <span style={{ fontSize: 10, color: '#6b675c' }}>(not a user)</span></span><button type="button" onClick={() => save({ assignees: as.filter((x) => x !== a) })} style={{ border: 0, background: 'none', color: '#9a9686', cursor: 'pointer' }}>{'✕'}</button></div>)}
             </div>
           )}
-          <div style={{ fontSize: 11.5, color: '#8a8576', marginTop: 8 }}>Comments, files and gallery of the issue above are also those of this action plan.</div>
+          <div style={{ marginTop: 12, background: '#eef8f0', border: '1px solid #cfe9d6', borderTop: '1.5px solid #8fcfa2', borderRadius: 10, overflow: 'hidden' }}>
+            <div style={{ padding: '6px 10px 0', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, color: '#2c7a47' }}>FOR THE ACTION PLAN</div>
+            {can && (
+              <div style={{ display: 'flex', gap: 8, padding: '6px 10px', flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => openPan({ sheet: '', cam: true })} style={{ border: '1px solid #cfe9d6', background: '#fff', borderRadius: 14, padding: '4px 11px', font: 'inherit', fontSize: 12.5, cursor: 'pointer' }}>{'\u{1F4F7}'} Add photos and videos</button>
+                <button type="button" onClick={() => openPan({ sheet: 'files' })} style={{ border: '1px solid #cfe9d6', background: '#fff', borderRadius: 14, padding: '4px 11px', font: 'inherit', fontSize: 12.5, cursor: 'pointer' }}>{'\u{1F4CE}'} Add file</button>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 14, padding: '6px 10px 8px', fontSize: 12.5 }}>
+              {[['files', 'Files', ap.files], ['photos', 'Gallery', ap.photos]].map(([k, l, n]) => (
+                <button key={k} type="button" onClick={() => openPan({ sheet: k })} style={{ border: 0, background: 'none', padding: 0, font: 'inherit', fontSize: 12.5, color: '#141413', cursor: 'pointer' }}>{l} <b style={{ background: n ? '#2e9e5b' : '#d6e9dc', color: n ? '#fff' : '#6b8f78', borderRadius: 9, padding: '1px 7px', fontSize: 11.5, fontWeight: 600 }}>{n || 0}</b></button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -259,7 +272,7 @@ export default function IssueList({ job }) {
                       <button key={k} type="button" onClick={() => setPan({ element: r.element_id, sheet: k })} style={{ border: 0, background: 'none', padding: 0, font: 'inherit', fontSize: 12.5, color: '#141413', cursor: 'pointer' }}>{l} <b style={{ background: n ? '#e8710a' : '#e7e3d8', color: n ? '#fff' : '#8a8576', borderRadius: 9, padding: '1px 7px', fontSize: 11.5, fontWeight: 600 }}>{n}</b></button>
                     ))}
                   </div>
-                  <ActionPlan job={job} r={r} can={who.can} post={apPost(r)} reload={load} />
+                  <ActionPlan job={job} r={r} can={who.can} post={apPost(r)} reload={load} openPan={(x) => setPan({ element: r.element_id, scope: 'ap', ...x })} />
                 </div>
               );
             })}
@@ -269,7 +282,7 @@ export default function IssueList({ job }) {
       {pan && (
         // the same Comments / Files / Gallery spaces as in the part panel; the panel's own card stays hidden (clipped), only its spaces open
         <div style={{ position: 'fixed', left: 0, top: 0, width: 0, height: 0, overflow: 'hidden' }}>
-          <IssuePanel key={pan.element + pan.sheet + (pan.cam ? 'c' : '')} job={job} element={pan.element} initialSheet={pan.sheet} autoCam={!!pan.cam} onMsg={() => {}} onClose={() => { setPan(null); load(); }} />
+          <IssuePanel key={pan.element + pan.sheet + (pan.cam ? 'c' : '') + (pan.scope || '')} job={job} element={pan.element} scope={pan.scope || 'issue'} initialSheet={pan.sheet} autoCam={!!pan.cam} onMsg={() => {}} onClose={() => { setPan(null); load(); }} />
         </div>
       )}
     </section>
