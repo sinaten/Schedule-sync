@@ -70,7 +70,14 @@ export default function FollowUp({ job }) {
   const cKey = (el, sc, k) => 'fu-cnt:' + job + ':' + el + ':' + sc + ':' + k;
   const cSeen = (el, sc, k) => { try { return Number(localStorage.getItem(cKey(el, sc, k))) || 0; } catch (e) { return 0; } };
   const unread = (el, sc, k, n) => (n || 0) > cSeen(el, sc, k);
-  const cnt = (el, sc, k, l, n, col) => { const u = unread(el, sc, k, n); return <button key={k} type="button" onClick={() => { try { localStorage.setItem(cKey(el, sc, k), String(n || 0)); } catch (e) {} tick((x) => x + 1); setPan({ element: el, scope: sc, sheet: k }); }} style={{ border: 0, background: 'none', padding: 0, font: 'inherit', fontSize: 12.5, color: u ? '#c0392b' : '#141413', fontWeight: u ? 700 : 400, cursor: 'pointer' }}>{l} <b style={{ background: u ? '#c0392b' : n ? col : '#e7e3d8', color: u || n ? '#fff' : '#8a8576', borderRadius: 9, padding: '1px 7px', fontSize: 11.5, fontWeight: 600 }}>{n || 0}</b></button>; };
+  const closePan = async () => {
+    const q = pan; setPan(null);
+    if (q && q.sheet) {
+      try { const j = await fetch('/api/issue?aps=1&job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()); const a = (j.aps || []).find((x) => x.element_id === q.element); if (a) { const n = q.scope === 'ap' ? (q.sheet === 'files' ? a.files : a.photos) : (q.sheet === 'comments' ? a.i_comments : q.sheet === 'files' ? a.i_files : a.i_photos); localStorage.setItem(cKey(q.element, q.scope, q.sheet), String(n || 0)); } } catch (e) {}
+    }
+    tick((x) => x + 1); load();
+  };
+  const cnt = (el, sc, k, l, n, col) => { const u = unread(el, sc, k, n); return <button key={k} type="button" onClick={() => setPan({ element: el, scope: sc, sheet: k, seen: cSeen(el, sc, k) })} style={{ border: 0, background: 'none', padding: 0, font: 'inherit', fontSize: 12.5, color: u ? '#c0392b' : '#141413', fontWeight: u ? 700 : 400, cursor: 'pointer' }}>{l} <b style={{ background: u ? '#c0392b' : n ? col : '#e7e3d8', color: u || n ? '#fff' : '#8a8576', borderRadius: 9, padding: '1px 7px', fontSize: 11.5, fontWeight: 600 }}>{n || 0}</b></button>; };
   return (
     <div className="ms-follow">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 560, margin: '0 auto', padding: '8px 16px 24px' }}>
@@ -95,6 +102,7 @@ export default function FollowUp({ job }) {
                           <StatusChip st={a.status} onPick={(k) => apStatus(a, k)} locked={!who.can} />
                           <PriorityTag pr={a.priority} />
                           <span style={{ flex: 1 }} />
+                          {(isNew(a) || unread(a.element_id, 'issue', 'comments', a.i_comments) || unread(a.element_id, 'issue', 'files', a.i_files) || unread(a.element_id, 'issue', 'photos', a.i_photos) || unread(a.element_id, 'ap', 'files', a.files) || unread(a.element_id, 'ap', 'photos', a.photos)) && <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#c0392b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-label="Changed" style={{ flex: 'none', order: 99 }}><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" /><path d="M9 17v1a3 3 0 0 0 6 0v-1" /></svg>}
                           <span style={{ fontSize: 11.5, color: '#8a8576' }}>from {a.card}</span>
                         </div>
                         <div style={{ padding: '0 12px 8px', fontSize: 13, lineHeight: 1.5, color: '#6b675c', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}><b style={{ fontWeight: 600, color: '#8a8576', fontSize: 11, letterSpacing: 0.3 }}>ISSUE </b>{a.description || 'No description.'}</div>
@@ -138,7 +146,7 @@ export default function FollowUp({ job }) {
       </div>
       {pan && (
         <div style={{ position: 'fixed', left: 0, top: -6000, width: '100vw', zIndex: 2500 }}>
-          <IssuePanel key={pan.element + pan.sheet + (pan.cam ? 'c' : '') + (pan.scope || '')} job={job} element={pan.element} scope={pan.scope || 'issue'} initialSheet={pan.sheet} autoCam={!!pan.cam} onMsg={() => {}} onClose={() => { setPan(null); load(); }} />
+          <IssuePanel key={pan.element + pan.sheet + (pan.cam ? 'c' : '') + (pan.scope || '')} job={job} element={pan.element} scope={pan.scope || 'issue'} initialSheet={pan.sheet} autoCam={!!pan.cam} onMsg={() => {}} seen={pan.seen} onClose={closePan} />
         </div>
       )}
     </div>

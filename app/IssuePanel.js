@@ -65,7 +65,7 @@ function Sheet({ children, name, foot, close, dock }) {
 }
 
 // Issue card of one part: description, comments chat, files and photos.
-export default function IssuePanel({ job, element, onMsg, initialSheet = '', autoCam = false, scope = 'issue', onClose }) {
+export default function IssuePanel({ job, element, onMsg, initialSheet = '', autoCam = false, scope = 'issue', onClose, seen = -1 }) {
   const [d, setD] = useState(null);
   const [text, setText] = useState('');
   const [editing, setEditing] = useState(false);
@@ -309,12 +309,13 @@ export default function IssuePanel({ job, element, onMsg, initialSheet = '', aut
           </div>
         }>
           {comments.length === 0 && <p style={{ textAlign: 'center', color: '#9a9686', fontSize: 13 }}>No comments yet.</p>}
-          {comments.map((c) => {
+          {comments.map((c, ci) => {
             const mine = c.author === me;
+            const nw = seen >= 0 && ci >= seen; // not read yet: shown red until the sheet is closed
             return (
               <div key={c.id} style={{ display: 'flex', flexDirection: 'column', alignItems: mine ? 'flex-end' : 'flex-start', marginBottom: 10 }}>
-                <div style={{ fontSize: 11.5, color: '#8a8576', margin: '0 6px 2px' }}>{c.author} {'·'} {new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                <div onDoubleClick={() => (mine ? del(c.id) : null)} style={{ maxWidth: '80%', padding: c.kind === 'comment' ? '8px 12px' : 4, borderRadius: 16, background: mine ? OR : '#eeece5', color: mine ? '#fff' : '#141413', fontSize: 14, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                <div style={{ fontSize: 11.5, color: nw ? '#c0392b' : '#8a8576', fontWeight: nw ? 700 : 400, margin: '0 6px 2px' }}>{c.author} {'·'} {new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                <div onDoubleClick={() => (mine ? del(c.id) : null)} style={{ outline: nw ? '2px solid #c0392b' : 'none', outlineOffset: 1, maxWidth: '80%', padding: c.kind === 'comment' ? '8px 12px' : 4, borderRadius: 16, background: mine ? OR : '#eeece5', color: mine ? '#fff' : '#141413', fontSize: 14, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                   {c.kind === 'comment' ? linkNums(c.body, 'c' + c.id) : /^video\//.test(c.content_type || '') ? (
                     <button type="button" onClick={() => setView({ kind: 'video', pathname: c.pathname })} style={{ display: 'block', position: 'relative', padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}>
                       <video src={url(c.pathname) + '#t=0.1'} preload="metadata" muted playsInline style={{ display: 'block', width: 180, maxWidth: '100%', borderRadius: 12, background: '#141413' }} />
@@ -337,10 +338,10 @@ export default function IssuePanel({ job, element, onMsg, initialSheet = '', aut
       {sheet === 'files' && (
         <Sheet close={() => { setSheet(''); onClose && onClose(); }} name={scope === 'ap' ? 'Action plan \u00B7 Files' : 'Files'}>
           {files.length === 0 && <p style={{ textAlign: 'center', color: '#9a9686', fontSize: 13 }}>No files yet.</p>}
-          {files.map((f) => (
-            <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid #f1ede4' }}>
+          {files.map((f, fi) => (
+            <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid #f1ede4', ...(seen >= 0 && fi >= seen ? { color: '#c0392b' } : {}) }}>
               <span style={{ fontSize: 20 }}>{'📎'}</span>
-              <a href={url(f.pathname) + '&dl=1'} style={{ flex: 1, minWidth: 0, color: '#141413', fontSize: 14, fontWeight: 600, textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}<div style={{ fontWeight: 400, fontSize: 11.5, color: '#8a8576' }}>{f.author} {'·'} {when(f.created_at)}</div></a>
+              <a href={url(f.pathname) + '&dl=1'} style={{ flex: 1, minWidth: 0, color: seen >= 0 && files.indexOf(f) >= seen ? '#c0392b' : '#141413', fontSize: 14, fontWeight: 600, textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}<div style={{ fontWeight: 400, fontSize: 11.5, color: '#8a8576' }}>{f.author} {'·'} {when(f.created_at)}</div></a>
               {(f.author === me) && <button type="button" onClick={() => del(f.id)} aria-label="Delete" style={{ border: 0, background: 'transparent', color: '#b0ab9a', fontSize: 16, cursor: 'pointer' }}>{'✕'}</button>}
             </div>
           ))}
@@ -351,8 +352,8 @@ export default function IssuePanel({ job, element, onMsg, initialSheet = '', aut
         <Sheet close={() => { setSheet(''); onClose && onClose(); }} name={scope === 'ap' ? 'Action plan \u00B7 Gallery' : 'Gallery'}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
             <button type="button" disabled={busy} onClick={() => photoRef.current && photoRef.current.click()} style={{ aspectRatio: '1', border: '2px dashed ' + OR, borderRadius: 12, background: '#fff7ef', color: OR, font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 6 }}>{'＋'}<br />Add picture<br /><span style={{ fontWeight: 500, fontSize: 11, color: '#8a8576' }}>or press Ctrl+V</span></button>
-            {photos.map((p) => (
-              <div key={p.id} style={{ position: 'relative' }}>
+            {photos.map((p, pi) => (
+              <div key={p.id} style={{ position: 'relative', ...(seen >= 0 && pi >= seen ? { outline: '3px solid #c0392b', outlineOffset: -1, borderRadius: 12 } : {}) }}>
                 <button type="button" onClick={() => setView(p)} style={{ display: 'block', width: '100%', padding: 0, border: 0, background: 'transparent', cursor: 'pointer', position: 'relative' }}>
                   {p.kind === 'video' ? <video src={url(p.pathname) + '#t=0.1'} preload="metadata" muted playsInline style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 12, display: 'block', background: '#141413' }} /> : <img src={url(p.pathname)} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 12, display: 'block' }} />}
                   {p.kind === 'video' && <span style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: 34, height: 34, borderRadius: 17, background: 'rgba(20,20,19,.6)', color: '#fff', lineHeight: '34px', fontSize: 13 }}>{'▶'}</span>}
