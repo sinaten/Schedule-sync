@@ -15,12 +15,12 @@ const KEYS = ['open', 'prog', 'done', 'closed'];
 const when = (t) => { const d = new Date(t); return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ', ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); };
 
 // Status chip with a menu to change it.
-export function StatusChip({ st, onPick }) {
+export function StatusChip({ st, onPick, locked }) {
   const [o, setO] = useState(false);
   const s = ST[st] || ST.open;
   return (
     <span style={{ position: 'relative', display: 'inline-block' }}>
-      <button type="button" onClick={(e) => { e.stopPropagation(); setO((x) => !x); }} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, border: 0, background: s.bg, color: s.c, borderRadius: 7, padding: '2px 8px', font: 'inherit', fontSize: 11, fontWeight: 700, letterSpacing: 0.2, cursor: 'pointer', whiteSpace: 'nowrap' }}>{s.l.toUpperCase()} <span style={{ fontSize: 9 }}>{'▾'}</span></button>
+      <button type="button" onClick={(e) => { e.stopPropagation(); if (!locked) setO((x) => !x); }} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, border: 0, background: s.bg, color: s.c, borderRadius: 7, padding: '2px 8px', font: 'inherit', fontSize: 11, fontWeight: 700, letterSpacing: 0.2, cursor: locked ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>{s.l.toUpperCase()}{!locked && <span style={{ fontSize: 9 }}> {'▾'}</span>}</button>
       {o && (
         <>
           <div onClick={() => setO(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
@@ -40,13 +40,14 @@ export function StatusChip({ st, onPick }) {
 // All issues of the job: card number, status, text with clickable element numbers, who and when, counts.
 export default function IssueList({ job }) {
   const [rows, setRows] = useState(null);
+  const [who, setWho] = useState({ me: '', can: false });
   const [cvs, setCvs] = useState([]);
   const [q, setQ] = useState('');
   const [f, setF] = useState('all');
   const [newest, setNewest] = useState(true);
   const [open, setOpen] = useState(true);
   useModelIds();
-  const load = () => fetch('/api/issue?list=1&job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j.issues) setRows(j.issues); }).catch(() => {});
+  const load = () => fetch('/api/issue?list=1&job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j.issues) { setRows(j.issues); setWho({ me: j.me, can: !!j.can }); } }).catch(() => {});
   useEffect(() => {
     load();
     const t = setInterval(load, 20000);
@@ -101,7 +102,7 @@ export default function IssueList({ job }) {
               <div key={r.element_id} style={{ border: '1px solid #e7e3d8', borderRadius: 12, background: '#fff' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#f7f5ef', borderRadius: '12px 12px 0 0' }}>
                   <b style={{ fontSize: 13.5 }}>{r.card}</b>
-                  <StatusChip st={r.status} onPick={(k) => setStatus(r, k)} />
+                  <StatusChip st={r.status} onPick={(k) => setStatus(r, k)} locked={!(who.can || !r.author || r.author === who.me)} />
                   <span style={{ flex: 1 }} />
                   <button type="button" onClick={() => goPart(r.element_id)} style={{ border: 0, background: 'none', font: 'inherit', fontSize: 12.5, color: '#6b675c', cursor: 'pointer' }}>{'▣'} Go to 3D</button>
                 </div>

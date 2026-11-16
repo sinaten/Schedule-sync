@@ -156,7 +156,7 @@ export default function IssuePanel({ job, element, onMsg }) {
   const files = items.filter((i) => i.kind === 'file');
   const photos = items.filter((i) => i.kind === 'photo' || i.kind === 'video');
   const author = d && d.issue ? d.issue.author : '';
-  const locked = !!author && author !== me;
+  const locked = !!author && author !== me && !(d && d.can); // the author, editors and managers may edit
 
   const saveText = async () => {
     if (locked || !d || text === ((d.issue && d.issue.description) || '')) return;
@@ -215,7 +215,7 @@ export default function IssuePanel({ job, element, onMsg }) {
     <div style={{ margin: '0 12px 10px', border: '1px solid #f0d9bf', borderRadius: 14, background: '#fffaf4', padding: 12 }}>
       <div style={{ fontSize: 12.5, fontWeight: 600, color: '#8a4a0a', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         {d && d.issue && d.issue.card && <span style={{ color: '#141413', fontWeight: 700 }}>{d.issue.card}</span>}
-        {d && d.issue && <StatusChip st={d.issue.status || 'open'} onPick={setStatus} />}
+        {d && d.issue && <StatusChip st={d.issue.status || 'open'} onPick={setStatus} locked={locked} />}
         <span>{d && d.issue ? 'Issue by ' + d.issue.author + ' · ' + when(d.issue.created_at) : d ? 'Issue by ' + (me || 'you') : 'Loading…'}</span>
       </div>
       <div style={{ border: '1px solid #e7e3d8', borderRadius: 12, background: '#fff', padding: 8 }}>
