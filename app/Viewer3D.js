@@ -533,7 +533,7 @@ export default function Viewer3D({ job = '', kiosk = null }) {
       <section style={{ position: 'fixed', left: 0, top: 0, width: '100vw', height: '100vh', zIndex: 100000, background: '#fff' }}>
         <div ref={box} className="v3-box" style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', touchAction: 'none' }} />
         {!ready && <div style={{ position: 'absolute', left: 0, right: 0, top: '45%', textAlign: 'center', color: '#8a8576', fontSize: 15 }}>Loading the model…</div>}
-        <button type="button" onClick={closeCam} aria-label="Close" style={{ position: 'absolute', right: 14, top: 14, width: 46, height: 46, borderRadius: 23, border: 0, background: 'rgba(20,20,19,.78)', color: '#fff', fontSize: 22, cursor: 'pointer', zIndex: 5 }}>{'\u2715'}</button>
+        <button type="button" onClick={closeCam} aria-label="Close" style={{ position: 'absolute', right: 14, top: 'calc(env(safe-area-inset-top, 0px) + 60px)', width: 46, height: 46, borderRadius: 23, border: 0, background: 'rgba(20,20,19,.78)', color: '#fff', fontSize: 22, cursor: 'pointer', zIndex: 5 }}>{'\u2715'}</button>
       </section>
     );
   }
