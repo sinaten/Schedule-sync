@@ -110,24 +110,9 @@ function ActionPlan({ job, r, can, post, reload, openPan }) {
               {as.filter((a) => !a.u).map((a, i) => <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, fontSize: 13 }}><span style={{ flex: 1 }}>{a.n} <span style={{ fontSize: 10, color: '#6b675c' }}>(not a user)</span></span><button type="button" onClick={() => save({ assignees: as.filter((x) => x !== a) })} style={{ border: 0, background: 'none', color: '#9a9686', cursor: 'pointer' }}>{'✕'}</button></div>)}
             </div>
           )}
-          <div style={{ marginTop: 12, background: '#e1f3e6', border: '1px solid #bfe0c8', borderRadius: 10, overflow: 'hidden' }}>
-            <div style={{ padding: '6px 10px 0', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, color: '#2c7a47' }}>FOR THE ACTION PLAN</div>
-            {can && (
-              <div style={{ display: 'flex', gap: 8, padding: '6px 10px', flexWrap: 'wrap' }}>
-                <button type="button" onClick={() => openPan({ sheet: '', cam: true })} style={{ border: '1px solid #cfe9d6', background: '#fff', borderRadius: 14, padding: '4px 11px', font: 'inherit', fontSize: 12.5, cursor: 'pointer' }}>{'\u{1F4F7}'} Add photos and videos</button>
-                <button type="button" onClick={() => openPan({ sheet: 'files' })} style={{ border: '1px solid #cfe9d6', background: '#fff', borderRadius: 14, padding: '4px 11px', font: 'inherit', fontSize: 12.5, cursor: 'pointer' }}>{'\u{1F4CE}'} Add file</button>
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: 14, padding: '6px 10px 8px', fontSize: 12.5 }}>
-              {[['files', 'Files', ap.files], ['photos', 'Gallery', ap.photos]].map(([k, l, n]) => (
-                <button key={k} type="button" onClick={() => openPan({ sheet: k })} style={{ border: 0, background: 'none', padding: 0, font: 'inherit', fontSize: 12.5, color: '#141413', cursor: 'pointer' }}>{l} <b style={{ background: n ? '#2e9e5b' : '#d6e9dc', color: n ? '#fff' : '#6b8f78', borderRadius: 9, padding: '1px 7px', fontSize: 11.5, fontWeight: 600 }}>{n || 0}</b></button>
-              ))}
-            </div>
-          </div>
           {can && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
-              <button type="button" onClick={async () => { setPick(false); await save({ body }); setSaved(true); setTimeout(() => setSaved(false), 2000); }} style={{ border: 0, background: '#2e9e5b', color: '#fff', borderRadius: 14, padding: '7px 22px', font: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Save</button>
-              {saved && <span style={{ fontSize: 12.5, color: '#2c7a47', fontWeight: 600 }}>{'\u2713'} Saved</span>}
+              <button type="button" onClick={async () => { setPick(false); await save({ body }); setO(false); }} style={{ border: 0, background: '#2e9e5b', color: '#fff', borderRadius: 14, padding: '7px 22px', font: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Save</button>
             </div>
           )}
         </div>

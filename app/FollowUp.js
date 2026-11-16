@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import IssuePanel from './IssuePanel';
 import { StatusChip, PriorityTag, AssigneeChip } from './IssueList';
 
 const BARS = ['Action Plan', 'Workflow', 'Location', 'HSE', 'Communication', 'Orders', 'Utility'];
@@ -26,6 +27,7 @@ export default function FollowUp({ job }) {
   const [text, setText] = useState('');
   const [aps, setAps] = useState([]); // the action plans this person may see
   const [, tick] = useState(0);
+  const [pan, setPan] = useState(null); // Comments / Files / Gallery of an issue or of its action plan
   const load = () => {
     fetch('/api/followup?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j.items) { setItems(j.items); setWho({ me: j.me, can: !!j.can }); } }).catch(() => {});
     fetch('/api/issue?aps=1&job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j.aps) setAps(j.aps); }).catch(() => {});
@@ -64,6 +66,7 @@ export default function FollowUp({ job }) {
     const r = await fetch('/api/followup?job=' + encodeURIComponent(job) + '&id=' + x.id, { method: 'DELETE' });
     if (!r.ok) load();
   };
+  const cnt = (el, sc, k, l, n, col) => <button key={k} type="button" onClick={() => setPan({ element: el, scope: sc, sheet: k })} style={{ border: 0, background: 'none', padding: 0, font: 'inherit', fontSize: 12.5, color: '#141413', cursor: 'pointer' }}>{l} <b style={{ background: n ? col : '#e7e3d8', color: n ? '#fff' : '#8a8576', borderRadius: 9, padding: '1px 7px', fontSize: 11.5, fontWeight: 600 }}>{n || 0}</b></button>;
   return (
     <div className="ms-follow">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 560, margin: '0 auto', padding: '8px 16px 24px' }}>
@@ -95,10 +98,16 @@ export default function FollowUp({ job }) {
                         <div style={{ padding: '0 12px 8px', fontSize: 14, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}><b style={{ fontWeight: 600, color: '#a85a08', fontSize: 11, letterSpacing: 0.3 }}>HOW TO SOLVE IT </b>{a.body || <span style={{ color: '#9a9686' }}>Not written yet.</span>}</div>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '0 12px 8px' }}>{as.length ? as.map((x, i) => <AssigneeChip key={i} a={x} />) : <span style={{ fontSize: 12.5, color: '#9a9686' }}>Nobody assigned yet</span>}</div>
                         <div style={{ padding: '6px 12px', borderTop: '1px solid #cfe9d6', background: '#f6fbf7', fontSize: 12.5 }}>
-                          <div style={{ display: 'flex', gap: 14 }}><span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.3, color: '#8a8576' }}>ISSUE</span><span>Comments <b>{a.i_comments || 0}</b></span><span>Files <b>{a.i_files || 0}</b></span><span>Gallery <b>{a.i_photos || 0}</b></span></div>
+                          <div style={{ display: 'flex', gap: 14 }}><span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.3, color: '#8a8576' }}>ISSUE</span>{[['comments', 'Comments', a.i_comments], ['files', 'Files', a.i_files], ['photos', 'Gallery', a.i_photos]].map(([k, l, n]) => cnt(a.element_id, 'issue', k, l, n, '#e8710a'))}</div>
                           {a.i_last && <div style={{ marginTop: 3, color: '#6b675c', fontSize: 12.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{a.i_last}</div>}
                         </div>
-                        <div style={{ display: 'flex', gap: 14, padding: '6px 12px 8px', borderTop: '1px solid #cfe9d6', fontSize: 12.5, background: '#e1f3e6' }}><span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.3, color: '#2c7a47' }}>ACTION PLAN</span><span>Files <b>{a.files || 0}</b></span><span>Gallery <b>{a.photos || 0}</b></span><span style={{ flex: 1 }} /><span style={{ color: '#8a8576', fontSize: 11.5 }}>{a.updated_by || a.author || ''} {'\u00B7'} {when(a.updated_at)}</span></div>
+                        <div style={{ padding: '6px 12px 8px', borderTop: '1px solid #cfe9d6', background: '#e1f3e6' }}>
+                          <div style={{ display: 'flex', gap: 14, alignItems: 'center', fontSize: 12.5 }}><span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.3, color: '#2c7a47' }}>ACTION PLAN</span>{[['files', 'Files', a.files], ['photos', 'Gallery', a.photos]].map(([k, l, n]) => cnt(a.element_id, 'ap', k, l, n, '#2e9e5b'))}<span style={{ flex: 1 }} /><span style={{ color: '#8a8576', fontSize: 11.5 }}>{a.updated_by || a.author || ''} {'\u00B7'} {when(a.updated_at)}</span></div>
+                          {who.can && <div style={{ display: 'flex', gap: 8, marginTop: 7, flexWrap: 'wrap' }}>
+                            <button type="button" onClick={() => setPan({ element: a.element_id, scope: 'ap', sheet: '', cam: true })} style={{ border: '1px solid #cfe9d6', background: '#fff', borderRadius: 14, padding: '4px 11px', font: 'inherit', fontSize: 12.5, cursor: 'pointer' }}>{'\u{1F4F7}'} Add photos and videos</button>
+                            <button type="button" onClick={() => setPan({ element: a.element_id, scope: 'ap', sheet: 'files' })} style={{ border: '1px solid #cfe9d6', background: '#fff', borderRadius: 14, padding: '4px 11px', font: 'inherit', fontSize: 12.5, cursor: 'pointer' }}>{'\u{1F4CE}'} Add file</button>
+                          </div>}
+                        </div>
                       </div>
                     );
                   })}
@@ -124,6 +133,11 @@ export default function FollowUp({ job }) {
           );
         })}
       </div>
+      {pan && (
+        <div style={{ position: 'fixed', left: 0, top: -6000, width: '100vw', zIndex: 2500 }}>
+          <IssuePanel key={pan.element + pan.sheet + (pan.cam ? 'c' : '') + (pan.scope || '')} job={job} element={pan.element} scope={pan.scope || 'issue'} initialSheet={pan.sheet} autoCam={!!pan.cam} onMsg={() => {}} onClose={() => { setPan(null); load(); }} />
+        </div>
+      )}
     </div>
   );
 }
