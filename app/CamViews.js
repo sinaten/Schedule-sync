@@ -13,6 +13,7 @@ export default function CamViews({ job, getCam, goCam }) {
   const [q, setQ] = useState('');
   const [ren, setRen] = useState(null);
   const [pick, setPick] = useState(null);
+  const [sel, setSel] = useState('');
   const [copied, setCopied] = useState('');
   const load = () => fetch('/api/camviews?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j.views) setD(j); }).catch(() => {});
   useEffect(() => { load(); }, [job]);
@@ -69,34 +70,38 @@ export default function CamViews({ job, getCam, goCam }) {
                 <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or number" style={{ width: '100%', boxSizing: 'border-box', height: 32, border: '1.5px solid #e0dccf', borderRadius: 16, padding: '0 12px', font: 'inherit', fontSize: 13 }} />
               </div>
               {!shown.length && <div style={{ padding: '10px 14px', fontSize: 13, color: '#8a8576' }}>No view found.</div>}
-              {shown.map((v) => (
-                <div key={v.id} style={{ borderBottom: '1px solid #f1ede4' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingRight: 8 }}>
-                    {ren && ren.id === v.id ? (
+              {shown.map((v) => {
+                const on = sel === v.id;
+                return (
+                <div key={v.id} style={{ borderBottom: '1px solid #f1ede4', background: on ? '#fff4e8' : '#fff', borderLeft: on ? '3px solid #e8710a' : '3px solid transparent' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingRight: 8, flexWrap: 'wrap' }}>
+                    {on && ren && ren.id === v.id ? (
                       <input autoFocus value={ren.t} onChange={(e) => setRen({ id: v.id, t: e.target.value })} maxLength={60}
                         onKeyDown={async (e) => { if (e.key === 'Enter') { if (await patch(v, { name: ren.t })) setRen(null); } else if (e.key === 'Escape') setRen(null); }}
                         onBlur={async () => { if (ren && ren.t.trim() && ren.t.trim() !== v.name) await patch(v, { name: ren.t }); setRen(null); }}
-                        style={{ flex: 1, minWidth: 0, margin: '6px 0 6px 10px', height: 30, boxSizing: 'border-box', border: '1.5px solid #e8710a', borderRadius: 8, padding: '0 8px', font: 'inherit', fontSize: 14 }} />
+                        style={{ flex: 1, minWidth: 120, margin: '6px 0 6px 10px', height: 30, boxSizing: 'border-box', border: '1.5px solid #e8710a', borderRadius: 8, padding: '0 8px', font: 'inherit', fontSize: 14 }} />
                     ) : (
-                      <button type="button" onClick={() => { goCam(v); setOpen(false); }} title={v.name} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left', border: 0, background: '#fff', padding: '10px 6px 10px 14px', font: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer', color: '#141413', minWidth: 0 }}>
+                      <button type="button" onClick={() => { if (on) { setSel(''); setPick(null); setRen(null); } else { setSel(v.id); setPick(null); setRen(null); goCam(v); } }} title={v.name} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left', border: 0, background: 'transparent', padding: '10px 6px 10px 11px', font: 'inherit', fontSize: 14, fontWeight: on ? 700 : 600, cursor: 'pointer', color: '#141413', minWidth: 120 }}>
                         <span style={{ fontSize: 16, flex: 'none' }}><CamIcon n={v.n} /></span><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
+                        {v.qr && !on && <span style={{ flex: 'none', fontSize: 11, color: '#1b5e20' }}>QR</span>}
                       </button>
                     )}
-                    {d.admin && !(ren && ren.id === v.id) && <button type="button" aria-label={'Rename ' + v.name} onClick={() => setRen({ id: v.id, t: v.name })} style={{ border: 0, background: 'none', cursor: 'pointer', fontSize: 14, color: '#8a8576', padding: '0 2px', flex: 'none' }}>{'\u270E'}</button>}
-                    {d.editor && <button type="button" onClick={() => copy(v)} style={mini}>{copied === v.id ? 'Copied' : 'Copy'}</button>}
-                    {d.admin && (v.qr
+                    {on && d.editor && <button type="button" onClick={() => copy(v)} style={mini}>{copied === v.id ? 'Copied' : 'Copy'}</button>}
+                    {on && d.admin && !(ren && ren.id === v.id) && <button type="button" onClick={() => setRen({ id: v.id, t: v.name })} style={mini}>{'\u270E'} Edit</button>}
+                    {on && d.admin && (v.qr
                       ? <button type="button" onClick={() => patch(v, { qr: '' })} title="Disconnect this QR" style={{ ...mini, borderColor: '#2e7d32', background: '#edf7ee', color: '#1b5e20' }}>QR {v.qrName || ''} {'\u2715'}</button>
                       : <button type="button" onClick={() => setPick(pick === v.id ? null : v.id)} style={{ ...mini, borderStyle: 'dashed', color: '#6b6757' }}>+ QR</button>)}
-                    {d.admin && <button type="button" aria-label={'Delete ' + v.name} onClick={() => del(v)} style={{ border: 0, background: 'none', color: '#b3402a', cursor: 'pointer', fontSize: 14, padding: '0 4px', flex: 'none' }}>{'\u2715'}</button>}
+                    {on && d.admin && <button type="button" aria-label={'Delete ' + v.name} onClick={() => del(v)} style={{ ...mini, color: '#b3402a' }}>{'\u2715'}</button>}
                   </div>
-                  {pick === v.id && (
-                    <div style={{ padding: '4px 12px 10px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {on && pick === v.id && (
+                    <div style={{ padding: '2px 12px 10px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       {(d.sections || []).length === 0 && <span style={{ fontSize: 12.5, color: '#8a8576' }}>No QR codes made for this job yet.</span>}
-                      {(d.sections || []).map((s) => <button key={s.id} type="button" style={mini} onClick={async () => { if (await patch(v, { qr: s.id })) setPick(null); }}>{s.name}</button>)}
+                      {(d.sections || []).map((x) => <button key={x.id} type="button" style={mini} onClick={async () => { if (await patch(v, { qr: x.id })) setPick(null); }}>{x.name}</button>)}
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </span>
