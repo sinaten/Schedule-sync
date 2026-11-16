@@ -5,7 +5,7 @@ import CamIcon from './CamIcon';
 // The saved camera views of a job, in one thin bar under the 3D model.
 // Nothing selected: a search box (name or number) with a short list under it, and "+ New" for admins.
 // A view selected: it sits in the bar with its own buttons in front of it (no long list stays open).
-export default function CamViews({ job, getCam, goCam }) {
+export default function CamViews({ job, getCam, goCam, goEl }) {
   const [d, setD] = useState({ views: [], admin: false, editor: false, sections: [] });
   const [q, setQ] = useState('');
   const [listOpen, setListOpen] = useState(false);
@@ -14,6 +14,9 @@ export default function CamViews({ job, getCam, goCam }) {
   const [msg, setMsg] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState('views');
+  const [en, setEn] = useState('');
+  const [emsg, setEmsg] = useState('');
   const load = () => fetch('/api/camviews?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j.views) setD(j); }).catch(() => {});
   useEffect(() => { load(); }, [job]);
   // an icon inside an Issue text asks the model to go to its view
@@ -23,7 +26,6 @@ export default function CamViews({ job, getCam, goCam }) {
     return () => window.removeEventListener('ss-goto-view', f);
   }, [d.views, goCam]);
   useEffect(() => { const f = () => load(); window.addEventListener('ss-camviews-changed', f); return () => window.removeEventListener('ss-camviews-changed', f); }, [job]);
-  if (!d.views.length && !d.admin) return null;
 
   const flash = (t) => { setNote(t); setTimeout(() => setNote(''), 1500); };
   const changed = (views) => { setD((x) => ({ ...x, views })); window.dispatchEvent(new Event('ss-camviews-changed')); };
@@ -97,7 +99,26 @@ export default function CamViews({ job, getCam, goCam }) {
 
   const mini = { border: '1px solid #d9d5c8', borderRadius: 8, background: '#fff', font: 'inherit', fontSize: 12.5, fontWeight: 600, padding: '4px 9px', cursor: 'pointer', color: '#141413', flex: 'none' };
   const field = { height: 32, boxSizing: 'border-box', border: '1.5px solid #e0dccf', borderRadius: 16, padding: '0 12px', font: 'inherit', fontSize: 13 };
+  const searchEl = () => { const r = goEl ? goEl(en) : { ok: false, msg: 'The model is not ready yet.' }; setEmsg(r.ok ? '' : r.msg); };
+  const tabBtn = (k, label) => (
+    <button type="button" onClick={() => { setTab(k); setEmsg(''); }} style={{ border: 0, borderRadius: 15, padding: '4px 14px', font: 'inherit', fontSize: 12.5, fontWeight: tab === k ? 600 : 500, cursor: 'pointer', background: tab === k ? 'rgba(20,20,19,.82)' : 'transparent', color: tab === k ? '#fff' : '#6b6757' }}>{label}</button>
+  );
+  const tabs = <div style={{ padding: '6px 12px 0', display: 'flex', gap: 4 }}>{tabBtn('views', 'Views')}{tabBtn('el', 'Element')}</div>;
+  if (tab === 'el') {
+    return (
+      <div>
+        {tabs}
+        <div style={{ padding: '6px 12px 8px', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input value={en} onChange={(e) => { setEn(e.target.value); setEmsg(''); }} onKeyDown={(e) => { if (e.key === 'Enter') searchEl(); }} inputMode="numeric" placeholder="Search by element number" style={{ ...field, flex: '1 1 200px', minWidth: 160, maxWidth: 360 }} />
+          <button type="button" onClick={searchEl} style={{ ...mini, height: 32, borderRadius: 16, padding: '0 16px', background: 'rgba(20,20,19,.82)', color: '#fff', border: 0, fontSize: 13 }}>Search</button>
+          {emsg && <span style={{ fontSize: 12.5, color: '#b3402a' }}>{emsg}</span>}
+        </div>
+      </div>
+    );
+  }
   return (
+    <div>
+    {tabs}
     <div style={{ padding: '6px 12px 8px', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', position: 'relative' }}>
       {!v && (
         <span style={{ position: 'relative', flex: '1 1 200px', minWidth: 160, maxWidth: 360 }}>
@@ -139,6 +160,7 @@ export default function CamViews({ job, getCam, goCam }) {
       )}
       {d.admin && !v && <button type="button" style={{ ...mini, borderColor: '#e8710a', color: '#e8710a', height: 32, borderRadius: 16, padding: '0 14px', fontSize: 13 }} onClick={addNew} disabled={busy}>+ New</button>}
       {(msg || note) && <span style={{ fontSize: 12.5, color: msg ? '#b3402a' : '#1b5e20' }}>{msg || note}</span>}
+    </div>
     </div>
   );
 }

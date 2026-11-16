@@ -396,6 +396,44 @@ export default function Viewer3D({ job = '', kiosk = null }) {
     } catch (e) {}
   };
 
+  // go to an element by its Revit number: the camera flies to it and an orange dashed frame marks it
+  const [frame, setFrame] = useState(null);
+  const frameFor = useRef(null);
+  const elemRect = (vw, d) => {
+    try {
+      const T = window.THREE, tree = vw.model.getInstanceTree(), fl = vw.model.getFragmentList();
+      const bb = new T.Box3(), tmp = new T.Box3();
+      tree.enumNodeFragments(d, (f) => { fl.getWorldBounds(f, tmp); bb.union(tmp); }, true);
+      const xs = [], ys = [];
+      for (const x of [bb.min.x, bb.max.x]) for (const y of [bb.min.y, bb.max.y]) for (const z of [bb.min.z, bb.max.z]) { const p = vw.worldToClient(new T.Vector3(x, y, z)); xs.push(p.x); ys.push(p.y); }
+      const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+      if (![x0, x1, y0, y1].every(Number.isFinite)) return null;
+      return { x: x0 - 6, y: y0 - 6, w: x1 - x0 + 12, h: y1 - y0 + 12 };
+    } catch (e) { return null; }
+  };
+  const goElement = (n) => {
+    const vw = viewer.current;
+    const id = String(n == null ? '' : n).trim();
+    if (!id) return { ok: false, msg: 'Type an element number.' };
+    if (!vw || !vw.model) return { ok: false, msg: 'The model is not ready yet.' };
+    const d = window.__ssById && window.__ssById[parseInt(id, 10)];
+    if (!d) return { ok: false, msg: 'Element ' + id + ' is not in this model.' };
+    let vis = true; try { vis = vw.impl.visibilityManager.isNodeVisible(d); } catch (e) { /* assume shown */ }
+    if (!vis) return { ok: false, msg: 'Element ' + id + ' is not shown in this view.' };
+    frameFor.current = d;
+    try { vw.fitToView([d], vw.model, false); } catch (e) {}
+    setTimeout(() => { if (frameFor.current === d) setFrame(elemRect(vw, d)); }, 900);
+    return { ok: true };
+  };
+  if (typeof window !== 'undefined') window.__ssGoElement = goElement;
+  useEffect(() => {
+    if (!frame) return;
+    const t = setInterval(() => { const vw = viewer.current; if (vw && vw.model && frameFor.current) setFrame(elemRect(vw, frameFor.current)); }, 150);
+    const el = box.current;
+    const clear = () => { frameFor.current = null; setFrame(null); };
+    if (el) el.addEventListener('pointerdown', clear);
+    return () => { clearInterval(t); if (el) el.removeEventListener('pointerdown', clear); };
+  }, [!!frame]);
   const [kmode, setKmode] = useState('issue');
   const [qlv, setQlv] = useState(() => { try { return Math.min(10, Math.max(1, Number(localStorage.getItem('ss-q')) || 6)); } catch (e) { return 6; } });
   // scanned view: the image-quality slider (1 = fastest, 10 = sharpest): the canvas resolution, plus smooth edges and shadows at the top
@@ -617,9 +655,10 @@ export default function Viewer3D({ job = '', kiosk = null }) {
           </div>
         );
       })()}
-      {ready && <CamViews job={job} getCam={getCam} goCam={goCam} />}
+      {ready && <CamViews job={job} getCam={getCam} goCam={goCam} goEl={goElement} />}
       <div style={{ position: 'relative' }}>
         <div ref={box} className="v3-box" style={{ position: 'relative', height: ready ? 480 : 0, touchAction: 'none' }} />
+        {frame && <div style={{ position: 'absolute', left: frame.x, top: frame.y, width: frame.w, height: frame.h, border: '2.5px dashed #e8710a', borderRadius: 6, pointerEvents: 'none', zIndex: 9 }} />}
         {ready && (
           <div
             style={{ position: 'absolute', right: 0, top: 230, height: 170, width: 44, touchAction: 'pan-y', zIndex: 10, background: 'rgba(22,38,46,.18)', borderLeft: '1px solid rgba(22,38,46,.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16262e', fontSize: 18, lineHeight: 1.1, textAlign: 'center', userSelect: 'none' }}

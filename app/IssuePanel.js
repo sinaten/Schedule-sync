@@ -131,6 +131,13 @@ export default function IssuePanel({ job, element, onMsg }) {
     return () => window.removeEventListener('paste', f);
   });
 
+  // Go to 3D: the model's camera flies to this part
+  const goTo3D = () => {
+    try { const b = document.querySelector('.v3-box'); if (b) b.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
+    const r = window.__ssGoElement ? window.__ssGoElement(element) : { ok: false, msg: 'The model is not ready yet.' };
+    if (!r.ok) onMsg && onMsg(r.msg);
+  };
+
   // while the comments space is open, leave room for it under the page
   useEffect(() => {
     if (sheet !== 'comments') return;
@@ -214,6 +221,7 @@ export default function IssuePanel({ job, element, onMsg }) {
         {!locked && (
           <div style={{ marginTop: 4 }}>
             <button type="button" disabled={busy} onClick={() => openCam()} style={pill(true)}>Add photos and videos</button>
+            <button type="button" onClick={goTo3D} style={{ ...pill(true), marginLeft: 6 }}>Go to 3D</button>
             {cvs.views.length > 0 && (
               <span style={{ position: 'relative', display: 'inline-block', marginLeft: 6 }}>
                 <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => setPickV((o) => !o)} style={pill(true)}>Attach view</button>
@@ -226,6 +234,7 @@ export default function IssuePanel({ job, element, onMsg }) {
             )}
           </div>
         )}
+        {locked && <div style={{ marginTop: 4 }}><button type="button" onClick={goTo3D} style={pill(true)}>Go to 3D</button></div>}
       </div>
       <input ref={photoRef} type="file" accept="image/*" hidden onChange={(e) => { upload(e.target.files[0], 'photo'); e.target.value = ''; }} />
       <input ref={fileRef} type="file" hidden onChange={(e) => { upload(e.target.files[0], 'file'); e.target.value = ''; }} />
