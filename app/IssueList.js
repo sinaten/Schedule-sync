@@ -45,6 +45,77 @@ export function StatusChip({ st, onPick, locked }) {
   );
 }
 
+
+// Action plan of an issue: one row under the issue, opens like a drawer. Only a manager or an editor issues or changes it.
+function AssigneeChip({ a }) {
+  if (a.u) return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 14, background: '#f4f3ee', padding: '2px 10px 2px 3px', fontSize: 12.5 }}><span style={{ width: 22, height: 22, borderRadius: 11, background: '#e8710a', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600 }}>{a.n[0].toUpperCase()}</span>{a.n}</span>;
+  return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 14, border: '1px dashed #cfcab9', padding: '2px 10px 2px 3px', fontSize: 12.5 }}><span style={{ width: 22, height: 22, borderRadius: 11, background: '#f4f3ee', color: '#6b675c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>?</span>{a.n}<span style={{ fontSize: 10, color: '#6b675c', border: '1px solid #e7e3d8', borderRadius: 6, padding: '0 5px' }}>NOT A USER</span></span>;
+}
+function ActionPlan({ job, r, can, post, reload }) {
+  const ap = r.ap;
+  const [o, setO] = useState(false);
+  const [body, setBody] = useState(ap ? ap.body : '');
+  const [pick, setPick] = useState(false);
+  const [users, setUsers] = useState(null);
+  const [guest, setGuest] = useState('');
+  useEffect(() => { setBody(ap ? ap.body : ''); }, [ap && ap.body]);
+  if (!ap) {
+    if (!can) return null;
+    return (
+      <div style={{ padding: '8px 12px', borderTop: '1px solid #efece3' }}>
+        <button type="button" onClick={async () => { await post({ action: 'ap-create' }); await reload(); setO(true); }} style={{ border: '1px solid #e8710a', background: '#fff', color: '#e8710a', borderRadius: 14, padding: '5px 14px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Convert to Action Plan</button>
+      </div>
+    );
+  }
+  const as = Array.isArray(ap.assignees) ? ap.assignees : [];
+  const save = async (b) => { await post({ action: 'ap-update', ...b }); await reload(); };
+  const openPick = async () => {
+    setPick((x) => !x);
+    if (!users) { try { const j = await fetch('/api/issue?users=1&job=' + encodeURIComponent(job), { cache: 'no-store' }).then((x) => x.json()); setUsers(j.users || []); } catch (e) { setUsers([]); } }
+  };
+  const toggleUser = (n) => save({ assignees: as.some((a) => a.u && a.n === n) ? as.filter((a) => !(a.u && a.n === n)) : [...as, { n, u: 1 }] });
+  const lab = { fontSize: 11, fontWeight: 700, letterSpacing: 0.3, color: '#8a8576', textTransform: 'uppercase' };
+  return (
+    <div style={{ borderTop: '1.5px solid #e8710a', background: '#fff7ef', borderRadius: '0 0 11px 11px' }}>
+      <div role="button" tabIndex={0} onClick={() => setO((x) => !x)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', cursor: 'pointer', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, color: '#a85a08' }}>ACTION PLAN</span>
+        <b style={{ fontSize: 13 }}>{ap.jobNo}</b>
+        <span onClick={(e) => e.stopPropagation()}><StatusChip st={ap.status} onPick={(k) => save({ status: k })} locked={!can} /></span>
+        <span style={{ flex: 1 }} />
+        <span style={{ display: 'flex' }}>{as.map((a, i) => <span key={i} title={a.n} style={{ width: 22, height: 22, borderRadius: 11, marginLeft: -6, border: '1.5px solid #fff7ef', boxSizing: 'border-box', background: a.u ? '#e8710a' : '#f4f3ee', color: a.u ? '#fff' : '#6b675c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600 }}>{a.u ? a.n[0].toUpperCase() : '?'}</span>)}</span>
+        <span style={{ color: '#9a9686', fontSize: 12 }}>{o ? '▴' : '▾'}</span>
+      </div>
+      {o && (
+        <div style={{ padding: '4px 12px 12px' }}>
+          <div style={lab}>How to solve it</div>
+          {can ? (
+            <textarea value={body} onChange={(e) => setBody(e.target.value)} onBlur={() => { if (body !== ap.body) save({ body }); }} rows={3} placeholder="How should this be solved?" style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #e8dcc8', borderRadius: 10, padding: 8, margin: '4px 0 10px', font: 'inherit', fontSize: 14, resize: 'vertical', outline: 'none', background: '#fff' }} />
+          ) : <div style={{ fontSize: 14, lineHeight: 1.55, whiteSpace: 'pre-wrap', margin: '4px 0 10px' }}>{ap.body ? linkNums(ap.body, 'ap' + r.no) : <span style={{ color: '#9a9686' }}>Not written yet.</span>}</div>}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={lab}>Assigned to</span>
+            {can && <button type="button" onClick={openPick} style={{ border: '1px solid #d9d5c8', background: '#fff', borderRadius: 12, padding: '2px 12px', font: 'inherit', fontSize: 12, cursor: 'pointer' }}>Assign</button>}
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>{as.length ? as.map((a, i) => <AssigneeChip key={i} a={a} />) : <span style={{ fontSize: 12.5, color: '#9a9686' }}>Nobody yet</span>}</div>
+          {can && pick && (
+            <div style={{ marginTop: 8, border: '1px solid #e0dccf', borderRadius: 10, padding: 8, background: '#fff' }}>
+              <div style={lab}>Site users</div>
+              {users === null && <div style={{ fontSize: 13, color: '#9a9686', padding: 4 }}>Loading…</div>}
+              {(users || []).map((n) => <label key={n} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 2px', fontSize: 13.5 }}><input type="checkbox" checked={as.some((a) => a.u && a.n === n)} onChange={() => toggleUser(n)} />{n}</label>)}
+              <div style={{ ...lab, margin: '8px 0 4px' }}>Someone who is not a user</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input value={guest} onChange={(e) => setGuest(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && guest.trim()) { save({ assignees: [...as, { n: guest.trim(), u: 0 }] }); setGuest(''); } }} placeholder="Name, company" style={{ flex: 1, minWidth: 0, height: 32, border: '1.5px solid #e0dccf', borderRadius: 16, padding: '0 12px', font: 'inherit', fontSize: 13, outline: 'none' }} />
+                <button type="button" disabled={!guest.trim()} onClick={() => { save({ assignees: [...as, { n: guest.trim(), u: 0 }] }); setGuest(''); }} style={{ border: 0, borderRadius: 16, padding: '0 14px', background: guest.trim() ? '#e8710a' : '#e7e3d8', color: '#fff', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: guest.trim() ? 'pointer' : 'default' }}>Add</button>
+              </div>
+              {as.filter((a) => !a.u).map((a, i) => <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, fontSize: 13 }}><span style={{ flex: 1 }}>{a.n} <span style={{ fontSize: 10, color: '#6b675c' }}>(not a user)</span></span><button type="button" onClick={() => save({ assignees: as.filter((x) => x !== a) })} style={{ border: 0, background: 'none', color: '#9a9686', cursor: 'pointer' }}>{'✕'}</button></div>)}
+            </div>
+          )}
+          <div style={{ fontSize: 11.5, color: '#8a8576', marginTop: 8 }}>Comments, files and gallery of the issue above are also those of this action plan.</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // All issues of the job: card number, status, text with clickable element numbers, who and when, counts.
 export default function IssueList({ job }) {
   const [rows, setRows] = useState(null);
@@ -79,6 +150,7 @@ export default function IssueList({ job }) {
     const res = await fetch('/api/issue', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, action: 'create', description: nw.text, priority: nw.pr }) });
     if (res.ok) { setNw(null); setQ(''); setF('all'); setNewest(true); load(); }
   };
+  const apPost = (r) => (b) => fetch('/api/issue', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, element: r.element_id, ...b }) });
   const saveEdit = async () => {
     const r = rows.find((x) => x.element_id === ed.element_id);
     const post = (b) => fetch('/api/issue', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, element: ed.element_id, ...b }) });
@@ -176,11 +248,18 @@ export default function IssueList({ job }) {
                     {info('Created by', r.author)}
                     {info('Identified on', when(r.created_at))}
                   </div>
+                  {can && (
+                    <div style={{ display: 'flex', gap: 8, padding: '6px 12px', borderTop: '1px solid #efece3', background: '#f7f5ef', flexWrap: 'wrap' }}>
+                      <button type="button" onClick={() => setPan({ element: r.element_id, sheet: '', cam: true })} style={{ border: '1px solid #d9d5c8', background: '#fff', borderRadius: 14, padding: '4px 11px', font: 'inherit', fontSize: 12.5, cursor: 'pointer' }}>{'\u{1F4F7}'} Add photos and videos</button>
+                      <button type="button" onClick={() => setPan({ element: r.element_id, sheet: 'files' })} style={{ border: '1px solid #d9d5c8', background: '#fff', borderRadius: 14, padding: '4px 11px', font: 'inherit', fontSize: 12.5, cursor: 'pointer' }}>{'\u{1F4CE}'} Add file</button>
+                    </div>
+                  )}
                   <div style={{ display: 'flex', gap: 14, padding: '7px 12px', borderTop: '1px solid #efece3', fontSize: 12.5 }}>
                     {[['comments', 'Comments', r.comments], ['files', 'Files', r.files], ['photos', 'Gallery', r.photos]].map(([k, l, n]) => (
                       <button key={k} type="button" onClick={() => setPan({ element: r.element_id, sheet: k })} style={{ border: 0, background: 'none', padding: 0, font: 'inherit', fontSize: 12.5, color: '#141413', cursor: 'pointer' }}>{l} <b style={{ background: n ? '#e8710a' : '#e7e3d8', color: n ? '#fff' : '#8a8576', borderRadius: 9, padding: '1px 7px', fontSize: 11.5, fontWeight: 600 }}>{n}</b></button>
                     ))}
                   </div>
+                  <ActionPlan job={job} r={r} can={who.can} post={apPost(r)} reload={load} />
                 </div>
               );
             })}
@@ -190,7 +269,7 @@ export default function IssueList({ job }) {
       {pan && (
         // the same Comments / Files / Gallery spaces as in the part panel; the panel's own card stays hidden (clipped), only its spaces open
         <div style={{ position: 'fixed', left: 0, top: 0, width: 0, height: 0, overflow: 'hidden' }}>
-          <IssuePanel key={pan.element + pan.sheet} job={job} element={pan.element} initialSheet={pan.sheet} onMsg={() => {}} onClose={() => { setPan(null); load(); }} />
+          <IssuePanel key={pan.element + pan.sheet + (pan.cam ? 'c' : '')} job={job} element={pan.element} initialSheet={pan.sheet} autoCam={!!pan.cam} onMsg={() => {}} onClose={() => { setPan(null); load(); }} />
         </div>
       )}
     </section>

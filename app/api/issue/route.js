@@ -1,7 +1,8 @@
 import { del } from '@vercel/blob';
 import { currentUser, canJob, canEdit } from '../../../lib/user';
 import { getColPerms, allowedCols } from '../../../lib/colperms';
-import { issuesDb, STATUSES, PRIORITIES, cardNo } from '../../../lib/issues';
+import { db } from '../../../lib/db';
+import { issuesDb, STATUSES, PRIORITIES, cardNo, jobNo } from '../../../lib/issues';
 export const dynamic = 'force-dynamic';
 const nm = (u) => (u && u.name) || 'admin';
 const nk = (x) => String(x ?? '').toLowerCase().replace(/[\s\-_]/g, '');
@@ -14,6 +15,15 @@ export async function GET(req) {
   const u = await currentUser();
   if (!u || !job || !canJob(u, job)) return no();
   const sql = await issuesDb();
+  if (p.get('users')) {
+    // people who can be given an action plan: the users of the site that may open this job
+    if (!canEdit(u)) return no();
+    const d = await db();
+    const us = await d`select username, role, jobs from users order by username`;
+    const names = us.filter((x) => x.role === 'admin' || (Array.isArray(x.jobs) && x.jobs.includes(job))).map((x) => x.username);
+    if (process.env.ADMIN_USER && !names.includes(process.env.ADMIN_USER)) names.unshift(process.env.ADMIN_USER);
+    return Response.json({ users: names });
+  }
   if (p.get('list')) {
     // every issue of the job with its card number, status and the counts shown on the card
     const rows = await sql`select i.no, i.element_id, i.description, i.author, i.created_at, i.status, i.priority,
@@ -22,6 +32,8 @@ export async function GET(req) {
       (select count(*)::int from issue_items t where t.job = i.job and t.element_id = i.element_id and t.kind in ('photo','video') and coalesce(t.body,'') <> 'chat') as photos
       from issues i where i.job = ${job} order by i.no desc`;
     // Discipline and Asset: read from the part's schedule row (the columns named Discipline / Asset that this person may see)
+    const aps = await sql`select element_id, no, body, status, assignees, author, created_at from action_plans where job = ${job}`;
+    const apBy = {}; aps.forEach((a) => { apBy[a.element_id] = { ...a, jobNo: jobNo(a.no) }; });
     const els = rows.map((r) => r.element_id);
     const rr = els.length ? await sql`select r.element_id, r.vals from rows r join schedules s on s.id = r.schedule_id where s.job = ${job} and r.element_id = any(${els}::text[])` : [];
     const only = allowedCols(u, await getColPerms());
@@ -36,7 +48,7 @@ export async function GET(req) {
         else if (/asset/i.test(k) && !o.asset) o.asset = t;
       });
     });
-    return Response.json({ me: nm(u), can: canEdit(u), issues: rows.map((r) => ({ ...r, card: cardNo(r.no), discipline: (info[r.element_id] || {}).discipline || '', asset: (info[r.element_id] || {}).asset || '' })) });
+    return Response.json({ me: nm(u), can: canEdit(u), issues: rows.map((r) => ({ ...r, card: cardNo(r.no), ap: apBy[r.element_id] || null, discipline: (info[r.element_id] || {}).discipline || '', asset: (info[r.element_id] || {}).asset || '' })) });
   }
   if (!el) return no();
   const [issue] = await sql`select description, author, created_at, no, status, priority from issues where job = ${job} and element_id = ${el}`;
@@ -70,6 +82,24 @@ export async function POST(req) {
     if (ex && ex.author && ex.author !== nm(u) && !canEdit(u)) return Response.json({ error: 'Only the author, an editor or a manager can change the status' }, { status: 403 });
     const r = await sql`update issues set status = ${st}, updated_at = now() where job = ${job} and element_id = ${el} returning element_id`;
     if (!r.length) return Response.json({ error: 'No such issue' }, { status: 404 });
+    return Response.json({ ok: true });
+  }
+  if (b.action === 'ap-create' || b.action === 'ap-update') {
+    // only a manager or an editor issues or changes an action plan
+    if (!canEdit(u)) return Response.json({ error: 'Only a manager or an editor can do this' }, { status: 403 });
+    const [iss] = await sql`select element_id from issues where job = ${job} and element_id = ${el}`;
+    if (!iss) return Response.json({ error: 'No such issue' }, { status: 404 });
+    if (b.action === 'ap-create') {
+      await sql`insert into action_plans(job, element_id, no, body, author) values(${job}, ${el}, (select coalesce(max(no), 0) + 1 from action_plans where job = ${job}), '', ${nm(u)}) on conflict (job, element_id) do nothing`;
+      return Response.json({ ok: true });
+    }
+    const [cur] = await sql`select body, status, assignees from action_plans where job = ${job} and element_id = ${el}`;
+    if (!cur) return Response.json({ error: 'No action plan' }, { status: 404 });
+    const body = typeof b.body === 'string' ? b.body.slice(0, 5000) : cur.body;
+    const status = STATUSES.includes(String(b.status)) ? String(b.status) : cur.status;
+    let as = cur.assignees;
+    if (Array.isArray(b.assignees)) as = b.assignees.slice(0, 30).map((a) => ({ n: String((a && a.n) || '').trim().slice(0, 80), u: a && a.u ? 1 : 0 })).filter((a) => a.n);
+    await sql`update action_plans set body = ${body}, status = ${status}, assignees = ${JSON.stringify(as)}::jsonb, updated_at = now() where job = ${job} and element_id = ${el}`;
     return Response.json({ ok: true });
   }
   if (b.action === 'priority') {

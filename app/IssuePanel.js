@@ -45,7 +45,7 @@ function Sheet({ children, name, foot, close, dock }) {
 }
 
 // Issue card of one part: description, comments chat, files and photos.
-export default function IssuePanel({ job, element, onMsg, initialSheet = '', onClose }) {
+export default function IssuePanel({ job, element, onMsg, initialSheet = '', autoCam = false, onClose }) {
   const [d, setD] = useState(null);
   const [text, setText] = useState('');
   const [editing, setEditing] = useState(false);
@@ -117,9 +117,11 @@ export default function IssuePanel({ job, element, onMsg, initialSheet = '', onC
     try { sessionStorage.setItem('issuectx', JSON.stringify({ job, element })); } catch (e) {}
     setCam(true);
   };
+  const camStarted = useRef(false);
+  useEffect(() => { if (autoCam && d && d.issue && !camStarted.current) { camStarted.current = true; openCam(); } }, [d]); // opened from the list: start the camera flow once the issue is loaded
   useEffect(() => {
     if (!cam) return;
-    const f = (e) => { if (e.origin === location.origin && e.data === 'issue-close') { try { sessionStorage.removeItem('issuectx'); } catch (x) {} setCam(false); load(); } };
+    const f = (e) => { if (e.origin === location.origin && e.data === 'issue-close') { try { sessionStorage.removeItem('issuectx'); } catch (x) {} setCam(false); load(); onClose && onClose(); } };
     window.addEventListener('message', f);
     return () => window.removeEventListener('message', f);
   }, [cam, job, element]);
