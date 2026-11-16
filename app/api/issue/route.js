@@ -1,8 +1,10 @@
 import { del } from '@vercel/blob';
 import { currentUser, canJob, canEdit } from '../../../lib/user';
-import { issuesDb, STATUSES, cardNo } from '../../../lib/issues';
+import { getColPerms, allowedCols } from '../../../lib/colperms';
+import { issuesDb, STATUSES, PRIORITIES, cardNo } from '../../../lib/issues';
 export const dynamic = 'force-dynamic';
 const nm = (u) => (u && u.name) || 'admin';
+const nk = (x) => String(x ?? '').toLowerCase().replace(/[\s\-_]/g, '');
 const no = () => Response.json({ error: 'No access' }, { status: 403 });
 
 // One issue per part: description, who raised it and when, plus its comments, photos and files.
@@ -14,15 +16,30 @@ export async function GET(req) {
   const sql = await issuesDb();
   if (p.get('list')) {
     // every issue of the job with its card number, status and the counts shown on the card
-    const rows = await sql`select i.no, i.element_id, i.description, i.author, i.created_at, i.status,
+    const rows = await sql`select i.no, i.element_id, i.description, i.author, i.created_at, i.status, i.priority,
       (select count(*)::int from issue_items t where t.job = i.job and t.element_id = i.element_id and (t.kind in ('comment','chat') or (t.kind = 'photo' and t.body = 'chat'))) as comments,
       (select count(*)::int from issue_items t where t.job = i.job and t.element_id = i.element_id and t.kind = 'file') as files,
       (select count(*)::int from issue_items t where t.job = i.job and t.element_id = i.element_id and t.kind in ('photo','video') and coalesce(t.body,'') <> 'chat') as photos
       from issues i where i.job = ${job} order by i.no desc`;
-    return Response.json({ me: nm(u), can: canEdit(u), issues: rows.map((r) => ({ ...r, card: cardNo(r.no) })) });
+    // Discipline and Asset: read from the part's schedule row (the columns named Discipline / Asset that this person may see)
+    const els = rows.map((r) => r.element_id);
+    const rr = els.length ? await sql`select r.element_id, r.vals from rows r join schedules s on s.id = r.schedule_id where s.job = ${job} and r.element_id = any(${els}::text[])` : [];
+    const only = allowedCols(u, await getColPerms());
+    const info = {};
+    rr.forEach((x) => {
+      const v = x.vals || {}; const o = info[x.element_id] || (info[x.element_id] = {});
+      Object.keys(v).forEach((k) => {
+        if (only && !only.some((c) => nk(c) === nk(k))) return;
+        const t = typeof v[k] === 'string' || typeof v[k] === 'number' ? String(v[k]).trim() : '';
+        if (!t) return;
+        if (/discipline/i.test(k) && !o.discipline) o.discipline = t;
+        else if (/asset/i.test(k) && !o.asset) o.asset = t;
+      });
+    });
+    return Response.json({ me: nm(u), can: canEdit(u), issues: rows.map((r) => ({ ...r, card: cardNo(r.no), discipline: (info[r.element_id] || {}).discipline || '', asset: (info[r.element_id] || {}).asset || '' })) });
   }
   if (!el) return no();
-  const [issue] = await sql`select description, author, created_at, no, status from issues where job = ${job} and element_id = ${el}`;
+  const [issue] = await sql`select description, author, created_at, no, status, priority from issues where job = ${job} and element_id = ${el}`;
   if (issue) issue.card = cardNo(issue.no);
   const items = await sql`select id, kind, author, body, pathname, name, content_type, created_at from issue_items where job = ${job} and element_id = ${el} order by id`;
   return Response.json({ me: nm(u), can: canEdit(u), issue: issue || null, items });
@@ -43,6 +60,15 @@ export async function POST(req) {
     if (ex && ex.author && ex.author !== nm(u) && !canEdit(u)) return Response.json({ error: 'Only the author, an editor or a manager can change the status' }, { status: 403 });
     const r = await sql`update issues set status = ${st}, updated_at = now() where job = ${job} and element_id = ${el} returning element_id`;
     if (!r.length) return Response.json({ error: 'No such issue' }, { status: 404 });
+    return Response.json({ ok: true });
+  }
+  if (b.action === 'priority') {
+    const pr = String(b.priority || '');
+    if (!PRIORITIES.includes(pr)) return Response.json({ error: 'Bad priority' }, { status: 400 });
+    const [ex] = await sql`select author from issues where job = ${job} and element_id = ${el}`;
+    if (!ex) return Response.json({ error: 'No such issue' }, { status: 404 });
+    if (ex.author && ex.author !== nm(u) && !canEdit(u)) return Response.json({ error: 'Only the author, an editor or a manager can change this' }, { status: 403 });
+    await sql`update issues set priority = ${pr}, updated_at = now() where job = ${job} and element_id = ${el}`;
     return Response.json({ ok: true });
   }
   if (b.action === 'attach') {

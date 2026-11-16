@@ -8,10 +8,17 @@ import { goPart, linkNums, useModelIds } from './ElemLinks';
 export const ST = {
   open: { l: 'Open', bg: '#fdecea', c: '#c0392b' },
   prog: { l: 'In Progress', bg: '#fff3dc', c: '#a86400' },
+  ready: { l: 'Ready to Inspect', bg: '#e1effb', c: '#1a6fd4' },
   done: { l: 'Work Complete', bg: '#e6f0fc', c: '#1a5fb4' },
   closed: { l: 'Closed', bg: '#e4f5ea', c: '#1e7a45' },
 };
-const KEYS = ['open', 'prog', 'done', 'closed'];
+const KEYS = ['open', 'prog', 'ready', 'done', 'closed'];
+// Importance tag
+export const PR = { critical: { l: 'Critical', bg: '#c0392b', c: '#fff' }, noncritical: { l: 'Non-Critical', bg: '#e0b422', c: '#fff' } };
+export function PriorityTag({ pr }) {
+  const p = PR[pr] || PR.noncritical;
+  return <span style={{ background: p.bg, color: p.c, borderRadius: 5, padding: '2px 7px', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.3, whiteSpace: 'nowrap' }}>{p.l.toUpperCase()}</span>;
+}
 const when = (t) => { const d = new Date(t); return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ', ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); };
 
 // Status chip with a menu to change it.
@@ -46,6 +53,7 @@ export default function IssueList({ job }) {
   const [f, setF] = useState('all');
   const [newest, setNewest] = useState(true);
   const [open, setOpen] = useState(true);
+  const [ed, setEd] = useState(null); // the card being edited: { element_id, text, pr }
   useModelIds();
   const load = () => fetch('/api/issue?list=1&job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j.issues) { setRows(j.issues); setWho({ me: j.me, can: !!j.can }); } }).catch(() => {});
   useEffect(() => {
@@ -62,6 +70,13 @@ export default function IssueList({ job }) {
     setRows((rs) => rs.map((x) => (x.element_id === r.element_id ? { ...x, status } : x)));
     const res = await fetch('/api/issue', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, element: r.element_id, action: 'status', status }) });
     if (!res.ok) load();
+  };
+  const saveEdit = async () => {
+    const r = rows.find((x) => x.element_id === ed.element_id);
+    const post = (b) => fetch('/api/issue', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, element: ed.element_id, ...b }) });
+    if (r && ed.text !== r.description) await post({ description: ed.text });
+    if (r && ed.pr !== r.priority) await post({ action: 'priority', priority: ed.pr });
+    setEd(null); load();
   };
   // text with [[view:ID]] drawn as its icon and every element number of the model as a blue link
   const rich = (t, key) => {
@@ -98,24 +113,50 @@ export default function IssueList({ job }) {
           </div>
           {list.length === 0 && <p style={{ textAlign: 'center', color: '#8a8576', fontSize: 13, padding: 14 }}>{rows.length ? 'No issue found.' : 'No issues in this project yet.'}</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {list.map((r) => (
-              <div key={r.element_id} style={{ border: '1px solid #e7e3d8', borderRadius: 12, background: '#fff' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#f7f5ef', borderRadius: '12px 12px 0 0' }}>
-                  <b style={{ fontSize: 13.5 }}>{r.card}</b>
-                  <StatusChip st={r.status} onPick={(k) => setStatus(r, k)} locked={!(who.can || !r.author || r.author === who.me)} />
-                  <span style={{ flex: 1 }} />
-                  <button type="button" onClick={() => goPart(r.element_id)} style={{ border: 0, background: 'none', font: 'inherit', fontSize: 12.5, color: '#6b675c', cursor: 'pointer' }}>{'▣'} Go to 3D</button>
+            {list.map((r) => {
+              const can = who.can || !r.author || r.author === who.me;
+              const mine = ed && ed.element_id === r.element_id;
+              const info = (k, v) => v ? <div style={{ display: 'flex', gap: 8, fontSize: 12.5, lineHeight: 1.6 }}><span style={{ width: 84, flex: 'none', color: '#8a8576', fontWeight: 700, fontSize: 11, letterSpacing: 0.3, textTransform: 'uppercase', paddingTop: 1 }}>{k}</span><span style={{ color: '#141413', wordBreak: 'break-word' }}>{v}</span></div> : null;
+              return (
+                <div key={r.element_id} style={{ border: '1px solid #e7e3d8', borderRadius: 12, background: '#fff' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#f7f5ef', borderRadius: '12px 12px 0 0', flexWrap: 'wrap' }}>
+                    <b style={{ fontSize: 13.5 }}>{r.card}</b>
+                    <StatusChip st={r.status} onPick={(k) => setStatus(r, k)} locked={!can} />
+                    <PriorityTag pr={r.priority} />
+                    <span style={{ flex: 1 }} />
+                    <button type="button" disabled={!can} title={can ? 'Edit this issue' : 'Only the author, an editor or a manager can edit'} onClick={() => setEd(mine ? null : { element_id: r.element_id, text: r.description || '', pr: r.priority || 'noncritical' })} style={{ border: '1px solid ' + (can ? '#e8710a' : '#d9d5c8'), background: '#fff', color: can ? '#e8710a' : '#b0ab9a', borderRadius: 12, padding: '3px 12px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: can ? 'pointer' : 'not-allowed' }}>Edit</button>
+                    <button type="button" onClick={() => goPart(r.element_id)} style={{ border: 0, background: 'none', font: 'inherit', fontSize: 12.5, color: '#6b675c', cursor: 'pointer' }}>{'▣'} Go to 3D</button>
+                  </div>
+                  {mine ? (
+                    <div style={{ padding: 10 }}>
+                      <textarea value={ed.text} onChange={(e) => setEd({ ...ed, text: e.target.value })} rows={4} placeholder="Describe the issue…" style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #e0dccf', borderRadius: 10, padding: 8, font: 'inherit', fontSize: 14, resize: 'vertical', outline: 'none' }} />
+                      <div style={{ display: 'flex', gap: 6, margin: '8px 0', alignItems: 'center' }}>
+                        <span style={{ fontSize: 12, color: '#8a8576', marginRight: 4 }}>Importance</span>
+                        {['critical', 'noncritical'].map((k) => <button key={k} type="button" onClick={() => setEd({ ...ed, pr: k })} style={{ border: '1.5px solid ' + (ed.pr === k ? PR[k].bg : '#e0dccf'), background: ed.pr === k ? PR[k].bg : '#fff', color: ed.pr === k ? '#fff' : '#141413', borderRadius: 12, padding: '3px 11px', font: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{PR[k].l}</button>)}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button type="button" onClick={saveEdit} style={{ border: 0, background: '#e8710a', color: '#fff', borderRadius: 14, padding: '6px 18px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Save</button>
+                        <button type="button" onClick={() => setEd(null)} style={{ border: '1px solid #d9d5c8', background: '#fff', borderRadius: 14, padding: '6px 16px', font: 'inherit', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ padding: '8px 12px', fontSize: 14, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: '#141413' }}>
+                      {r.description ? rich(r.description, 'i' + r.no) : <span style={{ color: '#9a9686' }}>No description.</span>}
+                    </div>
+                  )}
+                  <div style={{ padding: '4px 12px 8px', borderTop: '1px solid #f1ede4' }}>
+                    {info('Element', linkNums(r.element_id, 'e' + r.no))}
+                    {info('Discipline', r.discipline)}
+                    {info('Asset', r.asset)}
+                    {info('Created by', r.author)}
+                    {info('Identified on', when(r.created_at))}
+                  </div>
+                  <div style={{ display: 'flex', gap: 14, padding: '7px 12px', borderTop: '1px solid #efece3', fontSize: 12.5 }}>
+                    <span>Comments <b>{r.comments}</b></span><span>Files <b>{r.files}</b></span><span>Gallery <b>{r.photos}</b></span>
+                  </div>
                 </div>
-                <div style={{ padding: '8px 12px', fontSize: 14, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: '#141413' }}>
-                  {r.description ? rich(r.description, 'i' + r.no) : <span style={{ color: '#9a9686' }}>No description.</span>}
-                  <div style={{ marginTop: 4, fontSize: 12.5, color: '#6b675c' }}>Element {linkNums(r.element_id, 'e' + r.no) === String(r.element_id) ? r.element_id : linkNums(r.element_id, 'e' + r.no)}</div>
-                </div>
-                <div style={{ padding: '0 12px 8px', fontSize: 12, color: '#8a8576' }}>{r.author || ''} {'·'} {when(r.created_at)}</div>
-                <div style={{ display: 'flex', gap: 14, padding: '7px 12px', borderTop: '1px solid #efece3', fontSize: 12.5 }}>
-                  <span>Comments <b>{r.comments}</b></span><span>Files <b>{r.files}</b></span><span>Gallery <b>{r.photos}</b></span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
