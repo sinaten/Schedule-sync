@@ -113,18 +113,20 @@ export default function FollowUp({ job }) {
                     return (
                       <div key={a.element_id} style={{ marginTop: 8, border: '1px solid #bfe0c8', borderRadius: 12, background: '#eef8f0', overflow: 'hidden', ...fullBox(full === a.element_id) }}>
                         <div style={{ padding: '9px 12px 6px' }}>
-                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
                             <b style={{ fontSize: 18, letterSpacing: 0.2 }}>{a.card}</b>{isNew(a) && <span style={{ background: '#c0392b', color: '#fff', borderRadius: 5, padding: '1px 6px', fontSize: 10, fontWeight: 700 }}>NEW</span>}
-                            <StatusChip st={a.status} onPick={(k) => apStatus(a, k)} locked={!who.can} />
-                            <PriorityTag pr={a.priority} />
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 'none' }}>
                             {(isNew(a) || unread(a.element_id, 'issue', 'comments', a.i_comments) || unread(a.element_id, 'issue', 'files', a.i_files) || unread(a.element_id, 'issue', 'photos', a.i_photos) || unread(a.element_id, 'ap', 'files', a.files) || unread(a.element_id, 'ap', 'photos', a.photos)) && <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#c0392b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-label="Changed" style={{ flex: 'none', order: 99 }}><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" /><path d="M9 17v1a3 3 0 0 0 6 0v-1" /></svg>}
                             <FullBtn on={full === a.element_id} toggle={() => setFull(full === a.element_id ? null : a.element_id)} /></div>
                           </div>
-                          <div style={{ marginTop: 6 }}><WeatherCapsules job={job} /></div>
-                          <div style={{ fontSize: 12.5, color: '#2c7a47', fontWeight: 700, marginTop: 6 }}>{a.jobNo}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5, flexWrap: 'nowrap', minWidth: 0 }}>
+                            <span style={{ fontSize: 12.5, color: '#2c7a47', fontWeight: 700, whiteSpace: 'nowrap' }}>{a.jobNo}</span>
+                            <StatusChip st={a.status} onPick={(k) => apStatus(a, k)} locked={!who.can} />
+                            <PriorityTag pr={a.priority} small />
+                          </div>
+                          <div style={{ marginTop: 7 }}><WeatherCapsules job={job} /></div>
                         </div>
                         <div style={bodyBox(full === a.element_id, wide)}>
                         <div style={halfStyle(full === a.element_id, wide, 'issue', true)}>

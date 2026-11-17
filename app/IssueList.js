@@ -17,9 +17,9 @@ export const ST = {
 const KEYS = ['open', 'prog', 'ready', 'done', 'closed'];
 // Importance tag
 export const PR = { critical: { l: 'Critical', bg: '#c0392b', c: '#fff' }, noncritical: { l: 'Non-Critical', bg: '#e0b422', c: '#fff' } };
-export function PriorityTag({ pr }) {
+export function PriorityTag({ pr, small }) {
   const p = PR[pr] || PR.noncritical;
-  return <span style={{ background: p.bg, color: p.c, borderRadius: 5, padding: '2px 7px', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.3, whiteSpace: 'nowrap' }}>{p.l.toUpperCase()}</span>;
+  return <span style={{ background: p.bg, color: p.c, borderRadius: 5, padding: small ? '2px 5px' : '2px 7px', fontSize: small ? 9.5 : 10.5, fontWeight: 700, letterSpacing: small ? 0.1 : 0.3, whiteSpace: 'nowrap' }}>{p.l.toUpperCase()}</span>;
 }
 const when = (t) => { const d = new Date(t); return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ', ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); };
 
