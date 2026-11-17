@@ -10,8 +10,17 @@ export default function ModelSlot({ element, style }) {
     const slot = ref.current;
     if (!b || !slot) return undefined;
     const home = b.parentNode, next = b.nextSibling;
+    const saved = [];
+    const st = (el, props) => { if (!el) return; saved.push([el, el.getAttribute('style')]); Object.keys(props).forEach((k) => el.style.setProperty(k, props[k], 'important')); };
     slot.appendChild(b);
     b.classList.add('in-slot');
+    // the section fills the window; its own box takes whatever height is left, so the model fits the window by itself
+    const box = b.querySelector('.v3-box');
+    st(b, { position: 'absolute', left: '0', top: '0', right: '0', bottom: '0', margin: '0', border: '0', 'border-radius': '0', display: 'flex', 'flex-direction': 'column', overflow: 'hidden' });
+    st(b.firstElementChild, { display: 'none' });
+    b.querySelectorAll('.v3-sheet').forEach((x) => st(x, { display: 'none' }));
+    if (box && box.parentElement && box.parentElement !== b) st(box.parentElement, { flex: '1 1 0', 'min-height': '0', display: 'flex', 'flex-direction': 'column' });
+    if (box) st(box, { flex: '1 1 0', height: 'auto', 'min-height': '0' });
     const poke = () => window.dispatchEvent(new Event('resize'));
     const t1 = setTimeout(poke, 60), t2 = setTimeout(poke, 400), t3 = setTimeout(poke, 1200);
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(poke) : null;
@@ -20,6 +29,7 @@ export default function ModelSlot({ element, style }) {
     return () => {
       clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(g); if (ro) ro.disconnect();
       b.classList.remove('in-slot');
+      saved.reverse().forEach(([el, a]) => { if (a == null) el.removeAttribute('style'); else el.setAttribute('style', a); });
       try { if (next && next.parentNode === home) home.insertBefore(b, next); else home.appendChild(b); } catch (e) { /* ignore */ }
       setTimeout(poke, 60);
     };
