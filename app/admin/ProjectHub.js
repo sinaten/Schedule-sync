@@ -22,6 +22,7 @@ const COUNTRIES = (() => {
 })();
 const codeOf = (name) => { const t = String(name || '').trim().toLowerCase(); const r = COUNTRIES.find((x) => x.n.toLowerCase() === t); return r ? r.c : ''; };
 const nameOf = (code) => { const r = COUNTRIES.find((x) => x.c === String(code || '').toUpperCase()); return r ? r.n : ''; };
+const where = (m) => [m.site, m.city, m.country].filter(Boolean).join(', ');
 const fmt = (m) => (m.lat != null && m.lng != null ? Number(m.lat).toFixed(6) + ', ' + Number(m.lng).toFixed(6) : '');
 
 const CSS = `
@@ -186,7 +187,7 @@ export default function ProjectHub() {
   const opts = (l) => { const s = new Set(); all.forEach((x) => { const a = [x.m.country, x.m.city, x.m.site]; for (let i = 0; i < l; i++) if (f[i] && !a[i].toLowerCase().includes(f[i].trim().toLowerCase())) return; if (a[l]) s.add(a[l]); }); return [...s].sort((a, b) => a.localeCompare(b)); };
   const shown = all.filter((x) => {
     const a = [x.m.country, x.m.city, x.m.site];
-    if (un) { if (siteKey(x.m)) return false; } else for (let i = 0; i < 3; i++) if (f[i].trim() && !a[i].toLowerCase().includes(f[i].trim().toLowerCase())) return false;
+    if (un) { if (x.m.country || x.m.city || x.m.site) return false; } else for (let i = 0; i < 3; i++) if (f[i].trim() && !a[i].toLowerCase().includes(f[i].trim().toLowerCase())) return false;
     const t = q.trim().toLowerCase();
     return !t || (x.job + ' ' + (x.title || '') + ' ' + a.join(' ')).toLowerCase().includes(t);
   });
@@ -194,7 +195,7 @@ export default function ProjectHub() {
   const dl = (id, arr) => <datalist id={id}>{arr.map((x) => <option key={x} value={x} />)}</datalist>;
   const near = (l) => { const s = new Set(); all.forEach((x) => { const a = [x.m.country, x.m.city, x.m.site]; for (let i = 0; i < l; i++) if (a[i] !== [dp.country, dp.city][i]) return; if (a[l]) s.add(a[l]); }); return [...s]; };
 
-  const assigned = all.some((x) => siteKey(x.m));
+  const assigned = all.some((x) => x.m.country || x.m.city || x.m.site);
   const filters = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {adding ? (
@@ -212,7 +213,7 @@ export default function ProjectHub() {
         </div>
       ))}
       <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 14 }}><input type="checkbox" checked={un} onChange={(e) => setUn(e.target.checked)} /> Not assigned yet only</label>
-      {!assigned && <div className="muted" style={{ fontSize: 13 }}>No project has a country, city and site yet. Open a project and fill in Location, then they show up here.</div>}
+      {!assigned && <div className="muted" style={{ fontSize: 13 }}>No project has a location yet. Open a project and fill in Location, then they show up here.</div>}
       <input className="ph-in" type="search" placeholder="Search projects" aria-label="Search projects" value={q} onChange={(e) => setQ(e.target.value)} />
     </div>
   );
@@ -222,7 +223,7 @@ export default function ProjectHub() {
       {shown.map((x) => (
         <div key={x.job} className={'ph-card' + (x.job === sel ? ' sel' : '')} onClick={() => pick(x.job)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') pick(x.job); }}>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}><b style={{ fontSize: 15 }}>{x.job}</b>{x.state !== 'active' && <span className="ph-tag" style={{ marginLeft: 'auto' }}>{x.state}</span>}</div>
-          <div className="muted" style={{ fontSize: 13 }}>{x.title ? x.title + ' · ' : ''}{x.m.site ? x.m.site + (x.m.city ? ', ' + x.m.city : '') : 'Not assigned yet'}</div>
+          <div className="muted" style={{ fontSize: 13 }}>{x.title ? x.title + ' · ' : ''}{where(x.m) || 'Not assigned yet'}</div>
         </div>
       ))}
       {shown.length === 0 && <div className="muted" style={{ fontSize: 14 }}>No match.</div>}
@@ -270,7 +271,7 @@ export default function ProjectHub() {
     if (tab === 'Location') {
       return (
         <>
-          <p className="muted" style={{ margin: 0, fontSize: 14 }}>{key ? 'This project is in ' + key.split('>').join(' › ') + '.' : 'Not in the tree yet. Fill in the country, city and site below.'}</p>
+          <p className="muted" style={{ margin: 0, fontSize: 14 }}>{key ? 'This project is in ' + key.split('>').join(' › ') + '.' : dp.country || dp.city ? 'Add a site name to share contacts, places and workflows with the other projects of the same site.' : 'No location yet. Fill in the country, city and site below.'}</p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <label style={{ flex: '1 1 150px' }}><span className="ph-lab">Country</span>
               <input className="ph-in" list="ph-l-country" value={dp.country} placeholder="Type to search countries" onChange={(e) => upP({ country: e.target.value })} />
@@ -327,7 +328,7 @@ export default function ProjectHub() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
       {!wide && <div><button type="button" className="ph-btn" onClick={back}>&larr; Projects</button></div>}
       <div>
-        <div className="muted" style={{ fontSize: 13 }}>{key ? key.split('>').join(' › ') : 'Not assigned yet'}</div>
+        <div className="muted" style={{ fontSize: 13 }}>{where(dp) || 'Not assigned yet'}</div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><h2 style={{ margin: 0, fontSize: 20 }}>{sel}</h2>{info && info.title && <span className="muted">{info.title}</span>}</div>
       </div>
       <div className="ph-tabs" role="tablist">{TABS.map((t) => <button key={t} type="button" role="tab" aria-selected={tab === t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>{t}</button>)}</div>
