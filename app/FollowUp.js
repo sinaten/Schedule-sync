@@ -132,7 +132,7 @@ export default function FollowUp({ job }) {
                         </div>
                         </div>
                         <div style={{ ...(full === a.element_id ? {} : { borderTop: '2px solid #8fcfa2', background: '#eef8f0' }), paddingTop: 8, ...halfStyle(full === a.element_id, wide, 'ap') }}>
-                        <div style={{ padding: '0 12px' }}><WeatherStrip job={job} /></div>
+                        <div style={{ padding: '0 12px' }}><WeatherStrip job={job} big={full === a.element_id && wide} /></div>
                         {(a.start_date || a.end_date) && <div style={{ padding: '0 12px 6px', fontSize: 12.5, color: '#2c7a47', fontWeight: 600 }}>{'\u{1F4C5}'} {a.start_date ? new Date(a.start_date + 'T12:00:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) : '?'} {'\u2192'} {a.end_date ? new Date(a.end_date + 'T12:00:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) : '?'}</div>}
                         <div style={{ padding: '0 12px 8px', fontSize: 14, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}><b style={{ fontWeight: 600, color: '#a85a08', fontSize: 11, letterSpacing: 0.3 }}>HOW TO SOLVE IT </b>{a.body || <span style={{ color: '#9a9686' }}>Not written yet.</span>}</div>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '0 12px 8px' }}>{as.length ? as.map((x, i) => <AssigneeChip key={i} a={x} />) : <span style={{ fontSize: 12.5, color: '#9a9686' }}>Nobody assigned yet</span>}</div>
