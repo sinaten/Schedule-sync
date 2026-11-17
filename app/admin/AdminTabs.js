@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Users from './Users';
 import ProjectHub from './ProjectHub';
 import Workflow from './Workflow';
+import DataMapping from './DataMapping';
 import Settings from './Settings';
 import MediaRules from './MediaRules';
 import LocationRules from './LocationRules';
@@ -16,14 +17,14 @@ import FadeSettings from './FadeSettings';
 import CamQrTable from './CamQrTable';
 
 export default function AdminTabs({ initialTab, media }) {
-  const [tab, setTab] = useState(['users', 'projects', 'workflow', 'media', 'analysis', 'manage', 'settings'].includes(initialTab) ? initialTab : 'users');
+  const [tab, setTab] = useState(['users', 'projects', 'workflow', 'datamap', 'media', 'analysis', 'manage', 'settings'].includes(initialTab) ? initialTab : 'users');
   const t = (k, label) => (
     <button type="button" onClick={() => { setTab(k); try { history.replaceState(null, '', '/admin?tab=' + k); } catch (e) {} }} aria-pressed={tab === k} style={{ padding: '9px 20px', fontSize: 15, fontWeight: 600, borderRadius: 22, border: '1px solid #cfd8dc', background: tab === k ? '#16262e' : '#fff', color: tab === k ? '#fff' : '#16262e', cursor: 'pointer' }}>{label}</button>
   );
   return (
     <>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>{t('users', 'Users')}{t('projects', 'Projects')}{t('workflow', 'Workflow')}{t('media', 'Photos & videos')}{t('analysis', 'Analysis')}{t('manage', 'User manage')}{t('settings', 'Settings')}</div>
-      {tab === 'users' ? <Users /> : tab === 'projects' ? <ProjectHub /> : tab === 'workflow' ? <Workflow /> : tab === 'media' ? media : tab === 'analysis' ? <Analysis /> : tab === 'manage' ? <UserManage /> : <><Settings /><CamQrTable /><ColourRules /><FadeSettings /><div style={{ marginTop: 28 }}><MediaRules /></div><LocationRules /><AccessRules /><UserAccess /><HistoryRules /></>}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>{t('users', 'Users')}{t('projects', 'Projects')}{t('workflow', 'Workflow')}{t('datamap', 'Data mapping')}{t('media', 'Photos & videos')}{t('analysis', 'Analysis')}{t('manage', 'User manage')}{t('settings', 'Settings')}</div>
+      {tab === 'users' ? <Users /> : tab === 'projects' ? <ProjectHub /> : tab === 'workflow' ? <Workflow /> : tab === 'datamap' ? <DataMapping /> : tab === 'media' ? media : tab === 'analysis' ? <Analysis /> : tab === 'manage' ? <UserManage /> : <><Settings /><CamQrTable /><ColourRules /><FadeSettings /><div style={{ marginTop: 28 }}><MediaRules /></div><LocationRules /><AccessRules /><UserAccess /><HistoryRules /></>}
     </>
   );
 }

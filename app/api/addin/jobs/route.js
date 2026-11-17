@@ -1,3 +1,4 @@
+import { ensureFolder } from '../../../../lib/folders';
 import { db, isAddin, deny } from '../../../../lib/db';
 import { getJobState, setJobState, wipeJob } from '../../../../lib/jobstate';
 export const dynamic = 'force-dynamic';
@@ -24,6 +25,7 @@ export async function POST(req) {
   if (!job || !['active', 'inactive', 'deleted'].includes(state)) return Response.json({ error: 'job and state (active, inactive, deleted) are required' }, { status: 400 });
   const sql = await db();
   if (state === 'deleted') await wipeJob(sql, job); // deleted in Revit = everything on the site is wiped too
+  await ensureFolder(sql, job);
   const v = await setJobState(sql, job, state, 'revit', b.title);
   return Response.json({ ok: true, ...v });
 }
