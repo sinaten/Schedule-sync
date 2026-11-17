@@ -1,7 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
+import WeatherTab from './WeatherTab';
 
 const STEPS = ['Find the person', 'Ask for a time', 'Appointment confirmed', 'Class held', 'Permission received'];
+const HINT = ['Who runs the orientation (from Location and Information).', 'Call or email them. Write who and when.', 'Date, time, place, what to bring.', 'Mark it when the person attended.', 'Badge or approval email. The HSE manager confirms.'];
 const OR = '#e8710a';
 const FIELDS = [['hospital', 'Nearest hospital'], ['hospital_phone', 'Hospital phone'], ['hospital_address', 'Hospital address'], ['hse_name', 'HSE manager'], ['hse_phone', 'HSE phone'], ['hse_email', 'HSE email'], ['gc_name', 'GC representative (keys)'], ['gc_phone', 'GC phone'], ['orient_name', 'Orientation contact'], ['orient_phone', 'Orientation phone'], ['orient_email', 'Orientation email'], ['orient_place', 'Where the class is'], ['muster', 'Muster point'], ['first_aid', 'First aid / AED / eyewash']];
 const need = ['hospital', 'hse_name', 'muster'];
@@ -53,7 +55,7 @@ export default function HseBar({ job }) {
               return (
                 <div key={x.name} style={{ position: 'relative', margin: '0 10px 7px 22px', border: '1px solid ' + (allowed(x) ? '#bfe0c8' : '#e7e3d8'), borderRadius: 8, background: '#faf9f5' }}>
                   <span style={dot} />
-                  <div role="button" tabIndex={0} onClick={() => tog(k)} style={{ ...hdr, fontSize: 13, padding: '8px 9px' }}><span style={{ flex: 1 }}>{x.name}</span>{allowed(x) ? chip('#e1f3e6', '#2c7a47', 'allowed') : chip('#f4f3ee', '#6b675c', n + ' of 5')}{arrow(k)}</div>
+                  <div role="button" tabIndex={0} onClick={() => tog(k)} style={{ ...hdr, fontSize: 13, padding: '8px 9px' }}><span style={{ flex: 1 }}>{x.name}<br /><span style={{ fontWeight: 400, fontSize: 11.5, color: '#8a8576' }}>{allowed(x) ? (x.expiry ? 'Cleared until ' + x.expiry : 'Cleared') : 'Step ' + Math.min(n + 1, 5) + ' of 5' + (n >= 2 && x.appt ? ' \u00B7 ' + x.appt : '')}</span></span>{allowed(x) ? chip('#e1f3e6', '#2c7a47', 'allowed') : n >= 2 ? chip('#fff3dc', '#a86400', 'appointment set') : chip('#f4f3ee', '#6b675c', 'not started')}{arrow(k)}</div>
                   {o[k] && (
                     <div style={{ padding: '0 9px 9px', position: 'relative' }}>
                       {STEPS.map((t, i) => {
@@ -66,6 +68,7 @@ export default function HseBar({ job }) {
                               <span style={{ flex: 1 }}>{t}</span>
                               {can && (s ? <button type="button" onClick={() => post({ action: 'step', name: x.name, step: i + 1, done: false })} style={{ border: 0, background: 'none', color: '#9a9686', cursor: 'pointer', fontSize: 12 }}>Undo</button> : <button type="button" disabled={!prev} onClick={() => post({ action: 'step', name: x.name, step: i + 1, done: true })} style={{ border: 0, borderRadius: 12, padding: '3px 12px', background: prev ? OR : '#e7e3d8', color: '#fff', font: 'inherit', fontSize: 12, fontWeight: 600, cursor: prev ? 'pointer' : 'default' }}>Done</button>)}
                             </div>
+                            {!s && <div style={{ color: '#9a9686', fontSize: 11, marginTop: 2 }}>{HINT[i]}</div>}
                             {s && <div style={{ color: '#8a8576', fontSize: 11, marginTop: 2 }}>{s.by} {'·'} {new Date(s.at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</div>}
                             {i === 0 && p.orient_name && <div style={{ color: '#6b675c', fontSize: 11.5, marginTop: 2 }}>{p.orient_name} {p.orient_phone || ''} {p.orient_email || ''}</div>}
                             {i === 2 && (can ? <input placeholder="Date, time, place, what to bring" defaultValue={x.appt || ''} onBlur={(e) => { if (e.target.value !== (x.appt || '')) post({ action: 'step', name: x.name, step: 3, appt: e.target.value }); }} style={{ ...inp, margin: '5px 0 0', height: 30, fontSize: 12.5 }} /> : x.appt && <div style={{ color: '#6b675c', marginTop: 2 }}>{x.appt}</div>)}
@@ -73,6 +76,7 @@ export default function HseBar({ job }) {
                           </div>
                         );
                       })}
+                      {!allowed(x) && <div style={{ marginTop: 8, background: '#f4f3ee', borderRadius: 8, padding: '6px 9px', fontSize: 12, color: '#6b675c' }}>{'\u{1F512}'} {x.name} cannot start work until step 5 is confirmed.</div>}
                       {can && <button type="button" onClick={() => { if (confirm('Remove ' + x.name + '?')) post({ action: 'person-del', name: x.name }); }} style={{ marginTop: 8, border: 0, background: 'none', color: '#9a9686', cursor: 'pointer', fontSize: 12 }}>Remove person</button>}
                     </div>
                   )}
@@ -87,6 +91,11 @@ export default function HseBar({ job }) {
             )}
           </div>
         )}
+      </div>
+
+      <div style={sub()}>
+        <span style={dot} />
+        <div style={{ padding: '2px 10px' }}><WeatherTab job={job} /></div>
       </div>
 
       <div style={sub({ opacity: anyAllowed ? 1 : 0.55, background: anyAllowed ? '#fff' : '#f4f3ee' })}>
