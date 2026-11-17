@@ -25,6 +25,7 @@ export default function WeatherTab({ job, bare, asBar }) {
   useEffect(() => { if (!w) load(); }, [job]);
   useEffect(() => { const f = () => { delete cache[job]; setW(null); load(); }; window.addEventListener('ss-weather-reload', f); return () => window.removeEventListener('ss-weather-reload', f); }, [job]);
   const days = (w && w.days) || [];
+  const alerts = (w && w.alerts) || [];
   const none = !!(w && w.none);
   const x = days[sel] || days[0];
   const hours = ((w && w.hours) || []).filter((h) => x && h.t.slice(0, 10) === x.date);
@@ -44,7 +45,7 @@ export default function WeatherTab({ job, bare, asBar }) {
       {(!bare || none) && <div role="button" tabIndex={0} onClick={head} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', cursor: 'pointer' }}>
         {!asBar && <span style={{ fontSize: 18 }}>{'☀️☁️'}</span>}
         <span style={{ fontSize: 13, fontWeight: 600, flex: 1, minWidth: 0 }}>{asBar ? (w && w.place ? w.place : '') : <>Weather{w && w.place ? <span style={{ fontWeight: 400, color: '#6b675c' }}> {'·'} {w.place}</span> : null}</>}</span>
-        {none ? <span style={{ fontSize: 11.5, color: OR, fontWeight: 600 }}>{'\u{1F4CD}'} Set location</span> : chip && (asBar || !o) && <span style={{ background: chip.bg, color: chip.c, borderRadius: 6, padding: '1px 7px', fontSize: 10.5, fontWeight: 700 }}>{chip.t}</span>}
+        {none ? <span style={{ fontSize: 11.5, color: OR, fontWeight: 600 }}>{'\u{1F4CD}'} Set location</span> : chip && (asBar || !o) && (alerts.length ? <span title={alerts.map((a) => a.event).join(', ')} style={{ background: '#fdecea', color: '#c0392b', borderRadius: 6, padding: '1px 7px', fontSize: 10.5, fontWeight: 700, maxWidth: 190, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{'\u26A0'} {alerts[0].event}{alerts.length > 1 ? ' +' + (alerts.length - 1) : ''}</span> : <span style={{ background: chip.bg, color: chip.c, borderRadius: 6, padding: '1px 7px', fontSize: 10.5, fontWeight: 700 }}>{chip.t}</span>)}
         {!none && !bare && <span style={{ color: OR, fontSize: 12 }}>{o ? '▴' : '▾'}</span>}
       </div>}
       {msg && <div style={{ padding: '0 10px 8px', fontSize: 12, color: '#c0392b' }}>{msg}</div>}
