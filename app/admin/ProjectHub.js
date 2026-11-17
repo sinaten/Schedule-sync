@@ -132,19 +132,27 @@ export default function ProjectHub() {
 
   // After a pin or GPS fix: read the address, city and country from the coordinates and fill the empty fields (never overwrites what you typed).
   async function fillFrom(lat, lng) {
-    try {
-      const r = await fetch('https://photon.komoot.io/reverse?lang=en&lat=' + lat + '&lon=' + lng);
-      const j = await r.json();
-      const p = j && j.features && j.features[0] && j.features[0].properties;
-      if (!p) { setMsg('Pin saved, but no address was found here. Type the city and country.'); return; }
-      const town = p.city || p.town || p.village || p.district || p.county || '';
-      const city = town ? town + (p.state ? ', ' + p.state : '') : '';
-      const street = [p.housenumber, p.street].filter(Boolean).join(' ') || p.name || '';
-      const address = [street, town, [p.state, p.postcode].filter(Boolean).join(' ')].filter(Boolean).join(', ');
-      const country = nameOf(p.countrycode) || p.country || '';
-      setDp((x) => ({ ...x, country: x.country || country, city: x.city || city, address: x.address || address }));
-      setDirtyP(true); setMsg('Address, city and country filled from the pin. Check them and press Save.');
-    } catch (e) { setMsg('Pin saved, but the address lookup did not work. Type the city and country.'); }
+    const get = async (u) => { try { const r = await fetch(u); return await r.json(); } catch (e) { return null; } };
+    setMsg('Reading the address from the pin…');
+    // Two sources at once: the nearest places within 500 m (so a pin in a field, a yard or a parking lot still finds the street), and the city/country of the spot itself.
+    const [ph, bd] = await Promise.all([
+      get('https://photon.komoot.io/reverse?lang=en&radius=0.5&limit=8&lat=' + lat + '&lon=' + lng),
+      get('https://api.bigdatacloud.net/data/reverse-geocode-client?localityLanguage=en&latitude=' + lat + '&longitude=' + lng),
+    ]);
+    const fs = ((ph && ph.features) || []).map((x) => x.properties || {});
+    const first = (k) => { const f = fs.find((x) => x[k]); return f ? f[k] : ''; };
+    const town = first('city') || first('town') || first('village') || first('district') || (bd && (bd.city || bd.locality)) || first('county') || '';
+    const state = first('state') || (bd && bd.principalSubdivision) || '';
+    const code = first('countrycode') || (bd && bd.countryCode) || '';
+    const country = nameOf(code) || first('country') || (bd && bd.countryName) || '';
+    const sf = fs.find((x) => x.street);
+    const street = sf ? [sf.housenumber, sf.street].filter(Boolean).join(' ') : (fs[0] && fs[0].name) || '';
+    const zip = first('postcode') || (bd && bd.postcode) || '';
+    const city = town ? town + (state ? ', ' + state : '') : '';
+    const address = [street, town, [state, zip].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+    if (!city && !country && !address) { setMsg('Pin saved, but no address was found near it. Type the city and country.'); return; }
+    setDp((x) => ({ ...x, country: x.country || country, city: x.city || city, address: x.address || address }));
+    setDirtyP(true); setMsg('Address, city and country filled from the pin (only the empty boxes). Check them and press Save.');
   }
 
   async function save() {
