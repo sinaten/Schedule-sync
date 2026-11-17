@@ -29,30 +29,74 @@ export async function GET(req) {
     return Response.json({ users: list });
   }
   if (p.get('weather')) {
-    // the forecast at the place of the project (the saved location of its sections), with a go / caution / no-go word for each day
+    // the forecast at the project's place: the HSE location first, else the saved location of its sections. Main source: the US National Weather Service (with official warnings); Open-Meteo is the backup.
     const d = await db();
-    const pts = await d`select lat, lng from sections where job = ${job} and lat is not null and lng is not null`;
-    if (!pts.length) return Response.json({ none: true });
-    const lat = pts.reduce((a, x) => a + Number(x.lat), 0) / pts.length, lng = pts.reduce((a, x) => a + Number(x.lng), 0) / pts.length;
+    let lat = null, lng = null, place = '';
+    try { const [h] = await d`select data from hse_profile where job = ${job}`; if (h && h.data && Number.isFinite(Number(h.data.lat)) && Number.isFinite(Number(h.data.lng)) && h.data.lat !== '') { lat = Number(h.data.lat); lng = Number(h.data.lng); place = h.data.place || ''; } } catch (e) {}
+    if (lat === null) {
+      const pts = await d`select lat, lng from sections where job = ${job} and lat is not null and lng is not null`;
+      if (!pts.length) return Response.json({ none: true });
+      lat = pts.reduce((a, x) => a + Number(x.lat), 0) / pts.length; lng = pts.reduce((a, x) => a + Number(x.lng), 0) / pts.length;
+    }
+    const grade = (o) => {
+      const why = []; let level = 'ok';
+      if (o.wet || o.rain >= 0.02 || o.snow > 0 || o.prob >= 50) { level = 'no'; why.push(o.snowy ? 'snow' : o.storm ? 'thunderstorm' : 'rain'); }
+      else if (o.prob >= 25) { level = 'caution'; why.push('chance of rain ' + o.prob + '%'); }
+      if (o.gust >= 30) { if (level === 'ok') level = 'caution'; why.push('wind gusts ' + Math.round(o.gust) + ' mph'); }
+      if (o.hi >= 90) { if (level === 'ok') level = 'caution'; why.push('hot, ' + Math.round(o.hi) + ' F'); }
+      if (o.lo <= 32) { if (level === 'ok') level = 'caution'; why.push('freezing, ' + Math.round(o.lo) + ' F'); }
+      return { level, why };
+    };
+    let days = null, alerts = [], source = '';
     try {
-      const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat.toFixed(4) + '&longitude=' + lng.toFixed(4) + '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,snowfall_sum,wind_gusts_10m_max&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=6';
-      const r = await fetch(url, { next: { revalidate: 1800 } });
-      if (!r.ok) throw new Error('weather ' + r.status);
-      const w = (await r.json()).daily;
-      const days = w.time.map((t, i) => {
-        const code = w.weather_code[i], prob = w.precipitation_probability_max[i] || 0, rain = w.precipitation_sum[i] || 0, snow = w.snowfall_sum[i] || 0, gust = w.wind_gusts_10m_max[i] || 0, hi = w.temperature_2m_max[i], lo = w.temperature_2m_min[i];
-        const wet = (code >= 51 && code <= 67) || (code >= 71 && code <= 77) || (code >= 80 && code <= 99);
-        const why = [];
-        let level = 'ok';
-        if (wet || rain >= 0.02 || snow > 0 || prob >= 50) { level = 'no'; why.push(snow > 0 || (code >= 71 && code <= 77) || code === 85 || code === 86 ? 'snow' : code >= 95 ? 'thunderstorm' : 'rain'); }
-        else if (prob >= 25) { level = 'caution'; why.push('chance of rain ' + prob + '%'); }
-        if (gust >= 30) { if (level === 'ok') level = 'caution'; why.push('wind gusts ' + Math.round(gust) + ' mph'); }
-        if (hi >= 90) { if (level === 'ok') level = 'caution'; why.push('hot, ' + Math.round(hi) + ' F'); }
-        if (lo <= 32) { if (level === 'ok') level = 'caution'; why.push('freezing, ' + Math.round(lo) + ' F'); }
-        return { date: t, code, hi: Math.round(hi), lo: Math.round(lo), prob, rain, snow, gust: Math.round(gust), level, why };
+      const H = { headers: { 'user-agent': 'ScheduleSync weather', accept: 'application/geo+json' }, cache: 'no-store' };
+      const pt = await fetch('https://api.weather.gov/points/' + lat.toFixed(4) + ',' + lng.toFixed(4), H);
+      if (!pt.ok) throw new Error('nws points ' + pt.status);
+      const pj = (await pt.json()).properties;
+      if (!place && pj.relativeLocation) place = pj.relativeLocation.properties.city + ', ' + pj.relativeLocation.properties.state;
+      const fr = await fetch(pj.forecast, H);
+      if (!fr.ok) throw new Error('nws forecast ' + fr.status);
+      const per = (await fr.json()).properties.periods;
+      const by = {};
+      per.forEach((x) => {
+        const k = x.startTime.slice(0, 10);
+        const o = by[k] || (by[k] = { hi: -999, lo: 999, prob: 0, gust: 0, wet: false, snowy: false, storm: false, rain: 0, snow: 0, code: 0 });
+        o.hi = Math.max(o.hi, x.temperature); o.lo = Math.min(o.lo, x.temperature);
+        o.prob = Math.max(o.prob, (x.probabilityOfPrecipitation && x.probabilityOfPrecipitation.value) || 0);
+        (String(x.windSpeed).match(/\d+/g) || []).forEach((n) => { o.gust = Math.max(o.gust, Number(n)); });
+        const t = String(x.shortForecast);
+        if (/rain|shower|drizzle|sleet|snow|thunder|flurr|ice/i.test(t) && o.prob >= 30) o.wet = true;
+        if (/snow|flurr|sleet|ice/i.test(t)) o.snowy = true;
+        if (/thunder/i.test(t)) o.storm = true;
+        o.code = /thunder/i.test(t) ? 95 : /snow|flurr|sleet/i.test(t) ? 71 : /rain|shower|drizzle/i.test(t) ? 61 : /fog/i.test(t) ? 45 : /cloud|overcast/i.test(t) ? 3 : /partly|mostly sunny/i.test(t) ? 2 : 0;
       });
-      return Response.json({ lat: Number(lat.toFixed(4)), lng: Number(lng.toFixed(4)), days });
-    } catch (e) { return Response.json({ error: 'Could not get the forecast' }); }
+      days = Object.keys(by).sort().slice(0, 6).map((k) => { const o = by[k]; if (o.lo === 999) o.lo = o.hi; const g = grade(o); return { date: k, code: o.code, hi: o.hi, lo: o.lo, prob: o.prob, rain: 0, snow: 0, gust: Math.round(o.gust), level: g.level, why: g.why }; });
+      source = 'National Weather Service';
+      try {
+        const ar = await fetch('https://api.weather.gov/alerts/active?point=' + lat.toFixed(4) + ',' + lng.toFixed(4), H);
+        if (ar.ok) alerts = ((await ar.json()).features || []).slice(0, 6).map((f) => ({ event: f.properties.event, severity: f.properties.severity, headline: f.properties.headline, ends: f.properties.ends || f.properties.expires }));
+      } catch (e) {}
+      if (alerts.length && days.length) {
+        const bad = alerts.some((a) => a.severity === 'Severe' || a.severity === 'Extreme');
+        days.slice(0, 2).forEach((x) => { if (bad) { x.level = 'no'; } else if (x.level === 'ok') x.level = 'caution'; x.why.push('official warning: ' + alerts[0].event); });
+      }
+    } catch (e) { days = null; }
+    if (!days) {
+      try {
+        const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat.toFixed(4) + '&longitude=' + lng.toFixed(4) + '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,snowfall_sum,wind_gusts_10m_max&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=6';
+        const r = await fetch(url, { cache: 'no-store' });
+        if (!r.ok) throw new Error('weather ' + r.status);
+        const w = (await r.json()).daily;
+        days = w.time.map((t, i) => {
+          const code = w.weather_code[i];
+          const o = { wet: (code >= 51 && code <= 67) || (code >= 71 && code <= 77) || (code >= 80 && code <= 99), snowy: (code >= 71 && code <= 77) || code === 85 || code === 86 || (w.snowfall_sum[i] || 0) > 0, storm: code >= 95, prob: w.precipitation_probability_max[i] || 0, rain: w.precipitation_sum[i] || 0, snow: w.snowfall_sum[i] || 0, gust: w.wind_gusts_10m_max[i] || 0, hi: w.temperature_2m_max[i], lo: w.temperature_2m_min[i] };
+          const g = grade(o);
+          return { date: t, code, hi: Math.round(o.hi), lo: Math.round(o.lo), prob: o.prob, rain: o.rain, snow: o.snow, gust: Math.round(o.gust), level: g.level, why: g.why };
+        });
+        source = 'Open-Meteo (backup)';
+      } catch (e) { return Response.json({ error: 'Could not get the forecast' }); }
+    }
+    return Response.json({ lat: Number(lat.toFixed(4)), lng: Number(lng.toFixed(4)), place, source, alerts, days });
   }
   if (p.get('aps')) {
     // the action plans this person may see (all for managers and editors, only the assigned ones for the others), newest first

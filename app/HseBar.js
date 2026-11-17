@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import WeatherTab from './WeatherTab';
+import MapPicker from './admin/MapPicker';
 
 const STEPS = ['Find the person', 'Ask for a time', 'Appointment confirmed', 'Class held', 'Permission received'];
 const HINT = ['Who runs the orientation (from Location and Information).', 'Call or email them. Write who and when.', 'Date, time, place, what to bring.', 'Mark it when the person attended.', 'Badge or approval email. The HSE manager confirms.'];
@@ -19,6 +20,7 @@ export default function HseBar({ job }) {
   const [np, setNp] = useState('');
   const [edit, setEdit] = useState(false);
   const [f, setF] = useState({});
+  const [map, setMap] = useState(false);
   const load = () => fetch('/api/hse?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (!j.error) setD(j); }).catch(() => {});
   useEffect(() => { load(); }, [job]);
   const post = async (b) => { const r = await fetch('/api/hse', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, ...b }) }); const j = await r.json().catch(() => ({})); if (!r.ok) alert(j.error || 'Could not save'); await load(); };
@@ -37,12 +39,25 @@ export default function HseBar({ job }) {
         <div role="button" tabIndex={0} onClick={() => tog('loc')} style={hdr}><span style={{ flex: 1 }}>Location and Information</span>{complete ? chip('#e1f3e6', '#2c7a47', 'complete') : chip('#fdecea', '#c0392b', '⚠ incomplete')}{arrow('loc')}</div>
         {o.loc && (
           <div style={{ padding: '0 10px 10px', fontSize: 13 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0 6px' }}>
+              <span style={{ width: 120, flex: 'none', color: '#8a8576', fontSize: 11.5 }}>Location</span>
+              <span style={{ flex: 1, color: p.lat != null ? '#141413' : '#c0392b', fontSize: 13 }}>{p.lat != null ? (p.place || Number(p.lat).toFixed(4) + ', ' + Number(p.lng).toFixed(4)) : 'not set (the weather needs it)'}</span>
+              {can && <button type="button" onClick={() => setMap(true)} style={{ border: '1px solid ' + OR, background: '#fff', color: OR, borderRadius: 12, padding: '3px 12px', font: 'inherit', fontSize: 12.5, cursor: 'pointer' }}>{'\u{1F4CD}'} Map</button>}
+            </div>
             {!edit && FIELDS.map(([k, l]) => <div key={k} style={{ display: 'flex', gap: 8, padding: '3px 0', borderTop: '1px solid #f1ede4' }}><span style={{ width: 120, flex: 'none', color: '#8a8576', fontSize: 11.5 }}>{l}</span><span style={{ flex: 1, wordBreak: 'break-word', color: p[k] ? '#141413' : '#c0392b' }}>{p[k] || (need.includes(k) ? 'missing' : '')}{k.endsWith('phone') && p[k] ? <a href={'tel:' + p[k]} style={{ marginLeft: 8, color: OR }}>Call</a> : null}</span></div>)}
             {edit && FIELDS.map(([k, l]) => <label key={k} style={{ display: 'block', fontSize: 11.5, color: '#8a8576' }}>{l}<input style={inp} value={f[k] ?? p[k] ?? ''} onChange={(e) => setF({ ...f, [k]: e.target.value })} /></label>)}
             {can && <div style={{ marginTop: 8 }}>{!edit ? <button type="button" onClick={() => { setF({}); setEdit(true); }} style={{ border: '1px solid #d9d5c8', background: '#fff', borderRadius: 12, padding: '4px 14px', font: 'inherit', fontSize: 12.5, cursor: 'pointer' }}>Edit</button> : <button type="button" onClick={async () => { await post({ action: 'profile', data: f }); setEdit(false); }} style={{ border: 0, background: '#2e9e5b', color: '#fff', borderRadius: 14, padding: '6px 22px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Save</button>}</div>}
           </div>
         )}
       </div>
+
+      {map && <MapPicker title="Location of this project" lat={p.lat} lng={p.lng} onClose={() => setMap(false)} onSave={async (pos) => {
+        let place = '';
+        try { const r = await fetch('https://nominatim.openstreetmap.org/reverse?format=json&zoom=10&lat=' + pos.lat + '&lon=' + pos.lng); const j = await r.json(); const a = j.address || {}; place = [a.city || a.town || a.village || a.county, a.state].filter(Boolean).join(', '); } catch (e) {}
+        await post({ action: 'profile', data: { lat: pos.lat, lng: pos.lng, place } });
+        try { window.dispatchEvent(new Event('ss-weather-reload')); } catch (e) {}
+        return true;
+      }} />}
 
       <div style={sub({ borderColor: anyAllowed ? '#bfe0c8' : '#f0d9a8' })}>
         <span style={dot} />

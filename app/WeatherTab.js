@@ -14,6 +14,7 @@ export default function WeatherTab({ job }) {
     if (w) return;
     fetch('/api/issue?weather=1&job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { cache[job] = { t: Date.now(), j }; setW(j); }).catch(() => setW({ error: 1 }));
   }, [job]);
+  useEffect(() => { const f = () => { delete cache[job]; setW(null); fetch('/api/issue?weather=1&job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { cache[job] = { t: Date.now(), j }; setW(j); }).catch(() => {}); }; window.addEventListener('ss-weather-reload', f); return () => window.removeEventListener('ss-weather-reload', f); }, [job]);
   const days = (w && w.days) || [];
   const worst = days.slice(0, 2).reduce((m, x) => (x.level === 'no' ? 'no' : x.level === 'caution' && m !== 'no' ? 'caution' : m), 'ok');
   const chip = days.length ? LV[worst] : null;
@@ -21,7 +22,7 @@ export default function WeatherTab({ job }) {
     <div style={{ margin: '10px 0', border: '1px solid #cfe9d6', borderRadius: 12, background: '#fff', overflow: 'hidden' }}>
       <button type="button" onClick={() => setO((x) => !x)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', border: 0, background: 'none', padding: '7px 10px', font: 'inherit', cursor: 'pointer', textAlign: 'left' }}>
         <span style={{ fontSize: 18 }}>{'☀️☁️'}</span>
-        <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>Weather</span>
+        <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>Weather{w && w.place ? <span style={{ fontWeight: 400, color: '#6b675c' }}> {'\u00B7'} {w.place}</span> : null}</span>
         {chip && <span style={{ background: chip.bg, color: chip.c, borderRadius: 6, padding: '1px 7px', fontSize: 10.5, fontWeight: 700 }}>{chip.t}</span>}
         <span style={{ color: '#e8710a', fontSize: 12 }}>{o ? '▴' : '▾'}</span>
       </button>
@@ -30,6 +31,7 @@ export default function WeatherTab({ job }) {
           {!w && <div style={{ color: '#9a9686', padding: '6px 0' }}>Loading…</div>}
           {w && w.none && <div style={{ color: '#9a9686', padding: '6px 0' }}>No location is saved for this project yet. An admin sets it under Projects.</div>}
           {w && w.error && <div style={{ color: '#9a9686', padding: '6px 0' }}>Could not get the forecast now.</div>}
+          {(w && w.alerts || []).map((a, i) => <div key={i} style={{ background: '#fdecea', color: '#a02a1f', borderRadius: 8, padding: '6px 9px', margin: '4px 0', fontSize: 12.5 }}><b>{'\u26A0'} {a.event}</b>{a.ends ? ' until ' + new Date(a.ends).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : ''}<div style={{ fontSize: 11.5, marginTop: 1 }}>{a.headline}</div></div>)}
           {days.map((x, i) => {
             const l = LV[x.level];
             return (
@@ -43,7 +45,7 @@ export default function WeatherTab({ job }) {
               </div>
             );
           })}
-          {days.length > 0 && <div style={{ color: '#9a9686', fontSize: 11, marginTop: 4 }}>Forecast for the saved location of the project. Rain, snow or thunderstorm: no work on outdoor electrical panels.</div>}
+          {days.length > 0 && <div style={{ color: '#9a9686', fontSize: 11, marginTop: 4 }}>Source: {w.source || 'forecast'}. Rain, snow or thunderstorm: no work on outdoor electrical panels.</div>}
         </div>
       )}
     </div>

@@ -32,6 +32,8 @@ export async function POST(req) {
   if (b.action === 'profile') {
     const [cur] = await sql`select data from hse_profile where job = ${job}`;
     const d = { ...(cur ? cur.data : {}) };
+    if (b.data && b.data.lat !== undefined) { const la = Number(b.data.lat), lo = Number(b.data.lng); if (Math.abs(la) <= 90 && Math.abs(lo) <= 180) { d.lat = la; d.lng = lo; } }
+    if (b.data && typeof b.data.place === 'string') d.place = b.data.place.trim().slice(0, 120);
     FIELDS.forEach((k) => { if (typeof (b.data || {})[k] === 'string') d[k] = b.data[k].trim().slice(0, 200); });
     await sql`insert into hse_profile(job, data, updated_by) values(${job}, ${JSON.stringify(d)}::jsonb, ${nm(u)}) on conflict (job) do update set data = excluded.data, updated_at = now(), updated_by = excluded.updated_by`;
     return Response.json({ ok: true });
