@@ -31,7 +31,7 @@ export function FullBtn({ on, toggle }) {
     </button>
   );
 }
-export const fullBox = (on) => (on ? { position: 'fixed', inset: 0, zIndex: 2400, overflowY: 'auto', WebkitOverflowScrolling: 'touch', borderRadius: 0, border: 0, paddingTop: 'env(safe-area-inset-top)' } : {});
+export const fullBox = (on) => (on ? { position: 'fixed', inset: 0, zIndex: 2400, display: 'flex', flexDirection: 'column', overflowY: 'hidden', borderRadius: 0, border: 0, paddingTop: 'env(safe-area-inset-top)' } : {});
 
 // Status chip with a menu to change it.
 export function StatusChip({ st, onPick, locked }) {
@@ -62,13 +62,14 @@ export function AssigneeChip({ a }) {
   if (a.u) return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 14, background: '#f4f3ee', padding: '2px 10px 2px 3px', fontSize: 12.5 }}><span style={{ width: 22, height: 22, borderRadius: 11, background: '#e8710a', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600 }}>{a.n[0].toUpperCase()}</span>{a.n}</span>;
   return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 14, border: '1px dashed #cfcab9', padding: '2px 10px 2px 3px', fontSize: 12.5 }}><span style={{ width: 22, height: 22, borderRadius: 11, background: '#f4f3ee', color: '#6b675c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>?</span>{a.n}<span style={{ fontSize: 10, color: '#6b675c', border: '1px solid #e7e3d8', borderRadius: 6, padding: '0 5px' }}>NOT A USER</span></span>;
 }
-function ActionPlan({ job, r, can, post, reload, openPan }) {
+function ActionPlan({ job, r, can, post, reload, openPan, forceOpen }) {
   const ap = r.ap;
   const [o, setO] = useState(false);
   const [body, setBody] = useState(ap ? ap.body : '');
   const [pick, setPick] = useState(false);
   const [users, setUsers] = useState(null);
   const [guest, setGuest] = useState('');
+  useEffect(() => { if (forceOpen) setO(true); }, [forceOpen]);
   const [jno, setJno] = useState('');
   const [sd, setSd] = useState('');
   const [ed, setEd] = useState('');
@@ -266,6 +267,7 @@ export default function IssueList({ job }) {
                     {/^\d+$/.test(r.element_id) && <button type="button" onClick={() => goPart(r.element_id)} style={{ border: 0, background: 'none', font: 'inherit', fontSize: 12.5, color: '#6b675c', cursor: 'pointer' }}>{'▣'} Go to 3D</button>}
                     <FullBtn on={full === r.element_id} toggle={() => setFull(full === r.element_id ? null : r.element_id)} />
                   </div>
+                  <div style={full === r.element_id ? { flex: 1, minHeight: 0, overflowY: 'auto', background: '#fff' } : {}}>
                   {mine ? (
                     <div style={{ padding: 10 }}>
                       <textarea value={camToEdit(ed.text, cvs)} onChange={(e) => setEd({ ...ed, text: camFromEdit(e.target.value, cvs) })} rows={4} placeholder="Describe the issue…" style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #e0dccf', borderRadius: 10, padding: 8, font: 'inherit', fontSize: 14, resize: 'vertical', outline: 'none' }} />
@@ -291,17 +293,20 @@ export default function IssueList({ job }) {
                     {info('Identified on', when(r.created_at))}
                   </div>
                   {can && (
-                    <div style={{ display: 'flex', gap: 8, padding: '6px 12px', borderTop: '1px solid #efece3', background: '#f7f5ef', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: 8, padding: '6px 12px', borderTop: '1px solid #efece3', background: '#f7f5ef', flexWrap: 'wrap', ...(full === r.element_id ? { justifyContent: 'space-around', padding: '10px 12px' } : {}) }}>
                       <button type="button" onClick={() => setPan({ element: r.element_id, sheet: '', cam: true })} style={{ border: '1px solid #d9d5c8', background: '#fff', borderRadius: 14, padding: '4px 11px', font: 'inherit', fontSize: 12.5, cursor: 'pointer' }}>{'\u{1F4F7}'} Add photos and videos</button>
                       <button type="button" onClick={() => setPan({ element: r.element_id, sheet: 'files' })} style={{ border: '1px solid #d9d5c8', background: '#fff', borderRadius: 14, padding: '4px 11px', font: 'inherit', fontSize: 12.5, cursor: 'pointer' }}>{'\u{1F4CE}'} Add file</button>
                     </div>
                   )}
-                  <div style={{ display: 'flex', gap: 14, padding: '7px 12px', borderTop: '1px solid #efece3', fontSize: 12.5 }}>
+                  <div style={{ display: 'flex', gap: 14, padding: '7px 12px', borderTop: '1px solid #efece3', fontSize: 12.5, ...(full === r.element_id ? { justifyContent: 'space-around', fontSize: 14, padding: '12px' } : {}) }}>
                     {[['comments', 'Comments', r.comments], ['files', 'Files', r.files], ['photos', 'Gallery', r.photos]].map(([k, l, n]) => (
                       <button key={k} type="button" onClick={() => setPan({ element: r.element_id, sheet: k })} style={{ border: 0, background: 'none', padding: 0, font: 'inherit', fontSize: 12.5, color: '#141413', cursor: 'pointer' }}>{l} <b style={{ background: n ? '#e8710a' : '#e7e3d8', color: n ? '#fff' : '#8a8576', borderRadius: 9, padding: '1px 7px', fontSize: 11.5, fontWeight: 600 }}>{n}</b></button>
                     ))}
                   </div>
-                  <ActionPlan job={job} r={r} can={who.can} post={apPost(r)} reload={load} openPan={(x) => setPan({ element: r.element_id, scope: 'ap', ...x })} />
+                  </div>
+                  <div style={full === r.element_id ? { flex: 1, minHeight: 0, overflowY: 'auto', background: '#eef8f0' } : {}}>
+                  <ActionPlan job={job} r={r} can={who.can} post={apPost(r)} reload={load} forceOpen={full === r.element_id} openPan={(x) => setPan({ element: r.element_id, scope: 'ap', ...x })} />
+                  </div>
                 </div>
               );
             })}
