@@ -105,7 +105,7 @@ export async function GET(req) {
   }
   if (p.get('aps')) {
     // the action plans this person may see (all for managers and editors, only the assigned ones for the others), newest first
-    const aps = await sql`select a.element_id, a.no, a.body, a.status, a.assignees, a.author, a.created_at, a.updated_at, a.updated_by, a.job_no, i.no as issue_no, i.description, i.priority,
+    const aps = await sql`select a.element_id, a.no, a.body, a.status, a.assignees, a.author, a.created_at, a.updated_at, a.updated_by, a.job_no, a.start_date, a.end_date, i.no as issue_no, i.description, i.priority,
       (select count(*)::int from issue_items t where t.job = a.job and t.element_id = a.element_id and t.scope = 'ap' and t.kind = 'file') as files,
       (select count(*)::int from issue_items t where t.job = a.job and t.element_id = a.element_id and t.scope = 'ap' and t.kind in ('photo','video')) as photos,
       (select count(*)::int from issue_items t where t.job = a.job and t.element_id = a.element_id and t.scope = 'issue' and (t.kind in ('comment','chat') or (t.kind = 'photo' and t.body = 'chat'))) as i_comments,
@@ -128,7 +128,7 @@ export async function GET(req) {
       (select count(*)::int from issue_items t where t.job = i.job and t.element_id = i.element_id and t.scope = 'issue' and t.kind in ('photo','video') and coalesce(t.body,'') <> 'chat') as photos
       from issues i where i.job = ${job} order by i.no desc`;
     // Discipline and Asset: read from the part's schedule row (the columns named Discipline / Asset that this person may see)
-    const aps = await sql`select a.element_id, a.no, a.body, a.status, a.assignees, a.author, a.created_at, a.updated_at, a.updated_by, a.job_no,
+    const aps = await sql`select a.element_id, a.no, a.body, a.status, a.assignees, a.author, a.created_at, a.updated_at, a.updated_by, a.job_no, a.start_date, a.end_date,
       (select count(*)::int from issue_items t where t.job = a.job and t.element_id = a.element_id and t.scope = 'ap' and t.kind = 'file') as files,
       (select count(*)::int from issue_items t where t.job = a.job and t.element_id = a.element_id and t.scope = 'ap' and t.kind in ('photo','video')) as photos
       from action_plans a where a.job = ${job}`;
@@ -197,14 +197,18 @@ export async function POST(req) {
       await sql`insert into action_plans(job, element_id, no, body, author, updated_by) values(${job}, ${el}, (select coalesce(max(no), 0) + 1 from action_plans where job = ${job}), '', ${nm(u)}, ${nm(u)}) on conflict (job, element_id) do nothing`;
       return Response.json({ ok: true });
     }
-    const [cur] = await sql`select body, status, assignees, job_no from action_plans where job = ${job} and element_id = ${el}`;
+    const [cur] = await sql`select body, status, assignees, job_no, start_date, end_date from action_plans where job = ${job} and element_id = ${el}`;
     if (!cur) return Response.json({ error: 'No action plan' }, { status: 404 });
     const body = typeof b.body === 'string' ? b.body.slice(0, 5000) : cur.body;
     const status = STATUSES.includes(String(b.status)) ? String(b.status) : cur.status;
+    const dOk = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v);
+    let sd = typeof b.start_date === 'string' ? (dOk(b.start_date) ? b.start_date : null) : cur.start_date;
+    let ed = typeof b.end_date === 'string' ? (dOk(b.end_date) ? b.end_date : null) : cur.end_date;
+    if (sd && ed && ed < sd) return Response.json({ error: 'The end date is before the start date' }, { status: 400 });
     const jno = typeof b.job_no === 'string' ? (b.job_no.trim().slice(0, 30) || null) : cur.job_no;
     let as = cur.assignees;
     if (Array.isArray(b.assignees)) as = b.assignees.slice(0, 30).map((a) => ({ n: String((a && a.n) || '').trim().slice(0, 80), u: a && a.u ? 1 : 0 })).filter((a) => a.n);
-    await sql`update action_plans set body = ${body}, status = ${status}, job_no = ${jno}, assignees = ${JSON.stringify(as)}::jsonb, updated_at = now(), updated_by = ${nm(u)} where job = ${job} and element_id = ${el}`;
+    await sql`update action_plans set body = ${body}, status = ${status}, job_no = ${jno}, start_date = ${sd}, end_date = ${ed}, assignees = ${JSON.stringify(as)}::jsonb, updated_at = now(), updated_by = ${nm(u)} where job = ${job} and element_id = ${el}`;
     return Response.json({ ok: true });
   }
   if (b.action === 'priority') {
