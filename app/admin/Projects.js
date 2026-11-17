@@ -4,10 +4,10 @@ import MapPicker from './MapPicker';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-export default function Projects() {
+export default function Projects({ fixedJob }) {
   const [d, setD] = useState(null);
   const [msg, setMsg] = useState('');
-  const [job, setJob] = useState('');
+  const [job, setJob] = useState(fixedJob || '');
   const [name, setName] = useState('');
   const [names, setNames] = useState({});
   const [shown, setShown] = useState({});
@@ -35,7 +35,7 @@ export default function Projects() {
     if (!r.ok) { setMsg('Could not load projects (' + r.status + ')'); return; }
     const j = await r.json();
     setD(j);
-    setJob((cur) => cur || j.jobs[0] || '');
+    setJob((cur) => fixedJob || cur || j.jobs[0] || '');
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -81,12 +81,12 @@ export default function Projects() {
       <p className="muted">Split each project into sections. Every section gets its own QR code. {msg && <b style={{ marginLeft: 8 }}>{msg}</b>}</p>
       {d.jobs.length === 0 ? <p className="muted">No projects yet. They appear here after the first Revit sync.</p> : (
         <>
-          <label style={{ display: 'block', marginBottom: 12 }}>
+          {!fixedJob && <label style={{ display: 'block', marginBottom: 12 }}>
             <span className="muted" style={{ display: 'block', marginBottom: 4 }}>Project</span>
             <select style={{ ...inp, minWidth: 240, maxWidth: '100%' }} value={job} onChange={(e) => setJob(e.target.value)}>
               {d.jobs.map((j) => <option key={j} value={j}>{j}</option>)}
             </select>
-          </label>
+          </label>}
           <div className="scroll">
             <table style={{ width: '100%' }}>
               <thead><tr><th style={{ width: 40 }}>#</th><th>Section name</th><th>QR code</th><th>Location</th><th>Photos &amp; videos</th><th></th></tr></thead>
