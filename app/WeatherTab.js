@@ -13,8 +13,8 @@ const long = (d, i) => (i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : new Date(d + 
 const hr = (h) => (h === 0 ? '12 am' : h < 12 ? h + ' am' : h === 12 ? '12 pm' : h - 12 + ' pm');
 const PARTS = [['Morning', 5, 11], ['Afternoon', 12, 17], ['Evening', 18, 22]];
 
-export default function WeatherTab({ job }) {
-  const [o, setO] = useState(false);
+export default function WeatherTab({ job, bare }) {
+  const [o, setO] = useState(!!bare);
   const [sel, setSel] = useState(0);
   const [map, setMap] = useState(false);
   const [msg, setMsg] = useState('');
@@ -37,14 +37,14 @@ export default function WeatherTab({ job }) {
     setMsg(''); window.dispatchEvent(new Event('ss-weather-reload')); return true;
   };
   return (
-    <div style={{ margin: '10px 0', border: '1px solid #cfe9d6', borderRadius: 12, background: '#fff', overflow: 'hidden' }}>
+    <div style={bare ? { margin: '4px 0', background: '#fff' } : { margin: '10px 0', border: '1px solid #cfe9d6', borderRadius: 12, background: '#fff', overflow: 'hidden' }}>
       {map && <MapPicker title="Location of this project" onClose={() => setMap(false)} onSave={saveLoc} />}
-      <div role="button" tabIndex={0} onClick={head} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', cursor: 'pointer' }}>
+      {(!bare || none) && <div role="button" tabIndex={0} onClick={head} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', cursor: 'pointer' }}>
         <span style={{ fontSize: 18 }}>{'☀️☁️'}</span>
         <span style={{ fontSize: 13, fontWeight: 600, flex: 1, minWidth: 0 }}>Weather{w && w.place ? <span style={{ fontWeight: 400, color: '#6b675c' }}> {'·'} {w.place}</span> : null}</span>
         {none ? <span style={{ fontSize: 11.5, color: OR, fontWeight: 600 }}>{'\u{1F4CD}'} Set location</span> : chip && !o && <span style={{ background: chip.bg, color: chip.c, borderRadius: 6, padding: '1px 7px', fontSize: 10.5, fontWeight: 700 }}>{chip.t}</span>}
-        {!none && <span style={{ color: OR, fontSize: 12 }}>{o ? '▴' : '▾'}</span>}
-      </div>
+        {!none && !bare && <span style={{ color: OR, fontSize: 12 }}>{o ? '▴' : '▾'}</span>}
+      </div>}
       {msg && <div style={{ padding: '0 10px 8px', fontSize: 12, color: '#c0392b' }}>{msg}</div>}
       {!w && <div style={{ padding: '0 10px 10px', fontSize: 12.5, color: '#9a9686' }}>Loading…</div>}
       {w && w.error && <div style={{ padding: '0 10px 10px', fontSize: 12.5, color: '#9a9686' }}>Could not get the forecast now.</div>}
