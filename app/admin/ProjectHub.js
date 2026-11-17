@@ -265,8 +265,7 @@ export default function ProjectHub() {
             <input className="ph-in" value={ct ?? fmt(dp)} placeholder="Paste coordinates" onChange={(e) => setCt(e.target.value)} onBlur={() => { if (ct !== null) { parseCt(ct); setCt(null); } }} onKeyDown={(e) => { if (e.key === 'Enter') { parseCt(ct ?? ''); setCt(null); } }} /></label>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button type="button" className="ph-btn" onClick={here}>Use my location</button>
-            <button type="button" className="ph-btn" onClick={() => setMap(true)}>Pick on map</button>
-            {dp.lat != null && <a className="ph-btn" href={'https://www.google.com/maps?q=' + dp.lat + ',' + dp.lng} target="_blank" rel="noreferrer">Open map</a>}
+            <button type="button" className="ph-btn" onClick={() => setMap(true)}>{dp.lat != null ? 'Show on map' : 'Pick on map'}</button>
             {dp.lat != null && <button type="button" className="ph-btn" onClick={() => { upP({ lat: null, lng: null }); setCt(null); }}>Clear</button>}
           </div>
         </>
