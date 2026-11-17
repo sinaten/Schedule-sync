@@ -10,17 +10,39 @@ export default function ModelSlot({ element, style }) {
     const slot = ref.current;
     if (!b || !slot) return undefined;
     const home = b.parentNode, next = b.nextSibling;
-    const saved = [];
+    const saved = [], tagged = [];
     const st = (el, props) => { if (!el) return; saved.push([el, el.getAttribute('style')]); Object.keys(props).forEach((k) => el.style.setProperty(k, props[k], 'important')); };
+    const tag = (el, c) => { if (el) { el.classList.add(c); tagged.push([el, c]); } };
     slot.appendChild(b);
     b.classList.add('in-slot');
-    // the section fills the window; its own box takes whatever height is left, so the model fits the window by itself
+    // everything above the picture (view list, Views / Element tabs, search, New) shares one thin line; the model gets all the height left
     const box = b.querySelector('.v3-box');
-    st(b, { position: 'absolute', left: '0', top: '0', right: '0', bottom: '0', margin: '0', border: '0', 'border-radius': '0', display: 'flex', 'flex-direction': 'column', overflow: 'hidden' });
-    st(b.firstElementChild, { display: 'none' });
+    const body = box && box.parentElement !== b ? box.parentElement : box;
+    const kids = Array.from(b.children);
+    st(b, { position: 'absolute', left: '0', top: '0', right: '0', bottom: '0', margin: '0', border: '0', 'border-radius': '0', overflow: 'hidden' });
+    st(kids[0], { display: 'none' });
+    kids.slice(1).forEach((k) => {
+      if (k === body || (box && k.contains(box))) { tag(k, 'ss-body'); return; }
+      if (k.tagName === 'DIV' && !k.className && !(k.compareDocumentPosition(box || k) & 2)) {
+        const isTabs = Array.from(k.querySelectorAll('button')).some((x) => /^Element$/.test((x.textContent || '').trim()));
+        tag(k, isTabs ? 'ss-h2' : 'ss-h1');
+      }
+    });
     b.querySelectorAll('.v3-sheet').forEach((x) => st(x, { display: 'none' }));
-    if (box && box.parentElement && box.parentElement !== b) st(box.parentElement, { flex: '1 1 0', 'min-height': '0', display: 'flex', 'flex-direction': 'column' });
-    if (box) st(box, { flex: '1 1 0', height: 'auto', 'min-height': '0' });
+    const css = document.createElement('style');
+    css.textContent = `
+      .v3-wrap.in-slot{display:grid!important;grid-template-columns:minmax(0,max-content) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+      .v3-wrap.in-slot > .ss-h1{grid-row:1;grid-column:1;padding:2px 4px 2px 6px!important}
+      .v3-wrap.in-slot > .ss-h1 button{height:28px!important;padding:0 10px!important;font-size:12px!important;border-radius:14px!important;width:auto!important;max-width:44vw;gap:6px!important}
+      .v3-wrap.in-slot > .ss-h2{grid-row:1;grid-column:2;display:flex!important;align-items:center;gap:2px;min-width:0;overflow-x:auto;scrollbar-width:none}
+      .v3-wrap.in-slot > .ss-h2 > div{padding:2px 4px!important;display:flex!important;gap:4px!important;flex-wrap:nowrap!important;align-items:center;flex:none}
+      .v3-wrap.in-slot > .ss-h2 input{height:28px!important;font-size:12px!important;min-width:120px!important;width:100%!important}
+      .v3-wrap.in-slot > .ss-h2 > div > span{flex:1 1 130px!important;min-width:130px!important;max-width:none!important}
+      .v3-wrap.in-slot > .ss-h2 button{height:28px!important;font-size:12px!important;padding:0 10px!important;white-space:nowrap}
+      .v3-wrap.in-slot > .ss-body{grid-row:2;grid-column:1/-1;min-height:0!important;display:flex!important;flex-direction:column;position:relative}
+      .v3-wrap.in-slot .v3-box{flex:1 1 0!important;height:auto!important;min-height:0!important}
+    `;
+    document.head.appendChild(css);
     const poke = () => window.dispatchEvent(new Event('resize'));
     const t1 = setTimeout(poke, 60), t2 = setTimeout(poke, 400), t3 = setTimeout(poke, 1200);
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(poke) : null;
@@ -28,7 +50,7 @@ export default function ModelSlot({ element, style }) {
     const g = setTimeout(() => { if (/^\d+$/.test(String(element)) && window.__ssGoElement) { try { window.__ssGoElement(element); } catch (e) { /* ignore */ } } }, 700);
     return () => {
       clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(g); if (ro) ro.disconnect();
-      b.classList.remove('in-slot');
+      b.classList.remove('in-slot'); tagged.forEach(([el, c]) => el.classList.remove(c)); if (css.parentNode) css.parentNode.removeChild(css);
       saved.reverse().forEach(([el, a]) => { if (a == null) el.removeAttribute('style'); else el.setAttribute('style', a); });
       try { if (next && next.parentNode === home) home.insertBefore(b, next); else home.appendChild(b); } catch (e) { /* ignore */ }
       setTimeout(poke, 60);
