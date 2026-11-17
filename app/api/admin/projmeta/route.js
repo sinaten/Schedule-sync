@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { db } from '../../../../lib/db';
 import { currentUser, isAdmin } from '../../../../lib/user';
 import { cleanProject, cleanSite, cleanSiteFull } from '../../../../lib/projmeta';
@@ -61,10 +62,22 @@ export async function PUT(req) {
     let id = String(b.site.id || '').trim();
     if (id && !/^[\w-]{1,80}$/.test(id)) return Response.json({ error: 'Bad site id' }, { status: 400 });
     if (!id) id = 's-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const [cur] = await sql`select value from settings where key = ${'site:' + id}`;
+    d.guide = (cur && cur.value && cur.value.guide) || ''; // the share link is only changed with { guide }, never by a normal save
     await sql`insert into settings(key, value) values(${'site:' + id}, ${JSON.stringify(d)}::jsonb) on conflict (key) do update set value = excluded.value`;
     return Response.json({ ok: true, id });
   }
-  return Response.json({ error: 'job or site is required' }, { status: 400 });
+  if (b.guide) {
+    // { guide: { site, on } } turns the public read-only guide link of a site on (new secret link) or off
+    const id = String(b.guide.site || '');
+    if (!/^[\w-]{1,80}$/.test(id)) return Response.json({ error: 'No site' }, { status: 400 });
+    const [cur] = await sql`select value from settings where key = ${'site:' + id}`;
+    if (!cur) return Response.json({ error: 'Site not found' }, { status: 404 });
+    const v = { ...cleanSiteFull(cur.value), guide: b.guide.on ? randomUUID().replace(/-/g, '') : '' };
+    await sql`update settings set value = ${JSON.stringify(v)}::jsonb where key = ${'site:' + id}`;
+    return Response.json({ ok: true, guide: v.guide });
+  }
+  return Response.json({ error: 'job, site or guide is required' }, { status: 400 });
 }
 
 export async function DELETE(req) {

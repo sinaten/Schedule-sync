@@ -1,16 +1,18 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
 import MapPicker from './MapPicker';
+import GuideMap, { PIN_TYPES } from '../GuideMap';
 import Projects from './Projects';
 import { WORKFLOWS } from '../../lib/projmeta';
 
 // Admin > Projects. A site comes first: it has the address, the pin on the map and what all its projects share (contacts, places, workflows).
 // The projects are created inside a site. Each project has its own settings on top of the site's.
-const ES = { name: '', country: '', city: '', address: '', lat: null, lng: null, contacts: [], places: [], wf: {} };
+const ES = { name: '', country: '', city: '', address: '', lat: null, lng: null, about: '', orientation: {}, guide: '', contacts: [], places: [], wf: {} };
+const uid = () => Math.random().toString(36).slice(2, 10);
 const EP = { siteId: '', contacts: [], places: [], wf: {} };
 const ROLES = ['HSE officer', 'Project manager', 'Site manager', 'Security', 'Emergency', 'Facility manager'];
 const PLACES = ['Parking', 'Restroom', 'First aid', 'Muster point', 'Entrance', 'Canteen', 'Fire extinguisher', 'Storage'];
-const FIELDS = { contacts: [['role', 'Role', '1 1 130px'], ['name', 'Name', '1 1 130px'], ['phone', 'Phone', '1 1 130px']], places: [['type', 'Place', '1 1 140px'], ['where', 'Where it is', '2 1 200px']] };
+const FIELDS = { contacts: [['role', 'Role', '1 1 120px'], ['name', 'Name', '1 1 120px'], ['phone', 'Phone', '1 1 120px'], ['email', 'Email', '1 1 160px']], places: [['type', 'Place', '1 1 140px'], ['where', 'Where it is', '2 1 200px']] };
 const TABS = ['Contacts', 'Places', 'Workflow', 'Sections & QR'];
 const SKIP = new Set(['EU', 'UN', 'EZ', 'XA', 'XB', 'QO', 'AC', 'CP', 'DG', 'EA', 'IC', 'TA', 'XK']);
 const COUNTRIES = (() => {
@@ -66,7 +68,7 @@ export default function ProjectHub() {
   const [selProj, setSelProj] = useState('');
   const [tab, setTab] = useState('Contacts');
   const [scope, setScope] = useState('project');
-  const [op, setOp] = useState({ loc: true, shared: true, projs: true });
+  const [op, setOp] = useState({ loc: true, book: true, projs: true });
   const [msg, setMsg] = useState('');
   const [wide, setWide] = useState(true);
   const [ds, setDs] = useState(ES);
@@ -74,7 +76,8 @@ export default function ProjectHub() {
   const [dirtyS, setDirtyS] = useState(false);
   const [dirtyP, setDirtyP] = useState(false);
   const [ct, setCt] = useState(null);
-  const [map, setMap] = useState(false);
+  const [map, setMap] = useState('');
+  const [gType, setGType] = useState('Entrance');
   const [addSite, setAddSite] = useState(false);
   const [newSite, setNewSite] = useState('');
   const [addProj, setAddProj] = useState(false);
@@ -164,7 +167,7 @@ export default function ProjectHub() {
     try {
       const j = await put({ site: { ...ES, name, country: fc, city: fcity } });
       const d = await load();
-      setNewSite(''); setAddSite(false); reset(); setSelSite(j.id); setSelProj(''); setDp(EP); setDs({ ...ES, ...((d && d.sites[j.id]) || {}) }); setOp({ loc: true, shared: true, projs: true });
+      setNewSite(''); setAddSite(false); reset(); setSelSite(j.id); setSelProj(''); setDp(EP); setDs({ ...ES, ...((d && d.sites[j.id]) || {}) }); setOp({ loc: true, book: true, projs: true });
       setMsg('Site created. Pin it on the map or type the address.');
     } catch (e) { setMsg(e.message); }
   }
@@ -206,7 +209,7 @@ export default function ProjectHub() {
   }
 
   // Pin / GPS: fill the empty address, city and country of the site from the coordinates (a 500 m circle around the pin, two sources)
-  async function fillFrom(lat, lng) {
+  async function geo(lat, lng) {
     const get = async (u) => { try { const r = await fetch(u); return await r.json(); } catch (e) { return null; } };
     setMsg('Reading the address from the pin…');
     const [ph, bd] = await Promise.all([
@@ -224,9 +227,22 @@ export default function ProjectHub() {
     const zip = first('postcode') || (bd && bd.postcode) || '';
     const city = town ? town + (state ? ', ' + state : '') : '';
     const address = [street, town, [state, zip].filter(Boolean).join(' ')].filter(Boolean).join(', ');
-    if (!city && !country && !address) { setMsg('Pin saved, but no address was found near it. Type the city and country.'); return; }
-    setDs((x) => ({ ...x, country: x.country || country, city: x.city || city, address: x.address || address }));
+    if (!city && !country && !address) { setMsg('Pin saved, but no address was found near it. Type it in.'); return null; }
+    return { country, city, address };
+  }
+  // Pin / GPS of the site: fill the empty address, city and country (a 500 m circle around the pin, two sources)
+  async function fillFrom(lat, lng) {
+    const g = await geo(lat, lng);
+    if (!g) return;
+    setDs((x) => ({ ...x, country: x.country || g.country, city: x.city || g.city, address: x.address || g.address }));
     setDirtyS(true); setMsg('Address, city and country filled from the pin (only the empty boxes). Check them and press Save.');
+  }
+  // Pin of the orientation place: fill its empty address
+  async function fillOri(lat, lng) {
+    const g = await geo(lat, lng);
+    if (!g) return;
+    setDs((x) => ({ ...x, orientation: { ...(x.orientation || {}), address: (x.orientation && x.orientation.address) || g.address } }));
+    setDirtyS(true); setMsg('Address filled from the pin. Press Save.');
   }
   const here = () => {
     if (!navigator.geolocation) { setMsg('This device has no location'); return; }
@@ -243,6 +259,35 @@ export default function ProjectHub() {
     if (m && m.length >= 2 && Math.abs(+m[0]) <= 90 && Math.abs(+m[1]) <= 180) upS({ lat: +m[0], lng: +m[1] }); else setMsg('Use two numbers: latitude, longitude');
   };
 
+  const o = ds.orientation || {};
+  const upO = (patch) => upS({ orientation: { ...o, ...patch } });
+  const pickPerson = (field, v) => {
+    if (v === '') { upO({ [field]: '' }); return; }
+    const i = +v, c = ds.contacts[i];
+    if (!c) return;
+    if (c.id) { upO({ [field]: c.id }); return; }
+    const id = uid();
+    upS({ contacts: ds.contacts.map((x, j) => (j === i ? { ...x, id } : x)), orientation: { ...o, [field]: id } });
+  };
+  const idxOf = (id) => (id ? String(ds.contacts.findIndex((c) => c.id === id)).replace('-1', '') : '');
+  async function addFile(file) {
+    if (!file) return;
+    setMsg('Uploading…');
+    const fd = new FormData(); fd.append('site', selSite); fd.append('file', file);
+    const r = await fetch('/api/admin/siteupload', { method: 'POST', body: fd });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { setMsg(j.error || 'Upload failed (' + r.status + ')'); return; }
+    upO({ files: [...(o.files || []), { name: j.name, path: j.path }] }); setMsg('File added. Press Save.');
+  }
+  async function guideLink(on) {
+    if (on === false && !confirm('Turn the share link off? Anyone who has the old link will no longer see the guide.')) return;
+    setMsg('…');
+    const r = await fetch('/api/admin/projmeta', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ guide: { site: selSite, on } }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { setMsg(j.error || 'Failed (' + r.status + ')'); return; }
+    setDs((x) => ({ ...x, guide: j.guide || '' })); setSites((x) => ({ ...x, [selSite]: { ...(x[selSite] || {}), guide: j.guide || '' } })); setMsg(on ? 'Share link created' : 'Share link turned off');
+  }
+  const gurl = ds.guide && typeof location !== 'undefined' ? location.origin + '/guide/' + ds.guide : '';
   const dl = (id, arr) => <datalist id={id}>{arr.map((x) => <option key={x} value={x} />)}</datalist>;
   const head = (k, title, count, sub) => (
     <button type="button" className={'ph-h' + (sub ? ' sub' : '')} aria-expanded={!!op[k]} onClick={() => setOp({ ...op, [k]: !op[k] })}>
@@ -297,7 +342,7 @@ export default function ProjectHub() {
   const rowsOf = (kind, mode) => { const r = []; ds[kind].forEach((x, i) => r.push({ x, lvl: 's', i })); if (mode === 'proj') dp[kind].forEach((x, i) => r.push({ x, lvl: 'p', i })); return r; };
   const setRow = (kind, lvl, i, k, v) => { if (lvl === 's') upS({ [kind]: ds[kind].map((x, j) => (j === i ? { ...x, [k]: v } : x)) }); else upP({ [kind]: dp[kind].map((x, j) => (j === i ? { ...x, [k]: v } : x)) }); };
   const delRow = (kind, lvl, i) => { if (lvl === 's') upS({ [kind]: ds[kind].filter((_, j) => j !== i) }); else upP({ [kind]: dp[kind].filter((_, j) => j !== i) }); };
-  const addRow = (kind, mode) => { const blank = Object.fromEntries(FIELDS[kind].map((x) => [x[0], ''])); if (mode === 'site' || scope === 'site') upS({ [kind]: [...ds[kind], blank] }); else upP({ [kind]: [...dp[kind], blank] }); };
+  const addRow = (kind, mode) => { const blank = Object.fromEntries(FIELDS[kind].map((x) => [x[0], ''])); if (kind === 'contacts') blank.id = uid(); if (mode === 'site' || scope === 'site') upS({ [kind]: [...ds[kind], blank] }); else upP({ [kind]: [...dp[kind], blank] }); };
   const rowsUi = (kind, mode) => (
     <>
       {rowsOf(kind, mode).map((o) => (
@@ -360,7 +405,7 @@ export default function ProjectHub() {
               <label><span className="ph-lab">Coordinates (latitude, longitude)</span>
                 <input className="ph-in" value={ct ?? fmt(ds)} placeholder="Paste coordinates" onChange={(e) => setCt(e.target.value)} onBlur={() => { if (ct !== null) { parseCt(ct); setCt(null); } }} onKeyDown={(e) => { if (e.key === 'Enter') { parseCt(ct ?? ''); setCt(null); } }} /></label>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button type="button" className="ph-btn" onClick={() => setMap(true)}>{ds.lat != null ? 'Show on map' : 'Pick on map'}</button>
+                <button type="button" className="ph-btn" onClick={() => setMap('site')}>{ds.lat != null ? 'Show on map' : 'Pick on map'}</button>
                 <button type="button" className="ph-btn" onClick={here}>Use my location</button>
                 {ds.lat != null && <button type="button" className="ph-btn" onClick={() => { upS({ lat: null, lng: null }); setCt(null); }}>Clear pin</button>}
               </div>
@@ -370,23 +415,113 @@ export default function ProjectHub() {
         </div>
 
         <div className="ph-sec">
-          {head('shared', 'Shared by all projects of this site')}
-          {op.shared && (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {head('c', 'Contacts', ds.contacts.length, true)}{op.c && <div className="ph-body">{rowsUi('contacts', 'site')}</div>}
-              {head('pl', 'Places (parking, restroom, first aid)', ds.places.length, true)}{op.pl && <div className="ph-body">{rowsUi('places', 'site')}</div>}
-              {head('w', 'Workflows', WORKFLOWS.filter((w) => effS(w)).length + ' on', true)}
-              {op.w && (
-                <div className="ph-body">
-                  {WORKFLOWS.map((w) => (
-                    <div className="ph-row" key={w}>
-                      <div style={{ flex: 1, minWidth: 140 }}>{w}</div>
-                      <button type="button" role="switch" aria-checked={!!effS(w)} aria-label={w} className={'ph-sw' + (effS(w) ? ' on' : '')} onClick={() => upS({ wf: { ...ds.wf, [w]: effS(w) ? 0 : 1 } })} />
-                    </div>
+          {head('about', 'How this site works (AI reads this)')}
+          {op.about && (
+            <div className="ph-body">
+              <textarea className="ph-in" rows={5} placeholder="Explain in your own words how things work on this site: who decides what, the order of steps, anything a newcomer must know." value={ds.about || ''} onChange={(e) => upS({ about: e.target.value })} />
+            </div>
+          )}
+        </div>
+
+        <div className="ph-sec">
+          {head('book', 'Contact book', ds.contacts.length)}
+          {op.book && <div className="ph-body"><div className="muted" style={{ fontSize: 13 }}>Add each person once. The orientation card picks them from here, and every project of this site sees them.</div>{rowsUi('contacts', 'site')}</div>}
+        </div>
+
+        <div className="ph-sec">
+          {head('ori', 'Orientation')}
+          {op.ori && (
+            <div className="ph-body">
+              <div className="muted" style={{ fontSize: 13 }}>The meeting everyone attends before entering the site. It is usually held somewhere else, so it has its own place.</div>
+              <label><span className="ph-lab">When</span><input className="ph-in" value={o.when || ''} placeholder="Mondays 7:30 AM" onChange={(e) => upO({ when: e.target.value })} /></label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {[['callId', 'Call before you come'], ['mailId', 'Send the email to']].map(([f, nm]) => (
+                  <label key={f} style={{ flex: '1 1 200px' }}><span className="ph-lab">{nm}</span>
+                    <select className="ph-in" value={idxOf(o[f])} onChange={(e) => pickPerson(f, e.target.value)}>
+                      <option value="">{ds.contacts.length ? 'Choose a person…' : 'Add people to the contact book first'}</option>
+                      {ds.contacts.map((c, i) => <option key={i} value={i}>{[c.name || 'No name', c.role, f === 'mailId' ? c.email : c.phone].filter(Boolean).join(' · ')}</option>)}
+                    </select>
+                  </label>
+                ))}
+              </div>
+              <label><span className="ph-lab">Where it is held</span><input className="ph-in" value={o.where || ''} placeholder="Name of the place, e.g. Grace Church" onChange={(e) => upO({ where: e.target.value })} /></label>
+              <label><span className="ph-lab">Address</span><input className="ph-in" value={o.address || ''} placeholder="Street, city" onChange={(e) => upO({ address: e.target.value })} /></label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <button type="button" className="ph-btn" onClick={() => setMap('ori')}>{o.lat != null ? 'Show on map' : 'Pick on map'}</button>
+                {o.lat != null && <button type="button" className="ph-btn" onClick={() => upO({ lat: null, lng: null })}>Clear pin</button>}
+                {o.lat != null && <span className="muted" style={{ fontSize: 13 }}>{fmt(o)}</span>}
+              </div>
+              <div>
+                <span className="ph-lab">Forms and rules (4 MB per file)</span>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {(o.files || []).map((f, i) => (
+                    <span key={i} className="ph-tag" style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 14, padding: '4px 10px' }}>
+                      <a href={'/api/admin/sitefile?p=' + encodeURIComponent(f.path) + '&raw=1'} target="_blank" rel="noreferrer">{f.name}</a>
+                      <button type="button" aria-label={'Remove ' + f.name} style={{ border: 0, background: 'transparent', cursor: 'pointer', fontSize: 16 }} onClick={() => upO({ files: o.files.filter((_, j) => j !== i) })}>&times;</button>
+                    </span>
                   ))}
-                  <div className="muted" style={{ fontSize: 13 }}>A project can still turn any of these on or off for itself.</div>
+                  <label className="ph-btn" style={{ cursor: 'pointer' }}>Add file<input type="file" hidden onChange={(e) => { addFile(e.target.files[0]); e.target.value = ''; }} /></label>
                 </div>
-              )}
+              </div>
+              <label><span className="ph-lab">Rules (shown to workers on the share page)</span><textarea className="ph-in" rows={3} value={o.rules || ''} onChange={(e) => upO({ rules: e.target.value })} /></label>
+              <label><span className="ph-lab">How it works (AI reads this, not shown to workers)</span><textarea className="ph-in" rows={4} placeholder="Everyone attends before the first day. Call the HSE lead first, then email the signed form…" value={o.how || ''} onChange={(e) => upO({ how: e.target.value })} /></label>
+            </div>
+          )}
+        </div>
+
+        <div className="ph-sec">
+          {head('guide', 'Site guide map', ds.places.filter((p) => p.lat != null).length + ' pins')}
+          {op.guide && (
+            <div className="ph-body">
+              <div className="muted" style={{ fontSize: 13 }}>Pick a pin type, then click the aerial view. Drag a pin to move it.{ds.lat == null && !ds.places.some((p) => p.lat != null) ? ' Pin the site above first so the map opens at the right place.' : ''}</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {Object.keys(PIN_TYPES).map((k) => <button key={k} type="button" className="ph-btn" style={{ padding: '5px 10px', fontSize: 14, ...(gType === k ? { background: '#e3f1f2', borderColor: 'var(--acc)' } : {}) }} onClick={() => setGType(k)}><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: PIN_TYPES[k], marginRight: 6 }} />{k}</button>)}
+              </div>
+              <GuideMap editable pins={ds.places} center={ds.lat != null ? { lat: ds.lat, lng: ds.lng } : null}
+                onAdd={(la, lo) => upS({ places: [...ds.places, { type: gType, where: '', lat: la, lng: lo }] })}
+                onMove={(i, la, lo) => upS({ places: ds.places.map((p, j) => (j === i ? { ...p, lat: la, lng: lo } : p)) })} />
+              {ds.places.map((p, i) => (
+                <div className="ph-row" key={i}>
+                  <input className="ph-in" style={{ flex: '1 1 130px', width: 'auto' }} list="ph-places" placeholder="Type" aria-label="Type" value={p.type || ''} onChange={(e) => upS({ places: ds.places.map((x, j) => (j === i ? { ...x, type: e.target.value } : x)) })} />
+                  <input className="ph-in" style={{ flex: '2 1 200px', width: 'auto' }} placeholder="Where it is, e.g. east gate" aria-label="Where it is" value={p.where || ''} onChange={(e) => upS({ places: ds.places.map((x, j) => (j === i ? { ...x, where: e.target.value } : x)) })} />
+                  <span className={'ph-tag' + (p.lat != null ? ' s' : '')}>{p.lat != null ? 'On the map' : 'No pin'}</span>
+                  <button type="button" className="ph-btn" style={{ padding: '6px 10px' }} aria-label="Remove" onClick={() => upS({ places: ds.places.filter((_, j) => j !== i) })}>&times;</button>
+                </div>
+              ))}
+              <div className="ph-note">
+                {ds.guide ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div><b>Share link is on.</b> Anyone with this link sees the map, the orientation card and its contacts. No login.</div>
+                    <input className="ph-in" readOnly value={gurl} onFocus={(e) => e.target.select()} aria-label="Share link" />
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button type="button" className="ph-btn" onClick={() => navigator.clipboard.writeText(gurl).then(() => setMsg('Link copied'), () => setMsg('Could not copy'))}>Copy link</button>
+                      <a className="ph-btn" href={gurl} target="_blank" rel="noreferrer">Open</a>
+                      <button type="button" className="ph-btn" onClick={() => guideLink(false)}>Turn off</button>
+                    </div>
+                    <div style={{ fontSize: 13 }}>The page shows what is saved. Press Save first when you change something.</div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div>Give workers a link to this map and the orientation card. They open it on their phone, no login. Anyone who has the link can see it, including the phone and email of the people picked above.</div>
+                    <div><button type="button" className="ph-btn" onClick={() => guideLink(true)}>Create share link</button></div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="ph-sec">
+          {head('wf', 'Workflows shared by all projects', WORKFLOWS.filter((w) => effS(w)).length + ' on')}
+          {op.wf && (
+            <div className="ph-body">
+              {WORKFLOWS.map((w) => (
+                <div className="ph-row" key={w}>
+                  <div style={{ flex: 1, minWidth: 140 }}>{w}</div>
+                  <button type="button" role="switch" aria-checked={!!effS(w)} aria-label={w} className={'ph-sw' + (effS(w) ? ' on' : '')} onClick={() => upS({ wf: { ...ds.wf, [w]: effS(w) ? 0 : 1 } })} />
+                </div>
+              ))}
+              <div className="muted" style={{ fontSize: 13 }}>A project can still turn any of these on or off for itself.</div>
             </div>
           )}
         </div>
@@ -492,7 +627,8 @@ export default function ProjectHub() {
         </div>
       ) : selSite ? right : left}
       {dl('ph-roles', ROLES)}{dl('ph-places', PLACES)}
-      {map && <MapPicker title={'Location of ' + (ds.name || 'site')} lat={ds.lat} lng={ds.lng} onSave={(p) => { upS({ lat: p.lat, lng: p.lng }); setCt(null); fillFrom(p.lat, p.lng); return true; }} onClose={() => setMap(false)} />}
+      {map === 'site' && <MapPicker title={'Location of ' + (ds.name || 'site')} lat={ds.lat} lng={ds.lng} onSave={(p) => { upS({ lat: p.lat, lng: p.lng }); setCt(null); fillFrom(p.lat, p.lng); return true; }} onClose={() => setMap('')} />}
+      {map === 'ori' && <MapPicker title={'Orientation place of ' + (ds.name || 'site')} lat={o.lat} lng={o.lng} onSave={(p) => { upO({ lat: p.lat, lng: p.lng }); fillOri(p.lat, p.lng); return true; }} onClose={() => setMap('')} />}
     </>
   );
 }
