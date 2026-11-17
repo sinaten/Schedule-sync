@@ -279,7 +279,7 @@ export default function IssueList({ job }) {
                     <FullBtn on={full === r.element_id} toggle={() => setFull(full === r.element_id ? null : r.element_id)} />
                   </div>
                   <div style={bodyBox(full === r.element_id, wide)}>
-                  <div style={halfStyle(full === r.element_id, wide, 'issue')}>
+                  <div style={{ ...halfStyle(full === r.element_id, wide, 'issue'), background: '#fbeedb', borderTop: '3px solid #e8710a' }}>
                   {mine ? (
                     <div style={{ padding: 10 }}>
                       <textarea value={camToEdit(ed.text, cvs)} onChange={(e) => setEd({ ...ed, text: camFromEdit(e.target.value, cvs) })} rows={4} placeholder="Describe the issue…" style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #e0dccf', borderRadius: 10, padding: 8, font: 'inherit', fontSize: 14, resize: 'vertical', outline: 'none' }} />
