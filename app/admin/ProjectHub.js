@@ -130,6 +130,23 @@ export default function ProjectHub() {
     setSel(name); setDp({ ...EMPTY, ...(jb.meta[name] || {}) }); setSd({}); setDirtyP(false); setDirtyS({}); setCt(null); setTab('Location'); setScope('project'); setScreen('detail'); setMsg('Project created. Now set where it is.');
   }
 
+  // After a pin or GPS fix: read the address, city and country from the coordinates and fill the empty fields (never overwrites what you typed).
+  async function fillFrom(lat, lng) {
+    try {
+      const r = await fetch('https://photon.komoot.io/reverse?lang=en&lat=' + lat + '&lon=' + lng);
+      const j = await r.json();
+      const p = j && j.features && j.features[0] && j.features[0].properties;
+      if (!p) { setMsg('Pin saved, but no address was found here. Type the city and country.'); return; }
+      const town = p.city || p.town || p.village || p.district || p.county || '';
+      const city = town ? town + (p.state ? ', ' + p.state : '') : '';
+      const street = [p.housenumber, p.street].filter(Boolean).join(' ') || p.name || '';
+      const address = [street, town, [p.state, p.postcode].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+      const country = nameOf(p.countrycode) || p.country || '';
+      setDp((x) => ({ ...x, country: x.country || country, city: x.city || city, address: x.address || address }));
+      setDirtyP(true); setMsg('Address, city and country filled from the pin. Check them and press Save.');
+    } catch (e) { setMsg('Pin saved, but the address lookup did not work. Type the city and country.'); }
+  }
+
   async function save() {
     setMsg('Saving…');
     const put = async (body) => { const r = await fetch('/api/admin/projmeta', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Failed (' + r.status + ')'); };
@@ -145,7 +162,7 @@ export default function ProjectHub() {
     if (!navigator.geolocation) { setMsg('This device has no location'); return; }
     setMsg('Getting your location…');
     navigator.geolocation.getCurrentPosition(
-      (p) => { upP({ lat: p.coords.latitude, lng: p.coords.longitude }); setCt(null); setMsg('Got your location (±' + Math.round(p.coords.accuracy) + ' m). Press Save.'); },
+      (p) => { upP({ lat: p.coords.latitude, lng: p.coords.longitude }); setCt(null); setMsg('Got your location (±' + Math.round(p.coords.accuracy) + ' m). Press Save.'); fillFrom(p.coords.latitude, p.coords.longitude); },
       (e) => setMsg(e && e.code === 1 ? 'Location is blocked. Allow it for this site.' : 'Could not get the location. Try outside.'),
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
     );
@@ -330,7 +347,7 @@ export default function ProjectHub() {
       ) : screen === 'list' || !sel ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{filters}{list}</div>
       ) : panel}
-      {map && <MapPicker title={'Location of ' + sel} lat={dp.lat} lng={dp.lng} onSave={(p) => { upP({ lat: p.lat, lng: p.lng }); setCt(null); return true; }} onClose={() => setMap(false)} />}
+      {map && <MapPicker title={'Location of ' + sel} lat={dp.lat} lng={dp.lng} onSave={(p) => { upP({ lat: p.lat, lng: p.lng }); setCt(null); fillFrom(p.lat, p.lng); return true; }} onClose={() => setMap(false)} />}
     </>
   );
 }
