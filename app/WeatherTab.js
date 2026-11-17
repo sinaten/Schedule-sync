@@ -1,12 +1,12 @@
 'use client';
 import { useEffect, useState } from 'react';
 import MapPicker from './admin/MapPicker';
+import WxIcon from './WxIcon';
 
 // The weather tab: closed it shows the six coming days at a glance; open it shows the chosen day hour by hour and the official warnings.
 // Without a saved location a tap opens the map instead; the chosen place is saved as the location of the project's HSE.
 const cache = {};
 const OR = '#e8710a';
-const icon = (c) => (c >= 95 ? '⛈️' : (c >= 71 && c <= 77) || c === 85 || c === 86 ? '❄️' : c >= 51 ? '\u{1F327}️' : c >= 45 ? '\u{1F32B}️' : c >= 2 ? '☁️' : c === 1 ? '\u{1F324}️' : '☀️');
 const LV = { ok: { c: '#2e7d4a', bg: '#e1f3e6', t: 'OK TO WORK', dot: '#2e9e5b' }, caution: { c: '#a86400', bg: '#fff3dc', t: 'CAUTION', dot: '#e0a21a' }, no: { c: '#c0392b', bg: '#fdecea', t: 'DO NOT WORK', dot: '#c0392b' } };
 const sky = (c) => (c >= 95 ? 'Storm' : (c >= 71 && c <= 77) || c === 85 || c === 86 ? 'Snow' : c >= 51 ? 'Rain' : c >= 45 ? 'Fog' : c >= 3 ? 'Cloudy' : c >= 1 ? 'Partly' : 'Sunny');
 const c = (f) => Math.round((f - 32) * 5 / 9);
@@ -58,7 +58,7 @@ export default function WeatherTab({ job, bare, asBar }) {
             return (
               <button key={d.date} type="button" onClick={() => { setSel(i); setO(true); }} style={{ flex: 1, minWidth: 0, border: 0, borderBottom: '3px solid ' + LV[d.level].dot, background: on ? '#f1f8f3' : '#fff', padding: '7px 0 6px', font: 'inherit', cursor: 'pointer', textAlign: 'center' }}>
                 <div style={{ fontSize: 11, color: '#6b675c', fontWeight: on ? 700 : 400 }}>{dn(d.date, i)}</div>
-                <div style={{ fontSize: 18, lineHeight: '24px' }}>{icon(d.code)}</div>
+                <div style={{ display: 'flex', justifyContent: 'center', margin: '3px 0' }}><WxIcon code={d.code} size={20} /></div>
                 <div style={{ fontSize: 10.5, color: '#6b675c', lineHeight: '13px' }}>{sky(d.code)}</div>
                 <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 2 }}>{d.hi}{'°F'}</div>
                 <div style={{ fontSize: 11, color: '#6b675c' }}>{c(d.hi)}{'°C'}</div>
@@ -70,7 +70,7 @@ export default function WeatherTab({ job, bare, asBar }) {
       {o && x && (
         <div style={{ padding: '10px 12px 12px', borderTop: '1px solid #eef3ef' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 34 }}>{icon(x.code)}</span>
+            <WxIcon code={x.code} size={34} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 15, fontWeight: 600 }}>{long(x.date, sel)}</div>
               <div style={{ fontSize: 12.5, color: '#6b675c' }}>{sky(x.code)} {'·'} {x.hi}{'°F'} ({c(x.hi)}{'°C'}) / {x.lo}{'°F'} ({c(x.lo)}{'°C'}) {'·'} rain {x.prob}% {'·'} gusts {x.gust} mph</div>
@@ -87,7 +87,7 @@ export default function WeatherTab({ job, bare, asBar }) {
                 {rows.map((h) => (
                   <div key={h.t} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderTop: '1px solid #f1f3f1', fontSize: 12.5 }}>
                     <span style={{ width: 44, color: '#6b675c' }}>{hr(Number(h.t.slice(11, 13)))}</span>
-                    <span style={{ width: 22 }}>{icon(h.code)}</span>
+                    <span style={{ width: 22, display: 'inline-flex' }}><WxIcon code={h.code} size={16} /></span>
                     <span style={{ width: 38, fontWeight: 600 }}>{h.temp}{'°'}</span>
                     <span style={{ flex: 1, color: h.prob >= 50 ? '#c0392b' : '#6b675c' }}>{h.prob}% rain</span>
                     <span style={{ color: '#6b675c' }}>{h.wind} mph</span>
