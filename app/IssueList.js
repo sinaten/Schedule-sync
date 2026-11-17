@@ -72,7 +72,7 @@ export function AssigneeChip({ a }) {
   if (a.u) return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 14, background: '#f4f3ee', padding: '2px 10px 2px 3px', fontSize: 12.5 }}><span style={{ width: 22, height: 22, borderRadius: 11, background: '#e8710a', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600 }}>{a.n[0].toUpperCase()}</span>{a.n}</span>;
   return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 14, border: '1px dashed #cfcab9', padding: '2px 10px 2px 3px', fontSize: 12.5 }}><span style={{ width: 22, height: 22, borderRadius: 11, background: '#f4f3ee', color: '#6b675c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>?</span>{a.n}<span style={{ fontSize: 10, color: '#6b675c', border: '1px solid #e7e3d8', borderRadius: 6, padding: '0 5px' }}>NOT A USER</span></span>;
 }
-function ActionPlan({ job, r, can, post, reload, openPan, forceOpen, big }) {
+function ActionPlan({ job, r, can, post, reload, openPan, forceOpen }) {
   const ap = r.ap;
   const [o, setO] = useState(false);
   const [body, setBody] = useState(ap ? ap.body : '');
@@ -114,7 +114,7 @@ function ActionPlan({ job, r, can, post, reload, openPan, forceOpen, big }) {
       </div>
       {o && (
         <div style={{ padding: '4px 12px 12px' }}>
-          <WeatherStrip job={job} big={big} />
+          <WeatherStrip job={job} />
           <div style={lab}>Job number</div>
           {can ? <input value={jno} onChange={(e) => setJno(e.target.value)} onBlur={() => { if (jno.trim() && jno !== ap.jobNo) save({ job_no: jno }); }} placeholder="Job number" style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #cfe9d6', borderRadius: 10, height: 34, padding: '0 10px', margin: '4px 0 10px', font: 'inherit', fontSize: 14, outline: 'none', background: '#fff' }} /> : <div style={{ fontSize: 14, margin: '4px 0 10px' }}>{ap.jobNo}</div>}
           <div style={{ display: 'flex', gap: 10, margin: '0 0 10px' }}>
@@ -317,7 +317,7 @@ export default function IssueList({ job }) {
                   </div>
                   </div>
                   <div style={halfStyle(full === r.element_id, wide, 'ap')}>
-                  <ActionPlan job={job} r={r} can={who.can} post={apPost(r)} reload={load} forceOpen={full === r.element_id} big={full === r.element_id && wide} openPan={(x) => setPan({ element: r.element_id, scope: 'ap', ...x })} />
+                  <ActionPlan job={job} r={r} can={who.can} post={apPost(r)} reload={load} forceOpen={full === r.element_id} openPan={(x) => setPan({ element: r.element_id, scope: 'ap', ...x })} />
                   </div>
                   </div>
                 </div>
