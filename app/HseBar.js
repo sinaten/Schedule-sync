@@ -108,11 +108,6 @@ export default function HseBar({ job }) {
         )}
       </div>
 
-      <div style={sub()}>
-        <span style={dot} />
-        <div style={{ padding: '2px 10px' }}><WeatherTab job={job} /></div>
-      </div>
-
       <div style={sub({ opacity: anyAllowed ? 1 : 0.55, background: anyAllowed ? '#fff' : '#f4f3ee' })}>
         <span style={dot} />
         <div style={{ ...hdr, cursor: 'default' }}><span>{anyAllowed ? '' : '\u{1F512}'}</span><span style={{ flex: 1 }}>JHA form and PPE</span>{anyAllowed ? chip('#f4f3ee', '#6b675c', 'coming next') : chip('#f4f3ee', '#6b675c', 'after Orientation')}</div>

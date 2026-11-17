@@ -102,7 +102,7 @@ tr.rowp td:first-child{box-shadow:inset 4px 0 var(--amber)}
   .ms-tab-i.on{color:#d93025}
   .ms-tab-f.on{color:#1e9e5a}
   /* Issues tab: the page below is empty for now */
-  body[data-ms-tab="follow"] > :not(header):not(nav):not(.ms-tabs-wrap):not(.ms-spacer):not(.ms-follow):not(script){position:fixed!important;left:-200vw!important;top:0!important;width:100vw!important;visibility:hidden!important;pointer-events:none!important}
+  body[data-ms-tab="follow"] > :not(header):not(nav):not(.ms-tabs-wrap):not(.ms-spacer):not(.ms-follow):not(.mp-root):not(script){position:fixed!important;left:-200vw!important;top:0!important;width:100vw!important;visibility:hidden!important;pointer-events:none!important}
 }
 
 /* Laptop / desktop / tablet held sideways: the five round buttons stand in one column on the left of the page and stay put while it scrolls. Only on a job page (not in Admin). */
@@ -129,7 +129,7 @@ tr.rowp td:first-child{box-shadow:inset 4px 0 var(--amber)}
   .ms-tab.on i{opacity:1}
   .ms-tab-i.on{color:#d93025}
   .ms-tab-f.on{color:#1e9e5a}
-  body[data-ms-tab="follow"] > :not(header):not(nav):not(.ms-tabs-wrap):not(.ms-spacer):not(.ms-follow):not(script){position:fixed!important;left:-200vw!important;top:0!important;width:100vw!important;visibility:hidden!important;pointer-events:none!important}
+  body[data-ms-tab="follow"] > :not(header):not(nav):not(.ms-tabs-wrap):not(.ms-spacer):not(.ms-follow):not(.mp-root):not(script){position:fixed!important;left:-200vw!important;top:0!important;width:100vw!important;visibility:hidden!important;pointer-events:none!important}
 }
 
 .ms-follow{display:none}

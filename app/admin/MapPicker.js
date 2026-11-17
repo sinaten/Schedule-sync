@@ -143,7 +143,7 @@ export default function MapPicker({ title, lat, lng, onSave, onClose }) {
     ? { width: '100%', height: '100%', borderRadius: 0 }
     : { width: 'min(960px, 92vw)', height: 'min(680px, 88vh)', borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,.35)' };
   return createPortal(
-    <div onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }} style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(15,25,30,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="mp-root" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }} style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(15,25,30,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ ...card, background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ padding: '10px 12px', display: 'flex', gap: 8, alignItems: 'center', borderBottom: '1px solid #e1e5e8', paddingTop: small ? 'max(10px, env(safe-area-inset-top))' : 10 }}>
           <b style={{ flex: '0 1 auto', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: small ? '30%' : '38%' }}>{title}</b>
