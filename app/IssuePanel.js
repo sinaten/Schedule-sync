@@ -53,11 +53,12 @@ function Sheet({ children, name, foot, close, dock }) {
       {foot}
     </div>
   );
+  // Files and Gallery: a compact framed card in the middle of the screen. It is only as tall as its content (never past the top of the bottom bar) and ends in a clear border.
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(20,20,19,.4)', display: 'flex', alignItems: 'flex-end' }} onClick={close}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, margin: '0 auto', height: '72vh', background: '#fff', borderRadius: '20px 20px 0 0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={titleSt}><span>{name}</span><button type="button" onClick={close} aria-label="Close" style={{ border: 0, background: '#f1ede4', width: 30, height: 30, borderRadius: 15, fontSize: 16, cursor: 'pointer' }}>{'✕'}</button></div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: 14 }}>{children}</div>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(20,20,19,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box', padding: '16px 14px ' + (barTop + 16) + 'px' }} onClick={close}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, maxHeight: '100%', minHeight: 0, background: '#fff', border: '1px solid #e7e3d8', borderRadius: 18, boxShadow: '0 10px 34px rgba(0,0,0,.25)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ ...titleSt, position: 'static' }}><span>{name}</span><button type="button" onClick={close} aria-label="Close" style={{ border: 0, background: '#f1ede4', width: 30, height: 30, borderRadius: 15, fontSize: 16, cursor: 'pointer' }}>{'\u2715'}</button></div>
+        <div style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto', padding: 14 }}>{children}</div>
         {foot}
       </div>
     </div>
@@ -337,10 +338,10 @@ export default function IssuePanel({ job, element, onMsg, initialSheet = '', aut
       )}
       {sheet === 'files' && (
         <Sheet close={() => { setSheet(''); onClose && onClose(); }} name={scope === 'ap' ? 'Action plan \u00B7 Files' : 'Files'}>
-          {files.length === 0 && <p style={{ textAlign: 'center', color: '#9a9686', fontSize: 13 }}>No files yet.</p>}
+          {files.length === 0 && <p style={{ textAlign: 'center', color: '#9a9686', fontSize: 13, margin: '6px 0 10px' }}>No files yet.</p>}
           {files.map((f, fi) => (
-            <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid #f1ede4', ...(seen >= 0 && fi >= seen ? { color: '#c0392b' } : {}) }}>
-              <span style={{ fontSize: 20 }}>{'📎'}</span>
+            <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', marginBottom: 6, borderRadius: 10, background: '#faf9f5', border: '1px solid #efece3', ...(seen >= 0 && fi >= seen ? { color: '#c0392b', borderColor: '#c0392b' } : {}) }}>
+              <span style={{ width: 34, height: 34, flex: 'none', borderRadius: 8, background: '#fff3e6', color: OR, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10.5, fontWeight: 700 }}>{(String(f.name || '').split('.').pop() || 'FILE').slice(0, 4).toUpperCase()}</span>
               <a href={url(f.pathname) + '&dl=1'} style={{ flex: 1, minWidth: 0, color: seen >= 0 && files.indexOf(f) >= seen ? '#c0392b' : '#141413', fontSize: 14, fontWeight: 600, textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}<div style={{ fontWeight: 400, fontSize: 11.5, color: '#8a8576' }}>{f.author} {'·'} {when(f.created_at)}</div></a>
               {(f.author === me) && <button type="button" onClick={() => del(f.id)} aria-label="Delete" style={{ border: 0, background: 'transparent', color: '#b0ab9a', fontSize: 16, cursor: 'pointer' }}>{'✕'}</button>}
             </div>
