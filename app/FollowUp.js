@@ -4,7 +4,7 @@ import IssuePanel from './IssuePanel';
 import WeatherTab from './WeatherTab';
 import WeatherStrip from './WeatherStrip';
 import HseBar from './HseBar';
-import { StatusChip, PriorityTag, AssigneeChip } from './IssueList';
+import { StatusChip, PriorityTag, AssigneeChip, FullBtn, fullBox } from './IssueList';
 
 const BARS = ['Weather', 'Action Plan', 'Workflow', 'Location', 'HSE', 'Communication', 'Orders', 'Utility'];
 const seenKey = (job, bar) => 'fu-seen:' + job + ':' + bar;
@@ -37,6 +37,7 @@ export default function FollowUp({ job }) {
     window.addEventListener('resize', f);
     return () => { clearTimeout(id); window.removeEventListener('resize', f); };
   }, []);
+  const [full, setFull] = useState(null);
   const [pan, setPan] = useState(null); // Comments / Files / Gallery of an issue or of its action plan
   const load = () => {
     fetch('/api/followup?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j.items) { setItems(j.items); setWho({ me: j.me, can: !!j.can }); } }).catch(() => {});
@@ -109,7 +110,7 @@ export default function FollowUp({ job }) {
                   {bar === 'Action Plan' && aps.map((a) => {
                     const as = Array.isArray(a.assignees) ? a.assignees : [];
                     return (
-                      <div key={a.element_id} style={{ marginTop: 8, border: '1px solid #bfe0c8', borderRadius: 12, background: '#eef8f0', overflow: 'hidden' }}>
+                      <div key={a.element_id} style={{ marginTop: 8, border: '1px solid #bfe0c8', borderRadius: 12, background: '#eef8f0', overflow: 'hidden', ...fullBox(full === a.element_id) }}>
                         <div style={{ padding: '9px 12px 6px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                             <b style={{ fontSize: 18, letterSpacing: 0.2 }}>{a.card}</b>{isNew(a) && <span style={{ background: '#c0392b', color: '#fff', borderRadius: 5, padding: '1px 6px', fontSize: 10, fontWeight: 700 }}>NEW</span>}
@@ -117,6 +118,7 @@ export default function FollowUp({ job }) {
                             <PriorityTag pr={a.priority} />
                             <span style={{ flex: 1 }} />
                             {(isNew(a) || unread(a.element_id, 'issue', 'comments', a.i_comments) || unread(a.element_id, 'issue', 'files', a.i_files) || unread(a.element_id, 'issue', 'photos', a.i_photos) || unread(a.element_id, 'ap', 'files', a.files) || unread(a.element_id, 'ap', 'photos', a.photos)) && <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#c0392b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-label="Changed" style={{ flex: 'none', order: 99 }}><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" /><path d="M9 17v1a3 3 0 0 0 6 0v-1" /></svg>}
+                            <FullBtn on={full === a.element_id} toggle={() => setFull(full === a.element_id ? null : a.element_id)} />
                           </div>
                           <div style={{ fontSize: 12.5, color: '#2c7a47', fontWeight: 700, marginTop: 2 }}>{a.jobNo}</div>
                         </div>

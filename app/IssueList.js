@@ -23,6 +23,16 @@ export function PriorityTag({ pr }) {
 }
 const when = (t) => { const d = new Date(t); return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ', ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); };
 
+// The window-style square at the corner of a card: one tap makes the card fill the screen, another gives it back.
+export function FullBtn({ on, toggle }) {
+  return (
+    <button type="button" aria-label={on ? 'Restore size' : 'Full screen'} title={on ? 'Restore size' : 'Full screen'} onClick={(e) => { e.stopPropagation(); toggle(); }} style={{ flex: 'none', width: 26, height: 26, border: 0, background: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#6b675c" strokeWidth="1.6" strokeLinejoin="round" aria-hidden="true">{on ? <><rect x="2.5" y="5.5" width="8" height="8" rx="1" /><path d="M5.5 5.5V3.5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2" /></> : <rect x="2.5" y="2.5" width="11" height="11" rx="1.5" />}</svg>
+    </button>
+  );
+}
+export const fullBox = (on) => (on ? { position: 'fixed', inset: 0, zIndex: 2400, overflowY: 'auto', WebkitOverflowScrolling: 'touch', borderRadius: 0, border: 0, paddingTop: 'env(safe-area-inset-top)' } : {});
+
 // Status chip with a menu to change it.
 export function StatusChip({ st, onPick, locked }) {
   const [o, setO] = useState(false);
@@ -148,6 +158,7 @@ export default function IssueList({ job }) {
   // Source view = real data only: the list folds into a grey bar until the Issue bar is chosen
   const [src, setSrc] = useState(() => { try { return typeof window !== 'undefined' && (window.__ssMode || localStorage.getItem('ss-mode:' + job)) === 'source'; } catch (e) { return false; } });
   useEffect(() => { const f = (e) => setSrc(e.detail === 'source'); window.addEventListener('ss-mode', f); return () => window.removeEventListener('ss-mode', f); }, []);
+  const [full, setFull] = useState(null); // the card shown over the whole screen
   const [pan, setPan] = useState(null); // Comments / Files / Gallery of one card: { element, sheet }
   const [nw, setNw] = useState(null); // new issue without an element: { text, pr }
   const [ed, setEd] = useState(null); // the card being edited: { element_id, text, pr }
@@ -245,14 +256,15 @@ export default function IssueList({ job }) {
               const mine = ed && ed.element_id === r.element_id;
               const info = (k, v) => v ? <div style={{ display: 'flex', gap: 8, fontSize: 12.5, lineHeight: 1.6 }}><span style={{ width: 84, flex: 'none', color: '#8a8576', fontWeight: 700, fontSize: 11, letterSpacing: 0.3, textTransform: 'uppercase', paddingTop: 1 }}>{k}</span><span style={{ color: '#141413', wordBreak: 'break-word' }}>{v}</span></div> : null;
               return (
-                <div key={r.element_id} style={{ border: '1px solid #e7e3d8', borderRadius: 12, background: '#fff' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#f7f5ef', borderRadius: '12px 12px 0 0', flexWrap: 'wrap' }}>
+                <div key={r.element_id} style={{ border: '1px solid #e7e3d8', borderRadius: 12, background: '#fff', ...fullBox(full === r.element_id) }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#f7f5ef', borderRadius: full === r.element_id ? 0 : '12px 12px 0 0', flexWrap: 'wrap', ...(full === r.element_id ? { position: 'sticky', top: 0, zIndex: 3 } : {}) }}>
                     <b style={{ fontSize: 13.5 }}>{r.card}</b>
                     <StatusChip st={r.status} onPick={(k) => setStatus(r, k)} locked={!can} />
                     <PriorityTag pr={r.priority} />
                     <span style={{ flex: 1 }} />
                     <button type="button" disabled={!can} title={can ? 'Edit this issue' : 'Only the author, an editor or a manager can edit'} onClick={() => setEd(mine ? null : { element_id: r.element_id, text: r.description || '', pr: r.priority || 'noncritical' })} style={{ border: '1px solid ' + (can ? '#e8710a' : '#d9d5c8'), background: '#fff', color: can ? '#e8710a' : '#b0ab9a', borderRadius: 12, padding: '3px 12px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: can ? 'pointer' : 'not-allowed' }}>Edit</button>
                     {/^\d+$/.test(r.element_id) && <button type="button" onClick={() => goPart(r.element_id)} style={{ border: 0, background: 'none', font: 'inherit', fontSize: 12.5, color: '#6b675c', cursor: 'pointer' }}>{'▣'} Go to 3D</button>}
+                    <FullBtn on={full === r.element_id} toggle={() => setFull(full === r.element_id ? null : r.element_id)} />
                   </div>
                   {mine ? (
                     <div style={{ padding: 10 }}>
