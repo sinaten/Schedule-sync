@@ -1,19 +1,17 @@
 'use client';
 import { useEffect, useRef } from 'react';
 
-// A window for the 3D model inside a full-screen card. The model viewer of the page is moved into this window (not copied),
+// A window for the 3D model inside a full-screen card. The whole model section of the page (views, camera icons, the model) is moved into this window (not copied), without the parameter list,
 // sent to the element of the issue, and put back where it was when the card closes.
 export default function ModelSlot({ element, style }) {
   const ref = useRef(null);
   useEffect(() => {
-    const b = document.querySelector('.v3-box');
+    const b = document.querySelector('.v3-wrap');
     const slot = ref.current;
     if (!b || !slot) return undefined;
-    const home = b.parentNode, next = b.nextSibling, orig = b.getAttribute('style');
-    const set = (k, v) => b.style.setProperty(k, v, 'important');
+    const home = b.parentNode, next = b.nextSibling;
     slot.appendChild(b);
-    set('position', 'absolute'); set('left', '0'); set('top', '0'); set('right', '0'); set('bottom', '0');
-    set('width', '100%'); set('height', '100%'); set('min-height', '0'); set('visibility', 'visible'); set('pointer-events', 'auto');
+    b.classList.add('in-slot');
     const poke = () => window.dispatchEvent(new Event('resize'));
     const t1 = setTimeout(poke, 60), t2 = setTimeout(poke, 400), t3 = setTimeout(poke, 1200);
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(poke) : null;
@@ -21,7 +19,7 @@ export default function ModelSlot({ element, style }) {
     const g = setTimeout(() => { if (/^\d+$/.test(String(element)) && window.__ssGoElement) { try { window.__ssGoElement(element); } catch (e) { /* ignore */ } } }, 700);
     return () => {
       clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(g); if (ro) ro.disconnect();
-      if (orig == null) b.removeAttribute('style'); else b.setAttribute('style', orig);
+      b.classList.remove('in-slot');
       try { if (next && next.parentNode === home) home.insertBefore(b, next); else home.appendChild(b); } catch (e) { /* ignore */ }
       setTimeout(poke, 60);
     };
