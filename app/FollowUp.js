@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react';
 import IssuePanel from './IssuePanel';
 import WeatherTab from './WeatherTab';
 import WeatherCapsules from './WeatherCapsules';
+import ModelSlot from './ModelSlot';
 import HseBar from './HseBar';
-import { StatusChip, PriorityTag, AssigneeChip, FullBtn, fullBox, useWide, bodyBox, halfStyle } from './IssueList';
+import { StatusChip, PriorityTag, AssigneeChip, FullBtn, fullBox, useWide } from './IssueList';
 
 const BARS = ['Weather', 'Action Plan', 'Workflow', 'Location', 'HSE', 'Communication', 'Orders', 'Utility'];
 const seenKey = (job, bar) => 'fu-seen:' + job + ':' + bar;
@@ -22,6 +23,9 @@ function Bell({ n }) {
 }
 
 // The Follow-up page: seven horizontal bars; a bell with the number of new items from others, the name, a + to add; touching a bar opens it like a drawer.
+const fsBody = (on, wide) => (on ? (wide ? { flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr' } : { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }) : { display: 'contents' });
+const fsTop = (on, wide) => (on ? (wide ? { display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0, borderRight: '1.5px solid #cdb893' } : { display: 'grid', gridTemplateColumns: '1fr 1fr', flex: '0.85 1 0', minHeight: 0 }) : { display: 'contents' });
+const fsHalf = (on, wide, kind) => (on ? { flex: '1 1 0', minHeight: 0, minWidth: 0, overflowY: 'auto', ...(!wide && kind === 'issue' ? { borderRight: '1.5px solid #cdb893' } : {}) } : {});
 export default function FollowUp({ job }) {
   const [items, setItems] = useState([]);
   const [who, setWho] = useState({ me: '', can: false });
@@ -128,8 +132,9 @@ export default function FollowUp({ job }) {
                           </div>
                           <div style={{ marginTop: 7 }}><WeatherCapsules job={job} /></div>
                         </div>
-                        <div style={bodyBox(full === a.element_id, wide)}>
-                        <div style={{ ...halfStyle(full === a.element_id, wide, 'issue'), background: '#fbeedb', borderTop: '3px solid #e8710a', paddingTop: 6, display: 'flex', flexDirection: 'column' }}>
+                        <div style={fsBody(full === a.element_id, wide)}>
+                        <div style={fsTop(full === a.element_id, wide)}>
+                        <div style={{ ...fsHalf(full === a.element_id, wide, 'issue'), background: '#fbeedb', borderTop: '3px solid #e8710a', paddingTop: 6, display: 'flex', flexDirection: 'column' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, color: '#a85a08' }}><span style={{ width: 8, height: 8, borderRadius: 2, background: '#e8710a' }} />ISSUE</div>
                         <div style={{ padding: '4px 12px 6px', flex: full === a.element_id ? 1 : 'none', minHeight: 0, display: 'flex' }}><div style={{ flex: 1, minHeight: full === a.element_id ? 0 : 46, maxHeight: full === a.element_id ? 'none' : 120, overflowY: 'auto', borderRadius: 8, padding: '6px 9px', background: 'rgba(255,255,255,.65)', border: '1px solid #f0d3a8', fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: a.description ? '#141413' : '#9a9686', fontStyle: a.description ? 'normal' : 'italic' }}>{a.description || 'No issue description yet'}</div></div>
                         <div style={{ padding: '2px 12px 8px', background: 'transparent', fontSize: 12.5, flex: 'none' }}>
@@ -137,7 +142,7 @@ export default function FollowUp({ job }) {
                           {a.i_last && <div style={{ marginTop: 3, color: unread(a.element_id, 'issue', 'comments', a.i_comments) ? '#c0392b' : '#6b675c', fontSize: 12.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{a.i_last}</div>}
                         </div>
                         </div>
-                        <div style={{ ...halfStyle(full === a.element_id, wide, 'ap'), background: '#dcf1e2', borderTop: '3px solid #2e9e5b', paddingTop: 6, display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ ...fsHalf(full === a.element_id, wide, 'ap'), background: '#dcf1e2', borderTop: '3px solid #2e9e5b', paddingTop: 6, display: 'flex', flexDirection: 'column' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px 4px', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, color: '#2c7a47' }}><span style={{ width: 8, height: 8, borderRadius: 2, background: '#2e9e5b' }} />ACTION PLAN {'\u00B7'} HOW TO SOLVE IT</div>
                         {(a.start_date || a.end_date) && <div style={{ padding: '0 12px 6px', fontSize: 12.5, color: '#2c7a47', fontWeight: 600 }}>{'\u{1F4C5}'} {a.start_date ? new Date(a.start_date + 'T12:00:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) : '?'} {'\u2192'} {a.end_date ? new Date(a.end_date + 'T12:00:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) : '?'}</div>}
                         <div style={{ padding: '0 12px 8px', flex: full === a.element_id ? 1 : 'none', minHeight: 0, display: 'flex' }}><div style={{ flex: 1, minHeight: full === a.element_id ? 0 : 46, maxHeight: full === a.element_id ? 'none' : 140, overflowY: 'auto', borderRadius: 8, padding: '6px 9px', background: 'rgba(255,255,255,.65)', border: '1px solid #bfe0c8', fontSize: 14, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: a.body ? '#141413' : '#9a9686', fontStyle: a.body ? 'normal' : 'italic' }}>{a.body || 'No action plan text yet'}</div></div>
@@ -150,6 +155,8 @@ export default function FollowUp({ job }) {
                           </div>}
                         </div>
                         </div>
+                        </div>
+                        {full === a.element_id && <ModelSlot element={a.element_id} style={wide ? {} : { flex: '1.15 1 0' }} />}
                         </div>
                       </div>
                     );
