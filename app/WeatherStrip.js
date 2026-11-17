@@ -27,7 +27,7 @@ export default function WeatherStrip({ job }) {
   else if (w.days[1]) { d0 = w.days[1]; cells = dayCells(d0.date); }
   const lv = (w.alerts || []).length ? 'no' : d0.level;
   return (
-    <div title={d0.why.join(', ')} style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '4px 0 6px', padding: '2px 6px', border: '1px solid #e3efe6', borderRadius: 10, background: '#fff', overflowX: 'auto' }}>
+    <div title={d0.why.join(', ')} style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '4px 0 6px', padding: '2px 4px', overflowX: 'auto' }}>
       <span style={{ width: 8, height: 8, borderRadius: 4, background: DOT[lv], flex: 'none' }} />
       {cells.length === 0 ? <span style={{ fontSize: 10.5, color: '#9a9686' }}><WxIcon code={d0.code} size={15} /> {d0.hi}{'°'}F</span> : cells.map((h) => {
         const n = hh(h);

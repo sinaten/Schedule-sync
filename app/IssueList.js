@@ -31,7 +31,17 @@ export function FullBtn({ on, toggle }) {
     </button>
   );
 }
-export const fullBox = (on) => (on ? { position: 'fixed', inset: 0, zIndex: 2400, display: 'flex', flexDirection: 'column', overflowY: 'hidden', borderRadius: 0, border: 0, paddingTop: 'env(safe-area-inset-top)' } : {});
+// Full screen: on a wide screen (desktop, tablet lying down) the issue is the left half and the action plan the right half; on a phone the action plan is the top half and the issue the bottom half.
+export function useWide() {
+  const [w, setW] = useState(false);
+  useEffect(() => { const f = () => setW(window.innerWidth >= 700); f(); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f); }, []);
+  return w;
+}
+export const bodyBox = (on, wide) => (on ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: wide ? 'row' : 'column' } : { display: 'contents' });
+export const halfStyle = (on, wide, kind, hideSmall) => (on
+  ? { flex: '1 1 0', minHeight: 0, minWidth: 0, overflowY: 'auto', background: kind === 'ap' ? '#eef8f0' : '#fff7ef', order: (kind === 'ap') === !wide ? 1 : 2, ...(wide ? { borderLeft: kind === 'ap' ? '1px solid #cfe9d6' : 0 } : { borderTop: kind === 'ap' ? 0 : '2px solid #e7e3d8' }) }
+  : hideSmall && kind === 'issue' ? { display: 'none' } : {});
+export const fullBox = (on) => (on ? { position: 'fixed', inset: 0, zIndex: 2400, display: 'flex', flexDirection: 'column', overflowY: 'hidden', borderRadius: 0, border: 0, paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)', boxSizing: 'border-box', background: '#fff' } : {});
 
 // Status chip with a menu to change it.
 export function StatusChip({ st, onPick, locked }) {
@@ -160,6 +170,7 @@ export default function IssueList({ job }) {
   const [src, setSrc] = useState(() => { try { return typeof window !== 'undefined' && (window.__ssMode || localStorage.getItem('ss-mode:' + job)) === 'source'; } catch (e) { return false; } });
   useEffect(() => { const f = (e) => setSrc(e.detail === 'source'); window.addEventListener('ss-mode', f); return () => window.removeEventListener('ss-mode', f); }, []);
   const [full, setFull] = useState(null); // the card shown over the whole screen
+  const wide = useWide();
   const [pan, setPan] = useState(null); // Comments / Files / Gallery of one card: { element, sheet }
   const [nw, setNw] = useState(null); // new issue without an element: { text, pr }
   const [ed, setEd] = useState(null); // the card being edited: { element_id, text, pr }
@@ -267,7 +278,8 @@ export default function IssueList({ job }) {
                     {/^\d+$/.test(r.element_id) && <button type="button" onClick={() => goPart(r.element_id)} style={{ border: 0, background: 'none', font: 'inherit', fontSize: 12.5, color: '#6b675c', cursor: 'pointer' }}>{'▣'} Go to 3D</button>}
                     <FullBtn on={full === r.element_id} toggle={() => setFull(full === r.element_id ? null : r.element_id)} />
                   </div>
-                  <div style={full === r.element_id ? { flex: 1, minHeight: 0, overflowY: 'auto', background: '#fff' } : {}}>
+                  <div style={bodyBox(full === r.element_id, wide)}>
+                  <div style={halfStyle(full === r.element_id, wide, 'issue')}>
                   {mine ? (
                     <div style={{ padding: 10 }}>
                       <textarea value={camToEdit(ed.text, cvs)} onChange={(e) => setEd({ ...ed, text: camFromEdit(e.target.value, cvs) })} rows={4} placeholder="Describe the issue…" style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #e0dccf', borderRadius: 10, padding: 8, font: 'inherit', fontSize: 14, resize: 'vertical', outline: 'none' }} />
@@ -304,8 +316,9 @@ export default function IssueList({ job }) {
                     ))}
                   </div>
                   </div>
-                  <div style={full === r.element_id ? { flex: 1, minHeight: 0, overflowY: 'auto', background: '#eef8f0' } : {}}>
+                  <div style={halfStyle(full === r.element_id, wide, 'ap')}>
                   <ActionPlan job={job} r={r} can={who.can} post={apPost(r)} reload={load} forceOpen={full === r.element_id} openPan={(x) => setPan({ element: r.element_id, scope: 'ap', ...x })} />
+                  </div>
                   </div>
                 </div>
               );

@@ -4,7 +4,7 @@ import IssuePanel from './IssuePanel';
 import WeatherTab from './WeatherTab';
 import WeatherStrip from './WeatherStrip';
 import HseBar from './HseBar';
-import { StatusChip, PriorityTag, AssigneeChip, FullBtn, fullBox } from './IssueList';
+import { StatusChip, PriorityTag, AssigneeChip, FullBtn, fullBox, useWide, bodyBox, halfStyle } from './IssueList';
 
 const BARS = ['Weather', 'Action Plan', 'Workflow', 'Location', 'HSE', 'Communication', 'Orders', 'Utility'];
 const seenKey = (job, bar) => 'fu-seen:' + job + ':' + bar;
@@ -38,6 +38,7 @@ export default function FollowUp({ job }) {
     return () => { clearTimeout(id); window.removeEventListener('resize', f); };
   }, []);
   const [full, setFull] = useState(null);
+  const wide = useWide();
   const [pan, setPan] = useState(null); // Comments / Files / Gallery of an issue or of its action plan
   const load = () => {
     fetch('/api/followup?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j.items) { setItems(j.items); setWho({ me: j.me, can: !!j.can }); } }).catch(() => {});
@@ -122,14 +123,15 @@ export default function FollowUp({ job }) {
                           </div>
                           <div style={{ fontSize: 12.5, color: '#2c7a47', fontWeight: 700, marginTop: 2 }}>{a.jobNo}</div>
                         </div>
-                        <div style={{ background: '#fff7ef', ...(full === a.element_id ? { flex: 1, minHeight: 0, overflowY: 'auto' } : {}) }}>
+                        <div style={bodyBox(full === a.element_id, wide)}>
+                        <div style={halfStyle(full === a.element_id, wide, 'issue', true)}>
                         <div style={{ padding: '0 12px 8px', fontSize: 13, lineHeight: 1.5, color: '#6b675c', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}><b style={{ fontWeight: 600, color: '#8a8576', fontSize: 11, letterSpacing: 0.3 }}>ISSUE </b>{a.description || 'No description.'}</div>
                         <div style={{ padding: '6px 12px', borderTop: '1px solid #f0d9bd', background: 'transparent', fontSize: 12.5 }}>
                           <div style={{ display: 'flex', gap: 14, ...(full === a.element_id ? { justifyContent: 'space-around', fontSize: 14, padding: '10px 0' } : {}) }}><span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.3, color: '#8a8576' }}>ISSUE</span>{[['comments', 'Comments', a.i_comments], ['files', 'Files', a.i_files], ['photos', 'Gallery', a.i_photos]].map(([k, l, n]) => cnt(a.element_id, 'issue', k, l, n, '#e8710a'))}</div>
                           {a.i_last && <div style={{ marginTop: 3, color: unread(a.element_id, 'issue', 'comments', a.i_comments) ? '#c0392b' : '#6b675c', fontSize: 12.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{a.i_last}</div>}
                         </div>
                         </div>
-                        <div style={{ borderTop: '2px solid #8fcfa2', background: '#eef8f0', paddingTop: 8, ...(full === a.element_id ? { flex: 1, minHeight: 0, overflowY: 'auto' } : {}) }}>
+                        <div style={{ ...(full === a.element_id ? {} : { borderTop: '2px solid #8fcfa2', background: '#eef8f0' }), paddingTop: 8, ...halfStyle(full === a.element_id, wide, 'ap') }}>
                         {(a.start_date || a.end_date) && <div style={{ padding: '0 12px 6px', fontSize: 12.5, color: '#2c7a47', fontWeight: 600 }}>{'\u{1F4C5}'} {a.start_date ? new Date(a.start_date + 'T12:00:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) : '?'} {'\u2192'} {a.end_date ? new Date(a.end_date + 'T12:00:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) : '?'}</div>}
                         <div style={{ padding: '0 12px 8px', fontSize: 14, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}><b style={{ fontWeight: 600, color: '#a85a08', fontSize: 11, letterSpacing: 0.3 }}>HOW TO SOLVE IT </b>{a.body || <span style={{ color: '#9a9686' }}>Not written yet.</span>}</div>
                         <div style={{ padding: '0 12px' }}><WeatherStrip job={job} /></div>
@@ -140,6 +142,7 @@ export default function FollowUp({ job }) {
                             <button type="button" onClick={() => setPan({ element: a.element_id, scope: 'ap', sheet: '', cam: true })} style={{ border: '1px solid #cfe9d6', background: '#fff', borderRadius: 14, padding: '4px 11px', font: 'inherit', fontSize: 12.5, cursor: 'pointer' }}>{'\u{1F4F7}'} Add photos and videos</button>
                             <button type="button" onClick={() => setPan({ element: a.element_id, scope: 'ap', sheet: 'files' })} style={{ border: '1px solid #cfe9d6', background: '#fff', borderRadius: 14, padding: '4px 11px', font: 'inherit', fontSize: 12.5, cursor: 'pointer' }}>{'\u{1F4CE}'} Add file</button>
                           </div>}
+                        </div>
                         </div>
                         </div>
                       </div>
