@@ -5,7 +5,7 @@ import WeatherTab from './WeatherTab';
 import HseBar from './HseBar';
 import { StatusChip, PriorityTag, AssigneeChip } from './IssueList';
 
-const BARS = ['Action Plan', 'Workflow', 'Location', 'Weather', 'HSE', 'Communication', 'Orders', 'Utility'];
+const BARS = ['Weather', 'Action Plan', 'Workflow', 'Location', 'HSE', 'Communication', 'Orders', 'Utility'];
 const seenKey = (job, bar) => 'fu-seen:' + job + ':' + bar;
 const getSeen = (job, bar) => { try { return Number(localStorage.getItem(seenKey(job, bar))) || 0; } catch (e) { return 0; } };
 const setSeen = (job, bar, t) => { try { localStorage.setItem(seenKey(job, bar), String(t)); } catch (e) {} };
@@ -91,6 +91,7 @@ export default function FollowUp({ job }) {
     <div className="ms-follow">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 560, margin: '0 auto', padding: '8px 16px 24px' }}>
         {BARS.map((bar) => {
+          if (bar === 'Weather') return <WeatherTab key={bar} job={job} asBar />;
           const o = !!open[bar], n = fresh(bar), list = of(bar);
           return (
             <div key={bar} style={{ border: '1px solid #e7e3d8', borderRadius: 14, background: '#fff' }}>
