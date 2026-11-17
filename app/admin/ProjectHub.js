@@ -69,6 +69,7 @@ export default function ProjectHub() {
   const [newName, setNewName] = useState('');
   const [cityQ, setCityQ] = useState('');
   const [hits, setHits] = useState([]);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const fn = () => setWide(window.innerWidth >= 760);
@@ -85,6 +86,23 @@ export default function ProjectHub() {
     setJobs([...base, ...extra].sort((a, b) => a.job.localeCompare(b.job, undefined, { numeric: true }))); setMeta(jb.meta || {}); setSites(jb.sites || {});
   }, []);
   useEffect(() => { load(); }, [load]);
+  // Refresh keeps you where you are: the open project and its tab live in the address (?p=...&pt=...).
+  useEffect(() => {
+    if (jobs === null || ready) return;
+    try {
+      const u = new URLSearchParams(location.search), j = u.get('p'), t = u.get('pt');
+      if (j && jobs.some((x) => x.job === j)) { setSel(j); setDp({ ...EMPTY, ...(meta[j] || {}) }); setScreen('detail'); if (TABS.includes(t)) setTab(t); }
+    } catch (e) {}
+    setReady(true);
+  }, [jobs, ready, meta]);
+  useEffect(() => {
+    if (!ready) return;
+    try {
+      const u = new URL(location.href);
+      if (sel) { u.searchParams.set('p', sel); u.searchParams.set('pt', tab); } else { u.searchParams.delete('p'); u.searchParams.delete('pt'); }
+      history.replaceState(null, '', u.pathname + u.search);
+    } catch (e) {}
+  }, [sel, tab, ready]);
   useEffect(() => {
     const t = cityQ.trim();
     if (t.length < 2) { setHits([]); return; }
