@@ -4,6 +4,7 @@ import IssuePanel from './IssuePanel';
 import WeatherTab from './WeatherTab';
 import WeatherCapsules from './WeatherCapsules';
 import ModelSlot from './ModelSlot';
+import { linkNums, useModelIds, goPart } from './ElemLinks';
 import HseBar from './HseBar';
 import { StatusChip, PriorityTag, AssigneeChip, FullBtn, fullBox, useWide } from './IssueList';
 
@@ -27,6 +28,7 @@ const fsBody = (on, wide) => (on ? (wide ? { flex: 1, minHeight: 0, display: 'gr
 const fsTop = (on, wide) => (on ? (wide ? { display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0, borderRight: '1.5px solid #cdb893' } : { display: 'flex', flexDirection: 'column', flex: '0.85 1 0', minHeight: 0, minWidth: 0, overflowY: 'auto' }) : { display: 'contents' });
 const fsHalf = (on, wide, kind) => (on ? wide ? { flex: '1 1 0', minHeight: 0, minWidth: 0, overflowY: 'auto', overflowX: 'hidden' } : { flex: '0 0 auto', minWidth: 0, overflowX: 'hidden' } : {});
 export default function FollowUp({ job }) {
+  useModelIds();
   const [items, setItems] = useState([]);
   const [who, setWho] = useState({ me: '', can: false });
   const [open, setOpen] = useState({});
@@ -136,7 +138,8 @@ export default function FollowUp({ job }) {
                         <div style={fsTop(full === a.element_id, wide)}>
                         <div style={{ ...fsHalf(full === a.element_id, wide, 'issue'), background: '#fbeedb', borderTop: '3px solid #e8710a', paddingTop: 6, display: 'flex', flexDirection: 'column' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, color: '#a85a08' }}><span style={{ width: 8, height: 8, borderRadius: 2, background: '#e8710a' }} />ISSUE</div>
-                        <div style={{ padding: '4px 12px 6px', flex: full === a.element_id ? 1 : 'none', minHeight: 0, display: 'flex' }}><div style={{ flex: 1, minHeight: full === a.element_id ? (wide ? 0 : 64) : 46, maxHeight: full === a.element_id ? 'none' : 120, overflowY: 'auto', borderRadius: 8, padding: '6px 9px', background: 'rgba(255,255,255,.65)', border: '1px solid #f0d3a8', fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: a.description ? '#141413' : '#9a9686', fontStyle: a.description ? 'normal' : 'italic' }}>{a.description || 'No issue description yet'}</div></div>
+                        <div style={{ padding: '4px 12px 6px', flex: full === a.element_id ? 1 : 'none', minHeight: 0, display: 'flex' }}><div style={{ flex: 1, minHeight: full === a.element_id ? (wide ? 0 : 64) : 46, maxHeight: full === a.element_id ? 'none' : 120, overflowY: 'auto', borderRadius: 8, padding: '6px 9px', background: 'rgba(255,255,255,.65)', border: '1px solid #f0d3a8', fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: a.description ? '#141413' : '#9a9686', fontStyle: a.description ? 'normal' : 'italic' }} onClickCapture={(e) => { const bt = e.target.closest && e.target.closest('button[title^="Show element"]'); if (bt && full !== a.element_id) { e.stopPropagation(); e.preventDefault(); const n = (bt.title.match(/\d+/) || [''])[0]; setFull(a.element_id); setTimeout(() => goPart(n), 1200); } }}>{a.description ? linkNums(a.description, 'd' + a.element_id) : 'No issue description yet'}</div></div>
+                        {/^\d+$/.test(String(a.element_id)) && <div onClickCapture={(e) => { const bt = e.target.closest && e.target.closest('button[title^="Show element"]'); if (bt && full !== a.element_id) { e.stopPropagation(); e.preventDefault(); const n = (bt.title.match(/\d+/) || [''])[0]; setFull(a.element_id); setTimeout(() => goPart(n), 1200); } }} style={{ padding: '0 12px 4px', fontSize: 12.5, color: '#6b675c' }}>Element {linkNums(String(a.element_id), 'e' + a.element_id, true)}</div>}
                         <div style={{ padding: '2px 12px 8px', background: 'transparent', fontSize: 12.5, flex: 'none' }}>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', ...(full === a.element_id ? { justifyContent: 'space-around', fontSize: 14, padding: '10px 0' } : {}) }}><span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.3, color: '#8a8576' }}>ISSUE</span>{[['comments', 'Comments', a.i_comments], ['files', 'Files', a.i_files], ['photos', 'Gallery', a.i_photos]].map(([k, l, n]) => cnt(a.element_id, 'issue', k, l, n, '#e8710a'))}</div>
                           {a.i_last && <div style={{ marginTop: 3, color: unread(a.element_id, 'issue', 'comments', a.i_comments) ? '#c0392b' : '#6b675c', fontSize: 12.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{a.i_last}</div>}
