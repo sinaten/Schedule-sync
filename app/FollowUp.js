@@ -121,7 +121,8 @@ export default function FollowUp({ job }) {
                             {(isNew(a) || unread(a.element_id, 'issue', 'comments', a.i_comments) || unread(a.element_id, 'issue', 'files', a.i_files) || unread(a.element_id, 'issue', 'photos', a.i_photos) || unread(a.element_id, 'ap', 'files', a.files) || unread(a.element_id, 'ap', 'photos', a.photos)) && <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#c0392b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-label="Changed" style={{ flex: 'none', order: 99 }}><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" /><path d="M9 17v1a3 3 0 0 0 6 0v-1" /></svg>}
                             <FullBtn on={full === a.element_id} toggle={() => setFull(full === a.element_id ? null : a.element_id)} />
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginTop: 2 }}><span style={{ fontSize: 12.5, color: '#2c7a47', fontWeight: 700, paddingBottom: 6 }}>{a.jobNo}</span><span style={{ flex: 1 }} /><WeatherCapsules job={job} /></div>
+                          <div style={{ marginTop: 6 }}><WeatherCapsules job={job} /></div>
+                          <div style={{ fontSize: 12.5, color: '#2c7a47', fontWeight: 700, marginTop: 6 }}>{a.jobNo}</div>
                         </div>
                         <div style={bodyBox(full === a.element_id, wide)}>
                         <div style={halfStyle(full === a.element_id, wide, 'issue', true)}>

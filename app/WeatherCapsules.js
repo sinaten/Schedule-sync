@@ -35,25 +35,24 @@ export default function WeatherCapsules({ job }) {
   if (!w || !w.days || !w.days.length) return null;
   const hours = w.hours || [];
   const hh = (h) => Number(h.t.slice(11, 13));
-  const nowH = new Date().getHours();
-  const nextDay = (d) => { const t = new Date(d + 'T12:00:00'); t.setDate(t.getDate() + 1); return t.toISOString().slice(0, 10); };
-  const d0 = w.days[0];
-  const all = [...hours.filter((h) => h.t.slice(0, 10) === d0.date && hh(h) % 2 === 0), ...hours.filter((h) => h.t.slice(0, 10) === nextDay(d0.date))].filter((h) => hh(h) % 2 === 0);
-  let cells = all.filter((h) => h.t.slice(0, 10) !== d0.date || hh(h) >= nowH - 1).slice(0, 8);
-  if (cells.length < 2) cells = hours.filter((h) => hh(h) % 2 === 0).slice(0, 8);
+    const d0 = w.days[0];
+  const local = (() => { const d = new Date(); const z = (x) => String(x).padStart(2, '0'); return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + 'T' + z(d.getHours()); })();
+  // from the hour we are in, hour by hour, never the past
+  let cells = hours.filter((h) => h.t.slice(0, 13) >= local).slice(0, 30);
+  if (!cells.length) cells = hours.slice(0, 24);
   if (!cells.length) return null;
   const alert = (w.alerts || []).length > 0;
   return (
     <div className="wxcap" title={alert ? 'Official weather warning' : (d0.why || []).join(', ')}>
       <style>{`
-        .wxcap{--ic:26px;--t1:9px;--t2:10.5px;--pad:3px 6px 4px;display:flex;gap:4px;align-items:stretch;border:1px solid #bfe0c8;background:rgba(46,158,91,.07);border-radius:15px;padding:4px;flex:none;max-width:100%;overflow:hidden}
-        .wxcap .cap{display:flex;flex-direction:column;align-items:center;border-radius:11px;padding:var(--pad);background:#fff;border-bottom:2.5px solid #2e9e5b;line-height:1.15}
+        .wxcap{--ic:26px;--t1:9px;--t2:10.5px;--pad:3px 6px 4px;display:flex;gap:4px;align-items:stretch;border:1px solid #bfe0c8;background:rgba(46,158,91,.07);border-radius:15px;padding:4px;width:100%;box-sizing:border-box;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-left:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+        .wxcap::-webkit-scrollbar{display:none}
+        .wxcap .cap{flex:none;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;border-radius:11px;padding:var(--pad);background:#fff;border-bottom:2.5px solid #2e9e5b;line-height:1.15}
         .wxcap .cap i{display:block;width:var(--ic);height:var(--ic);font-style:normal}
         .wxcap .cap span:first-child{font-size:var(--t1);color:#8a8576}
         .wxcap .cap b{font-size:var(--t2);font-weight:600;color:#141413}
-        .wxcap .cap:nth-child(n+5){display:none}
-        @media (min-width:700px){.wxcap{--ic:34px;--t1:10.5px;--t2:12.5px;--pad:4px 8px 5px;gap:5px;border-radius:17px}.wxcap .cap:nth-child(n+5){display:flex}.wxcap .cap:nth-child(n+7){display:none}}
-        @media (min-width:1100px){.wxcap{--ic:38px;--t1:11px;--t2:13px}.wxcap .cap:nth-child(n+7){display:flex}}
+        @media (min-width:700px){.wxcap{--ic:34px;--t1:10.5px;--t2:12.5px;--pad:4px 8px 5px;gap:5px;border-radius:17px}}
+        @media (min-width:1100px){.wxcap{--ic:38px;--t1:11px;--t2:13px}}
       `}</style>
       {cells.map((h) => {
         const n = hh(h);
