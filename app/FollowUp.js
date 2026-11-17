@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import IssuePanel from './IssuePanel';
 import WeatherTab from './WeatherTab';
+import WeatherStrip from './WeatherStrip';
 import HseBar from './HseBar';
 import { StatusChip, PriorityTag, AssigneeChip } from './IssueList';
 
@@ -121,7 +122,7 @@ export default function FollowUp({ job }) {
                         </div>
                         <div style={{ padding: '0 12px 8px', fontSize: 13, lineHeight: 1.5, color: '#6b675c', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}><b style={{ fontWeight: 600, color: '#8a8576', fontSize: 11, letterSpacing: 0.3 }}>ISSUE </b>{a.description || 'No description.'}</div>
                         <div style={{ padding: '0 12px 8px', fontSize: 14, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}><b style={{ fontWeight: 600, color: '#a85a08', fontSize: 11, letterSpacing: 0.3 }}>HOW TO SOLVE IT </b>{a.body || <span style={{ color: '#9a9686' }}>Not written yet.</span>}</div>
-                        <div style={{ padding: '0 12px' }}><WeatherTab job={job} /></div>
+                        <div style={{ padding: '0 12px' }}><WeatherStrip job={job} /></div>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '0 12px 8px' }}>{as.length ? as.map((x, i) => <AssigneeChip key={i} a={x} />) : <span style={{ fontSize: 12.5, color: '#9a9686' }}>Nobody assigned yet</span>}</div>
                         <div style={{ padding: '6px 12px', borderTop: '1px solid #cfe9d6', background: '#f6fbf7', fontSize: 12.5 }}>
                           <div style={{ display: 'flex', gap: 14 }}><span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.3, color: '#8a8576' }}>ISSUE</span>{[['comments', 'Comments', a.i_comments], ['files', 'Files', a.i_files], ['photos', 'Gallery', a.i_photos]].map(([k, l, n]) => cnt(a.element_id, 'issue', k, l, n, '#e8710a'))}</div>
