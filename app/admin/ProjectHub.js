@@ -12,6 +12,16 @@ const ROLES = ['HSE officer', 'Project manager', 'Site manager', 'Security', 'Em
 const PLACES = ['Parking', 'Restroom', 'First aid', 'Muster point', 'Entrance', 'Canteen', 'Fire extinguisher', 'Storage'];
 const FIELDS = { contacts: [['role', 'Role', '1 1 130px'], ['name', 'Name', '1 1 130px'], ['phone', 'Phone', '1 1 130px']], places: [['type', 'Place', '1 1 140px'], ['where', 'Where it is', '2 1 200px']] };
 const TABS = ['Location', 'Contacts', 'Places', 'Workflow', 'Sections & QR'];
+const SKIP = new Set(['EU', 'UN', 'EZ', 'XA', 'XB', 'QO', 'AC', 'CP', 'DG', 'EA', 'IC', 'TA', 'XK']);
+const COUNTRIES = (() => {
+  try {
+    const dn = new Intl.DisplayNames(['en'], { type: 'region' }), out = [];
+    for (let a = 65; a <= 90; a++) for (let b = 65; b <= 90; b++) { const c = String.fromCharCode(a, b), n = dn.of(c); if (n && n !== c && !/unknown/i.test(n) && !SKIP.has(c)) out.push({ c, n: c === 'US' ? 'USA' : n }); }
+    return out.sort((x, y) => x.n.localeCompare(y.n));
+  } catch (e) { return []; }
+})();
+const codeOf = (name) => { const t = String(name || '').trim().toLowerCase(); const r = COUNTRIES.find((x) => x.n.toLowerCase() === t); return r ? r.c : ''; };
+const nameOf = (code) => { const r = COUNTRIES.find((x) => x.c === String(code || '').toUpperCase()); return r ? r.n : ''; };
 const fmt = (m) => (m.lat != null && m.lng != null ? Number(m.lat).toFixed(6) + ', ' + Number(m.lng).toFixed(6) : '');
 
 const CSS = `
@@ -53,6 +63,11 @@ export default function ProjectHub() {
   const [dirtyS, setDirtyS] = useState({});
   const [ct, setCt] = useState(null);
   const [map, setMap] = useState(false);
+  const [un, setUn] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [cityQ, setCityQ] = useState('');
+  const [hits, setHits] = useState([]);
 
   useEffect(() => {
     const fn = () => setWide(window.innerWidth >= 760);
@@ -64,9 +79,25 @@ export default function ProjectHub() {
     const [a, b] = await Promise.all([fetch('/api/admin/jobs', { cache: 'no-store' }), fetch('/api/admin/projmeta', { cache: 'no-store' })]);
     if (!a.ok || !b.ok) { setMsg('Could not load projects (' + (a.ok ? b.status : a.status) + ')'); setJobs([]); return; }
     const ja = await a.json(), jb = await b.json();
-    setJobs(ja.jobs || []); setMeta(jb.meta || {}); setSites(jb.sites || {});
+    const base = ja.jobs || [], have = new Set(base.map((x) => x.job));
+    const extra = Object.keys(jb.meta || {}).filter((k) => !have.has(k)).map((k) => ({ job: k, state: 'active', title: '' }));
+    setJobs([...base, ...extra].sort((a, b) => a.job.localeCompare(b.job, undefined, { numeric: true }))); setMeta(jb.meta || {}); setSites(jb.sites || {});
   }, []);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const t = cityQ.trim();
+    if (t.length < 2) { setHits([]); return; }
+    let dead = false;
+    const id = setTimeout(async () => {
+      try {
+        const cc = codeOf(dp.country);
+        const r = await fetch('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(t) + '&count=8&language=en&format=json' + (cc ? '&countryCode=' + cc : ''));
+        const j = await r.json();
+        if (!dead) setHits((j.results || []).map((x) => ({ v: x.name + (x.admin1 ? ', ' + x.admin1 : ''), country: nameOf(x.country_code) || x.country || '' })));
+      } catch (e) { if (!dead) setHits([]); }
+    }, 300);
+    return () => { dead = true; clearTimeout(id); };
+  }, [cityQ, dp.country]);
 
   const dirty = dirtyP || Object.keys(dirtyS).length > 0;
   const key = siteKey(dp);
@@ -80,6 +111,24 @@ export default function ProjectHub() {
     setSel(job); setDp({ ...EMPTY, ...(meta[job] || {}) }); setSd({}); setDirtyP(false); setDirtyS({}); setCt(null); setTab('Location'); setScope('project'); setMsg(''); setScreen('detail');
   };
   const back = () => { if (dirty && !confirm('Discard the unsaved changes of this project?')) return; setScreen('list'); setSel(''); setDirtyP(false); setDirtyS({}); };
+
+  async function create() {
+    const name = newName.trim();
+    if (!name) return;
+    if (name.includes('>') || name.length > 80) { setMsg('Use a shorter name without the > sign'); return; }
+    if ((jobs || []).some((x) => x.job.toLowerCase() === name.toLowerCase())) { setMsg('A project with this name already exists'); return; }
+    setMsg('Creating…');
+    const r = await fetch('/api/admin/projmeta', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job: name, meta: { ...EMPTY, country: f[0] && f[0] !== '~' ? f[0] : '', city: f[1] || '', site: f[2] || '' } }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { setMsg(j.error || 'Failed (' + r.status + ')'); return; }
+    setNewName(''); setAdding(false);
+    const [a, b] = await Promise.all([fetch('/api/admin/jobs', { cache: 'no-store' }), fetch('/api/admin/projmeta', { cache: 'no-store' })]);
+    const ja = await a.json(), jb = await b.json();
+    const base = ja.jobs || [], have = new Set(base.map((x) => x.job));
+    const extra = Object.keys(jb.meta || {}).filter((k) => !have.has(k)).map((k) => ({ job: k, state: 'active', title: '' }));
+    setJobs([...base, ...extra].sort((x, y) => x.job.localeCompare(y.job, undefined, { numeric: true }))); setMeta(jb.meta || {}); setSites(jb.sites || {});
+    setSel(name); setDp({ ...EMPTY, ...(jb.meta[name] || {}) }); setSd({}); setDirtyP(false); setDirtyS({}); setCt(null); setTab('Location'); setScope('project'); setScreen('detail'); setMsg('Project created. Now set where it is.');
+  }
 
   async function save() {
     setMsg('Saving…');
@@ -109,30 +158,36 @@ export default function ProjectHub() {
 
   // Filters
   const all = (jobs || []).map((x) => ({ ...x, m: meta[x.job] || EMPTY }));
-  const opts = (l) => { const s = new Set(); all.forEach((x) => { const a = [x.m.country, x.m.city, x.m.site]; for (let i = 0; i < l; i++) if (f[i] && f[i] !== '~' && a[i] !== f[i]) return; if (a[l]) s.add(a[l]); }); return [...s].sort((a, b) => a.localeCompare(b)); };
+  const opts = (l) => { const s = new Set(); all.forEach((x) => { const a = [x.m.country, x.m.city, x.m.site]; for (let i = 0; i < l; i++) if (f[i] && !a[i].toLowerCase().includes(f[i].trim().toLowerCase())) return; if (a[l]) s.add(a[l]); }); return [...s].sort((a, b) => a.localeCompare(b)); };
   const shown = all.filter((x) => {
     const a = [x.m.country, x.m.city, x.m.site];
-    if (f[0] === '~') { if (siteKey(x.m)) return false; } else for (let i = 0; i < 3; i++) if (f[i] && a[i] !== f[i]) return false;
+    if (un) { if (siteKey(x.m)) return false; } else for (let i = 0; i < 3; i++) if (f[i].trim() && !a[i].toLowerCase().includes(f[i].trim().toLowerCase())) return false;
     const t = q.trim().toLowerCase();
     return !t || (x.job + ' ' + (x.title || '') + ' ' + a.join(' ')).toLowerCase().includes(t);
   });
-  const setLv = (l, v) => { const n = f.slice(); n[l] = v; for (let i = l + 1; i < 3; i++) n[i] = ''; setF(n); };
+  const setLv = (l, v) => { const n = f.slice(); n[l] = v; setF(n); };
   const dl = (id, arr) => <datalist id={id}>{arr.map((x) => <option key={x} value={x} />)}</datalist>;
   const near = (l) => { const s = new Set(); all.forEach((x) => { const a = [x.m.country, x.m.city, x.m.site]; for (let i = 0; i < l; i++) if (a[i] !== [dp.country, dp.city][i]) return; if (a[l]) s.add(a[l]); }); return [...s]; };
 
+  const assigned = all.some((x) => siteKey(x.m));
   const filters = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <select className="ph-in" aria-label="Country" value={f[0]} onChange={(e) => setLv(0, e.target.value)}>
-        <option value="">Country: all</option>
-        {opts(0).map((o) => <option key={o}>{o}</option>)}
-        <option value="~">Not assigned yet</option>
-      </select>
-      {['City', 'Site'].map((nm, i) => (
-        <select key={nm} className="ph-in" aria-label={nm} value={f[i + 1]} disabled={!f[i] || f[0] === '~'} onChange={(e) => setLv(i + 1, e.target.value)}>
-          <option value="">{nm}: all</option>
-          {f[i] && f[0] !== '~' && opts(i + 1).map((o) => <option key={o}>{o}</option>)}
-        </select>
+      {adding ? (
+        <div style={{ display: 'flex', gap: 6 }}>
+          <input className="ph-in" autoFocus placeholder="Project name, e.g. ATL2" aria-label="New project name" value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') create(); }} />
+          <button type="button" className="ph-btn pri" onClick={create} disabled={!newName.trim()}>Create</button>
+          <button type="button" className="ph-btn" aria-label="Cancel" onClick={() => { setAdding(false); setNewName(''); }}>&times;</button>
+        </div>
+      ) : <button type="button" className="ph-btn pri" onClick={() => setAdding(true)}>New project</button>}
+      {(adding || !sel) && msg && <div style={{ fontSize: 14 }}><b>{msg}</b></div>}
+      {['Country', 'City', 'Site'].map((nm, i) => (
+        <div key={nm}>
+          <input className="ph-in" list={'ph-f' + i} placeholder={nm + ': all (click or type)'} aria-label={nm} value={f[i]} disabled={un} onChange={(e) => setLv(i, e.target.value)} />
+          {dl('ph-f' + i, opts(i))}
+        </div>
       ))}
+      <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 14 }}><input type="checkbox" checked={un} onChange={(e) => setUn(e.target.checked)} /> Not assigned yet only</label>
+      {!assigned && <div className="muted" style={{ fontSize: 13 }}>No project has a country, city and site yet. Open a project and fill in Location, then they show up here.</div>}
       <input className="ph-in" type="search" placeholder="Search projects" aria-label="Search projects" value={q} onChange={(e) => setQ(e.target.value)} />
     </div>
   );
@@ -192,12 +247,18 @@ export default function ProjectHub() {
         <>
           <p className="muted" style={{ margin: 0, fontSize: 14 }}>{key ? 'This project is in ' + key.split('>').join(' › ') + '.' : 'Not in the tree yet. Fill in the country, city and site below.'}</p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {[['country', 'Country', 0], ['city', 'City', 1], ['site', 'Site', 2]].map(([k, nm, l]) => (
-              <label key={k} style={{ flex: '1 1 140px' }}><span className="ph-lab">{nm}</span>
-                <input className="ph-in" list={'ph-l-' + k} value={dp[k]} placeholder={nm === 'Site' ? 'Building or plant' : nm} onChange={(e) => upP({ [k]: e.target.value })} />
-                {dl('ph-l-' + k, near(l))}
-              </label>
-            ))}
+            <label style={{ flex: '1 1 150px' }}><span className="ph-lab">Country</span>
+              <input className="ph-in" list="ph-l-country" value={dp.country} placeholder="Type to search countries" onChange={(e) => upP({ country: e.target.value })} />
+              {dl('ph-l-country', [...new Set([...near(0), ...COUNTRIES.map((x) => x.n)])])}
+            </label>
+            <label style={{ flex: '1 1 150px' }}><span className="ph-lab">City</span>
+              <input className="ph-in" list="ph-l-city" value={dp.city} placeholder="Type to search cities" onChange={(e) => { const v = e.target.value, h = hits.find((x) => x.v === v); upP({ city: v, ...(h && !dp.country && h.country ? { country: h.country } : {}) }); setCityQ(h ? '' : v); }} />
+              {dl('ph-l-city', [...new Set([...near(1), ...hits.map((x) => x.v)])])}
+            </label>
+            <label style={{ flex: '1 1 150px' }}><span className="ph-lab">Site</span>
+              <input className="ph-in" list="ph-l-site" value={dp.site} placeholder="Building or plant name" onChange={(e) => upP({ site: e.target.value })} />
+              {dl('ph-l-site', near(2))}
+            </label>
           </div>
           <label><span className="ph-lab">Address</span><input className="ph-in" value={dp.address} placeholder="Street, city" onChange={(e) => upP({ address: e.target.value })} /></label>
           <label><span className="ph-lab">Coordinates (latitude, longitude)</span>
