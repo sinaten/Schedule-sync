@@ -246,7 +246,8 @@ async function attachPopup(vw, job, setPopup) {
     if (vw.__ssSel) vw.removeEventListener(A.SELECTION_CHANGED_EVENT, vw.__ssSel);
     vw.addEventListener(A.SELECTION_CHANGED_EVENT, vw.__ssSel = async (e) => {
       const sel = e.dbIdArray || [];
-      if (!sel.length) return; // clicking empty space keeps the current popup
+      window.dispatchEvent(new CustomEvent('ss-empty-pick', { detail: !sel.length })); // clicking empty space hides the Copy button (the sheet stays)
+      if (!sel.length) return;
       const cands = [];
       let d = sel[0];
       for (let i = 0; i < 8 && d; i++) {
@@ -442,6 +443,8 @@ export default function Viewer3D({ job = '', kiosk = null }) {
   // Copy popup: next to the part that was clicked, one press copies its number to the clipboard (to paste in a comment or anywhere)
   const [cp, setCp] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [cpHide, setCpHide] = useState(false);
+  useEffect(() => { const f = (e) => setCpHide(!!e.detail); window.addEventListener('ss-empty-pick', f); return () => window.removeEventListener('ss-empty-pick', f); }, []);
   const [kPick, setKPick] = useState(null);
   useEffect(() => {
     if (!kiosk) return;
@@ -629,7 +632,7 @@ export default function Viewer3D({ job = '', kiosk = null }) {
   const wrap = { margin: '0 0 24px', border: '1px solid #cfd8dc', borderRadius: 8, background: '#fff', overflow: 'hidden' };
   const bar = { display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#16262e', color: '#fff', fontSize: 14 };
   if (typeof window !== 'undefined') { window.__ssKiosk = !!kiosk; window.__ssNormal = !!kiosk && kmode === 'normal'; }
-  const copyBtn = cp && popId ? (
+  const copyBtn = cp && popId && !cpHide ? (
           <button type="button" onClick={copyId} aria-label={'Copy element number ' + popId} style={{ position: 'absolute', left: cp.x, top: cp.y, zIndex: 11, pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 11px', border: 0, borderRadius: 15, background: copied ? '#2e9e5b' : 'rgba(20,20,19,.86)', color: '#fff', font: 'inherit', fontSize: 13, fontWeight: 600, boxShadow: '0 2px 8px rgba(0,0,0,.3)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
             {copied ? '\u2713 Copied' : <><span style={{ fontSize: 14 }}>{'\u29C9'}</span>Copy {popId}</>}
           </button>
