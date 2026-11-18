@@ -19,6 +19,14 @@ export default async function Scenario({ params }) {
   return (
     <main>
       <h1 style={{ marginBottom: 12 }}>{s.name}</h1>
+      {s.start && s.start.lat != null && (
+        <div style={box}>
+          <h2 style={{ margin: '0 0 8px', fontSize: 19 }}>Start here</h2>
+          {s.start.name && <p style={{ margin: '0 0 8px' }}>{s.start.name}</p>}
+          <a style={{ display: 'inline-block', padding: '10px 16px', border: '1px solid var(--ink)', background: 'var(--ink)', color: '#fff', borderRadius: 8, textDecoration: 'none', fontSize: 16 }} href={'https://www.google.com/maps/dir/?api=1&destination=' + s.start.lat + ',' + s.start.lng} target="_blank" rel="noreferrer">Take me to the start (Google Maps)</a>
+          <p className="muted" style={{ margin: '8px 0 0', fontSize: 14 }}>{s.start.lat.toFixed(6)}, {s.start.lng.toFixed(6)}. When you arrive, follow the arrows below.</p>
+        </div>
+      )}
       <div style={box}>
         <ScenarioMap base={image ? 'image' : 'aerial'} image={image} pins={s.pins || []} marks={s.marks || []} view={s.view} height={440} />
       </div>

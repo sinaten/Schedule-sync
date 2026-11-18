@@ -3,10 +3,11 @@ import { useEffect, useRef, useState } from 'react';
 import ScenarioMap from '../ScenarioMap';
 import { PIN_TYPES } from '../GuideMap';
 import AiText from './AiText';
+import MapPicker from './MapPicker';
 
 // Admin > Projects > a site > Scenarios. Each scenario is a picture (aerial or uploaded) with pins, arrows, routes and labels, a description and its own link.
 const uid = () => Math.random().toString(36).slice(2, 10);
-const EMPTY = { name: '', base: 'aerial', image: null, pins: [], marks: [], view: null, desc: '' };
+const EMPTY = { name: '', base: 'aerial', image: null, pins: [], marks: [], view: null, start: null, desc: '' };
 const TOOLS = [['move', 'Move / edit'], ['pin', 'Pin'], ['arrow', 'Arrow'], ['route', 'Route'], ['text', 'Text']];
 
 function shrink(file, max = 2200) { // phone pictures are big: scale down so the upload fits
@@ -33,6 +34,7 @@ export default function Scenarios({ site, siteName, center, sitePins }) {
   const [textVal, setTextVal] = useState('');
   const [pending, setPending] = useState(0);
   const [msg, setMsg] = useState('');
+  const [pick, setPick] = useState(false);
   const api = useRef(null);
 
   const load = () => fetch('/api/admin/scenarios?site=' + encodeURIComponent(site), { cache: 'no-store' }).then((r) => r.json()).then((d) => setList(d.scenarios || [])).catch(() => setList([]));
@@ -144,6 +146,17 @@ export default function Scenarios({ site, siteName, center, sitePins }) {
             {sitePins.filter((p) => p.lat != null).map((p, i) => <button key={i} type="button" style={btn(false)} onClick={() => upf((x) => ({ pins: [...x.pins, { type: p.type, where: p.where || '', lat: p.lat, lng: p.lng }] }))}>+ {p.type}{p.where ? ': ' + p.where : ''}</button>)}
           </div>
         )}
+        <div style={{ border: '1px solid var(--line)', borderRadius: 8, padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <b style={{ fontSize: 15 }}>Start point (GPS)</b>
+          <div className="muted" style={{ fontSize: 13 }}>Where the way begins in the real world. The person who opens the link taps it and Google Maps takes them there; from there they follow your arrows.</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button type="button" className="ph-btn" onClick={() => setPick(true)}>{ed.start ? 'Move the start point' : 'Set the start point on the map'}</button>
+            {ed.start && <button type="button" className="ph-btn" onClick={() => up({ start: null })}>Remove</button>}
+            {ed.start && <span className="muted" style={{ fontSize: 14 }}>{ed.start.lat.toFixed(6)}, {ed.start.lng.toFixed(6)}</span>}
+          </div>
+          {ed.start && <input className="ph-in" aria-label="Start point name" placeholder="Name of the start, e.g. Main gate on 5th Street" value={ed.start.name || ''} onChange={(e) => up({ start: { ...ed.start, name: e.target.value } })} />}
+        </div>
+        {pick && <MapPicker title={'Start point of ' + (ed.name || 'the scenario')} lat={ed.start ? ed.start.lat : center ? center.lat : null} lng={ed.start ? ed.start.lng : center ? center.lng : null} onSave={(p) => { up({ start: { lat: p.lat, lng: p.lng, name: (ed.start && ed.start.name) || '' } }); setPick(false); return true; }} onClose={() => setPick(false)} />}
         <label><span className="ph-lab">Description (the steps, shown under the map)</span>
           <AiText rows={4} placeholder="First go to the office, then turn left at the gate, then park at the east lot. Use (AI. like this) for notes only the AI reads." value={ed.desc} onChange={(t) => up({ desc: t })} />
         </label>
