@@ -8,7 +8,8 @@ import MapPicker from './MapPicker';
 // Admin > Projects > a site > Scenarios. Each scenario is a picture (aerial or uploaded) with pins, arrows, routes and labels, a description and its own link.
 const uid = () => Math.random().toString(36).slice(2, 10);
 const EMPTY = { name: '', base: 'aerial', image: null, pins: [], marks: [], view: null, start: null, desc: '' };
-const TOOLS = [['move', 'Move / edit'], ['pin', 'Pin'], ['arrow', 'Arrow'], ['route', 'Route'], ['text', 'Text']];
+const TOOLS = [['move', 'Move / edit'], ['start', 'Start pin'], ['pin', 'Pin'], ['arrow', 'Arrow'], ['route', 'Route'], ['text', 'Text']];
+const StartIcon = () => <svg width="16" height="20" viewBox="0 0 34 44" style={{ verticalAlign: 'middle', marginRight: 6 }} aria-hidden="true"><path d="M17 43C17 43 3 27 3 16a14 14 0 0 1 28 0c0 11-14 27-14 27z" fill="#E24B4A" stroke="#fff" strokeWidth="3" /><circle cx="17" cy="16" r="5.5" fill="#fff" /></svg>;
 
 function shrink(file, max = 2200) { // phone pictures are big: scale down so the upload fits
   return new Promise((res, rej) => {
@@ -115,7 +116,7 @@ export default function Scenarios({ site, siteName, center, sitePins }) {
           <label style={{ ...btn(ed.base === 'image'), display: 'inline-block' }}>Upload a picture<input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { setImage(e.target.files && e.target.files[0]); e.target.value = ''; }} /></label>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {TOOLS.map(([k, n]) => <button key={k} type="button" style={btn(tool === k)} onClick={() => setTool(tool === k ? '' : k)}>{n}</button>)}
+          {TOOLS.map(([k, n]) => <button key={k} type="button" style={btn(tool === k)} onClick={() => setTool(tool === k ? '' : k)} disabled={k === 'start' && ed.base === 'image'} title={k === 'start' && ed.base === 'image' ? 'On a picture use the Start point box below' : undefined}>{k === 'start' ? <StartIcon /> : null}{n}</button>)}
           {tool === 'route' && <button type="button" style={btn(false)} disabled={pending < 2} onClick={() => api.current && api.current.finishRoute()}>Finish route ({pending} points)</button>}
           {(tool === 'route' || tool === 'arrow') && pending > 0 && <button type="button" style={btn(false)} onClick={() => api.current && api.current.cancelPending()}>Cancel</button>}
         </div>
@@ -127,7 +128,7 @@ export default function Scenarios({ site, siteName, center, sitePins }) {
         )}
         {tool === 'text' && <input className="ph-in" aria-label="Text for the next label" placeholder="Type the label, then click the map, e.g. Turn left here" value={textVal} onChange={(e) => setTextVal(e.target.value)} />}
         <div className="muted" style={{ fontSize: 13 }}>
-          {tool === '' ? 'No tool is on: drag the map to move it. Press a tool to use it; press it again to turn it off.' : tool === 'move' ? 'Drag pins and labels to move them. Click a pin, arrow or label to rename or delete it.' : tool === 'pin' ? 'Click the map to place a pin.' : tool === 'arrow' ? 'Click the start, then click the end.' : tool === 'route' ? 'Click each corner of the way, then press Finish route.' : 'Click the map to place the label.'}
+          {tool === 'start' ? 'Click the map where the way begins (the real place). Drag the red pin to move it; click it to delete it.' : tool === '' ? 'No tool is on: drag the map to move it. Press a tool to use it; press it again to turn it off.' : tool === 'move' ? 'Drag pins and labels to move them. Click a pin, arrow or label to rename or delete it.' : tool === 'pin' ? 'Click the map to place a pin.' : tool === 'arrow' ? 'Click the start, then click the end.' : tool === 'route' ? 'Click each corner of the way, then press Finish route.' : 'Click the map to place the label.'}
         </div>
         <ScenarioMap key={ed.base + (ed.image ? ed.image.path : '')} base={ed.base} image={imgObj} center={center} view={ed.view} editable tool={tool} pinType={pinType} pinName={pinName} textVal={textVal} apiRef={api}
           pins={ed.pins} marks={ed.marks} ratio={4 / 3} start={ed.start} onPending={setPending}
@@ -135,6 +136,7 @@ export default function Scenarios({ site, siteName, center, sitePins }) {
           onMovePin={(i, la, lo) => upf((x) => ({ pins: x.pins.map((p, j) => (j === i ? { ...p, lat: la, lng: lo } : p)) }))}
           onRenamePin={(i, t) => upf((x) => ({ pins: x.pins.map((p, j) => (j === i ? { ...p, where: t } : p)) }))}
           onRemovePin={(i) => upf((x) => ({ pins: x.pins.filter((_, j) => j !== i) }))}
+          onSetStart={(la, lo) => upf((x) => ({ start: { lat: la, lng: lo, name: (x.start && x.start.name) || '' } }))} onRemoveStart={() => upf(() => ({ start: null }))}
           onAddMark={(m) => upf((x) => ({ marks: [...x.marks, m] }))}
           onMoveMark={(id, pt) => upf((x) => ({ marks: x.marks.map((m) => (m.id === id ? { ...m, pts: [pt] } : m)) }))}
           onEditMark={(id, t) => upf((x) => ({ marks: x.marks.map((m) => (m.id === id ? { ...m, text: t } : m)) }))}
