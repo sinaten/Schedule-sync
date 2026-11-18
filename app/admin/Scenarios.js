@@ -104,7 +104,7 @@ export default function Scenarios({ site, siteName, center, sitePins }) {
     );
   }
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: '#fff', overflow: 'auto', padding: 14 }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 3000, background: '#fff', overflow: 'auto', padding: 14 }}>
       <div style={{ maxWidth: 980, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <button type="button" className="ph-btn" onClick={back}>&larr; Scenarios</button>
