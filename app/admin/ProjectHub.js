@@ -277,15 +277,22 @@ export default function ProjectHub() {
 
   const o = ds.orientation || {};
   const upO = (patch) => upS({ orientation: { ...o, ...patch } });
+  // The pickers hold the person's id. People without an id yet get one when picked. Call lists people with a phone, Email lists people with an email.
   const pickPerson = (field, v) => {
     if (v === '') { upO({ [field]: '' }); return; }
-    const i = +v, c = ds.contacts[i];
-    if (!c) return;
-    if (c.id) { upO({ [field]: c.id }); return; }
-    const id = uid();
-    upS({ contacts: ds.contacts.map((x, j) => (j === i ? { ...x, id } : x)), orientation: { ...o, [field]: id } });
+    if (v.charAt(0) === '#') {
+      const i = +v.slice(1), c = ds.contacts[i];
+      if (!c) return;
+      const id = uid();
+      upS({ contacts: ds.contacts.map((x, j) => (j === i ? { ...x, id } : x)), orientation: { ...o, [field]: id } });
+      return;
+    }
+    upO({ [field]: v });
   };
-  const idxOf = (id) => (id ? String(ds.contacts.findIndex((c) => c.id === id)).replace('-1', '') : '');
+  const personOpts = (f) => ds.contacts
+    .map((c, i) => ({ c, i }))
+    .filter(({ c }) => (f === 'mailId' ? c.email : c.phone) || (c.id && c.id === o[f]))
+    .map(({ c, i }) => ({ v: c.id || '#' + i, t: [c.name || 'No name', c.role, f === 'mailId' ? c.email : c.phone].filter(Boolean).join(' · ') }));
   async function addFile(file) {
     if (!file) return;
     setMsg('Uploading…');
@@ -456,9 +463,9 @@ export default function ProjectHub() {
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {[['callId', 'Call before you come'], ['mailId', 'Send the email to']].map(([f, nm]) => (
                   <label key={f} style={{ flex: '1 1 200px' }}><span className="ph-lab">{nm}</span>
-                    <select className="ph-in" value={idxOf(o[f])} onChange={(e) => pickPerson(f, e.target.value)}>
-                      <option value="">{ds.contacts.length ? 'Choose a person…' : 'Add people to the contact book first'}</option>
-                      {ds.contacts.map((c, i) => <option key={i} value={i}>{[c.name || 'No name', c.role, f === 'mailId' ? c.email : c.phone].filter(Boolean).join(' · ')}</option>)}
+                    <select className="ph-in" value={o[f] && ds.contacts.some((c) => c.id === o[f]) ? o[f] : ''} onChange={(e) => pickPerson(f, e.target.value)}>
+                      <option value="">{personOpts(f).length ? 'Choose a person…' : f === 'mailId' ? 'No one with an email in the contact book' : 'No one with a phone in the contact book'}</option>
+                      {personOpts(f).map((x) => <option key={x.v} value={x.v}>{x.t}</option>)}
                     </select>
                   </label>
                 ))}
