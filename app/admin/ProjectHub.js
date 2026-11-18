@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import MapPicker from './MapPicker';
 import GuideMap, { PIN_TYPES } from '../GuideMap';
 import Projects from './Projects';
@@ -195,6 +195,22 @@ export default function ProjectHub() {
       setMsg('Saved');
     } catch (e) { setMsg(e.message); }
   }
+  // Auto-save: when a change was made and the person clicks elsewhere or leaves the field, it is saved without pressing Save.
+  const autoRef = useRef({ dirty: false, save: null, busy: false });
+  autoRef.current.dirty = dirty; autoRef.current.save = save;
+  useEffect(() => {
+    const go = async () => {
+      const a = autoRef.current;
+      if (!a.dirty || a.busy) return;
+      a.busy = true;
+      try { await a.save(); } finally { a.busy = false; }
+    };
+    const onDown = (e) => { const t = e.target; if (t && t.closest && t.closest('.ph-in, input, textarea, select')) return; go(); };
+    const onOut = (e) => { const t = e.target; if (t && t.closest && t.closest('.ph-in, input, textarea, select')) setTimeout(go, 0); };
+    document.addEventListener('pointerdown', onDown, true);
+    document.addEventListener('focusout', onOut, true);
+    return () => { document.removeEventListener('pointerdown', onDown, true); document.removeEventListener('focusout', onOut, true); };
+  }, []);
   async function assign(job, siteId) {
     if (!siteId) return;
     setMsg('Saving…');
@@ -369,7 +385,7 @@ export default function ProjectHub() {
   const saveBar = (
     <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
       <button type="button" className="ph-btn pri" onClick={save} disabled={!dirty}>Save</button>
-      {dirty && <span className="muted" style={{ fontSize: 14 }}>Unsaved changes</span>}
+      {dirty && <span className="muted" style={{ fontSize: 14 }}>Unsaved changes (saved automatically when you click elsewhere)</span>}
       {msg && <b style={{ fontSize: 14 }}>{msg}</b>}
     </div>
   );
