@@ -93,7 +93,7 @@ function resetLook(vw) {
       window.__ssOrig.clear();
     }
     vw.showAll();
-    try { vw.setCutPlanes([]); } catch (e) {}
+    try { if (!keepCut(vw)) vw.setCutPlanes([]); } catch (e) {}
     vw.impl.invalidate(true, true, true);
   } catch (e) {}
 }
@@ -128,44 +128,20 @@ function setCam(vw, cam) {
   } catch (e) { return false; }
 }
 
-// Section box button (own, removable: delete this function and its one call): a cube held by a string. Press it to get a box around the model with draggable faces, press again to remove the box.
-const SEC_ICON = "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='white' stroke-width='1.8' stroke-linejoin='round' stroke-linecap='round'><path d='M16 12 L25 16.5 L25 26 L16 30.5 L7 26 L7 16.5 Z'/><path d='M7 16.5 L16 21 L25 16.5 M16 21 L16 30.5'/><path d='M16 12 C16 8 11 8 11 5 C11 2.5 14 2 15 3.5' stroke-dasharray='2.2 2'/><circle cx='15.5' cy='3.2' r='1.3' fill='white'/></svg>\")";
-function addSectionButton(vw) {
+// True while the person's own section box is in use (Autodesk's Section tool is on, or a saved box is shown): the site must not clear its cut planes then.
+function keepCut(vw) {
   try {
-    const A = window.Autodesk.Viewing;
-    const make = () => {
-      if (!vw.toolbar || vw.__ssSecBtn) return;
-      const btn = new A.UI.Button('ss-section-box');
-      btn.setToolTip('Section box');
-      if (btn.icon) { btn.icon.style.backgroundImage = SEC_ICON; btn.icon.style.backgroundRepeat = 'no-repeat'; btn.icon.style.backgroundPosition = 'center'; btn.icon.style.backgroundSize = '26px 26px'; }
-      btn.onClick = async () => {
-        try {
-          const ext = await vw.loadExtension('Autodesk.Section');
-          if (!window.__ssSecOn) {
-            if (ext.activate) ext.activate('BOX'); else if (ext.enableSectionTool) ext.enableSectionTool(true);
-            window.__ssSecOn = true; btn.setState(A.UI.Button.State.ACTIVE);
-          } else {
-            if (ext.deactivate) ext.deactivate(); else if (ext.enableSectionTool) ext.enableSectionTool(false);
-            try { vw.setCutPlanes([]); } catch (e) {}
-            window.__ssSecOn = false; btn.setState(A.UI.Button.State.INACTIVE);
-          }
-        } catch (e) { window.__ssSecOn = false; }
-      };
-      const g = new A.UI.ControlGroup('ss-section-tools');
-      g.addControl(btn);
-      vw.toolbar.addControl(g);
-      vw.__ssSecBtn = btn;
-    };
-    window.__ssSecOn = false;
-    if (vw.toolbar) make(); else vw.addEventListener(A.TOOLBAR_CREATED_EVENT, make, { once: true });
-  } catch (e) { /* the viewer works without the button */ }
+    if (window.__ssSavedCut) return true;
+    const e = vw.getExtension && vw.getExtension('Autodesk.Section');
+    return !!(e && e.isActive && e.isActive());
+  } catch (x) { return false; }
 }
 
 // Cuts the model with the Revit section box (six planes), so nothing outside the box shows at all. Add ?nocut=1 to the address to switch it off, ?cutflip=1 if it cuts the wrong side.
 function applyCut(vw, box) {
   try {
     const q = new URLSearchParams(window.location.search);
-    if (window.__ssSecOn) return; // the person's own section box is on: leave its planes alone
+    if (keepCut(vw)) return; // the person's own section box is on: leave its planes alone
     if (!box || !q.get('cut')) { vw.setCutPlanes([]); return; } // switched off for now: add ?cut=1 to the address to try it
     const T = window.THREE;
     const off = (vw.model.getGlobalOffset && vw.model.getGlobalOffset()) || { x: 0, y: 0, z: 0 };
@@ -617,7 +593,6 @@ export default function Viewer3D({ job = '', kiosk = null }) {
         const A = window.Autodesk.Viewing;
         if (viewer.current) viewer.current.finish();
         viewer.current = new A.GuiViewer3D(box.current);
-        addSectionButton(viewer.current);
         viewer.current.start();
         A.Document.load(
           'urn:' + info.model.urn,
