@@ -382,7 +382,10 @@ export default function ProjectHub() {
         {!wide && <div><button type="button" className="ph-btn" onClick={toList}>&larr; Sites</button></div>}
         <div>
           <div className="muted" style={{ fontSize: 13 }}>Site</div>
-          <h2 style={{ margin: 0, fontSize: 22 }}>{ds.name || 'Site'}</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <input className="ph-in" aria-label="Site name" value={ds.name} placeholder="Site name" onChange={(e) => upS({ name: e.target.value })} style={{ fontSize: 22, fontWeight: 600, flex: '1 1 220px', minWidth: 0 }} />
+            <button type="button" className="ph-btn pri" onClick={save} disabled={!dirty}>Save</button>
+          </div>
           <div className="muted" style={{ fontSize: 14 }}>{[ds.city, ds.country].filter(Boolean).join(' · ') || 'No location yet'}</div>
         </div>
 
