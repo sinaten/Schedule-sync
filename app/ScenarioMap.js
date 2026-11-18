@@ -37,6 +37,7 @@ export default function ScenarioMap({ base, image, pins, marks, view, center, ed
       map.on('zoomend', () => draw());
       map.on('moveend', () => { if (cb.current.onView) { const c = map.getCenter(); cb.current.onView({ lat: c.lat, lng: c.lng, zoom: map.getZoom() }); } });
       if (apiRef) apiRef.current = { finishRoute, cancelPending };
+      if (cb.current.editable && cb.current.tool === 'move') map.dragging.disable();
       draw(); drawTmp();
       setTimeout(() => map.invalidateSize(), 200);
     }).catch(() => {});
@@ -52,7 +53,9 @@ export default function ScenarioMap({ base, image, pins, marks, view, center, ed
   function click(ll) {
     const c = cb.current;
     if (!c.editable) return;
-    const pt = [ll.lat, ll.lng];
+    const pt = [ll.lat, ll.lng], now = Date.now(), lc = st.current.lastClick;
+    if (lc && now - lc.t < 300 && lc.la === pt[0] && lc.lo === pt[1]) return; // the same tap reported twice
+    st.current.lastClick = { t: now, la: pt[0], lo: pt[1] };
     if (c.tool === 'pin') { if (c.onAddPin) c.onAddPin(pt[0], pt[1]); return; }
     if (c.tool === 'text') { if (c.textVal && c.textVal.trim() && c.onAddMark) c.onAddMark({ id: Math.random().toString(36).slice(2, 10), k: 'text', pts: [pt], text: c.textVal.trim() }); return; }
     if (c.tool === 'arrow') {
@@ -99,9 +102,10 @@ export default function ScenarioMap({ base, image, pins, marks, view, center, ed
         ll.push(m.pts[0]); return;
       }
       L.polyline(m.pts, { color: '#fff', weight: 8, opacity: 0.9, interactive: false }).addTo(layer);
-      const pl = L.polyline(m.pts, { color: RED, weight: 4, interactive: ed }).addTo(layer);
+      L.polyline(m.pts, { color: RED, weight: 4, interactive: false }).addTo(layer);
+      const pl = ed ? L.polyline(m.pts, { color: RED, weight: 30, opacity: 0.001, interactive: true, bubblingMouseEvents: false }).addTo(layer) : null;
       head(L, map, m.pts[m.pts.length - 2], m.pts[m.pts.length - 1], RED).addTo(layer);
-      if (ed) pl.bindPopup(box(i, arr, 'mark'));
+      if (pl) pl.bindPopup(box(i, arr, 'mark'));
       m.pts.forEach((q) => ll.push(q));
     });
     (pinsRef.current || []).forEach((p, i, arr) => {
@@ -118,6 +122,11 @@ export default function ScenarioMap({ base, image, pins, marks, view, center, ed
   pinsRef.current = pins; marksRef.current = marks;
   useEffect(() => { draw(); }, [pins, marks, editable]);
   useEffect(() => { if (tool !== 'arrow' && tool !== 'route') cancelPending(); }, [tool]);
+  // Move / edit: the map stays still, only pins, arrows and labels can be touched. Any other tool: the map can be dragged.
+  useEffect(() => {
+    const { map } = st.current; if (!map) return;
+    if (editable && tool === 'move') map.dragging.disable(); else map.dragging.enable();
+  }, [tool, editable, base, img && img.url]);
 
   return <div ref={el} style={{ height, borderRadius: 10, border: '1px solid #c7d2d6', background: '#eef1f3', cursor: editable && tool && tool !== 'move' ? 'crosshair' : 'grab' }} />;
 }

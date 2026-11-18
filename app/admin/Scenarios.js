@@ -41,6 +41,7 @@ export default function Scenarios({ site, siteName, center, sitePins }) {
   const copy = async (t) => { const l = link(t); try { await navigator.clipboard.writeText(l); setMsg('Link copied: ' + l); } catch { setMsg('Link: ' + l); } };
 
   const up = (patch) => { setEd((x) => ({ ...x, ...patch })); setDirty(true); };
+  const upf = (fn) => { setEd((x) => ({ ...x, ...fn(x) })); setDirty(true); }; // always from the latest state, so quick clicks never lose earlier drawings
   const open = async (t) => {
     setMsg('');
     if (!t) { setEd({ ...EMPTY }); setToken(''); setDirty(false); setTool('pin'); return; }
@@ -128,19 +129,19 @@ export default function Scenarios({ site, siteName, center, sitePins }) {
         </div>
         <ScenarioMap key={ed.base + (ed.image ? ed.image.path : '')} base={ed.base} image={imgObj} center={center} view={ed.view} editable tool={tool} pinType={pinType} pinName={pinName} textVal={textVal} apiRef={api}
           pins={ed.pins} marks={ed.marks} height={460} onPending={setPending}
-          onAddPin={(la, lo) => up({ pins: [...ed.pins, { type: pinType, where: pinName.trim(), lat: la, lng: lo }] })}
-          onMovePin={(i, la, lo) => up({ pins: ed.pins.map((p, j) => (j === i ? { ...p, lat: la, lng: lo } : p)) })}
-          onRenamePin={(i, t) => up({ pins: ed.pins.map((p, j) => (j === i ? { ...p, where: t } : p)) })}
-          onRemovePin={(i) => up({ pins: ed.pins.filter((_, j) => j !== i) })}
-          onAddMark={(m) => up({ marks: [...ed.marks, m] })}
-          onMoveMark={(id, pt) => up({ marks: ed.marks.map((m) => (m.id === id ? { ...m, pts: [pt] } : m)) })}
-          onEditMark={(id, t) => up({ marks: ed.marks.map((m) => (m.id === id ? { ...m, text: t } : m)) })}
-          onRemoveMark={(id) => up({ marks: ed.marks.filter((m) => m.id !== id) })}
+          onAddPin={(la, lo) => upf((x) => ({ pins: [...x.pins, { type: pinType, where: pinName.trim(), lat: la, lng: lo }] }))}
+          onMovePin={(i, la, lo) => upf((x) => ({ pins: x.pins.map((p, j) => (j === i ? { ...p, lat: la, lng: lo } : p)) }))}
+          onRenamePin={(i, t) => upf((x) => ({ pins: x.pins.map((p, j) => (j === i ? { ...p, where: t } : p)) }))}
+          onRemovePin={(i) => upf((x) => ({ pins: x.pins.filter((_, j) => j !== i) }))}
+          onAddMark={(m) => upf((x) => ({ marks: [...x.marks, m] }))}
+          onMoveMark={(id, pt) => upf((x) => ({ marks: x.marks.map((m) => (m.id === id ? { ...m, pts: [pt] } : m)) }))}
+          onEditMark={(id, t) => upf((x) => ({ marks: x.marks.map((m) => (m.id === id ? { ...m, text: t } : m)) }))}
+          onRemoveMark={(id) => upf((x) => ({ marks: x.marks.filter((m) => m.id !== id) }))}
           onView={(v) => { if (ed.view === null || Math.abs((ed.view.lat || 0) - v.lat) > 1e-9 || ed.view.zoom !== v.zoom) setEd((x) => ({ ...x, view: v })); }} />
         {ed.base === 'aerial' && sitePins && sitePins.some((p) => p.lat != null) && (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             <span className="muted" style={{ fontSize: 14 }}>Add a pin from the site guide:</span>
-            {sitePins.filter((p) => p.lat != null).map((p, i) => <button key={i} type="button" style={btn(false)} onClick={() => up({ pins: [...ed.pins, { type: p.type, where: p.where || '', lat: p.lat, lng: p.lng }] })}>+ {p.type}{p.where ? ': ' + p.where : ''}</button>)}
+            {sitePins.filter((p) => p.lat != null).map((p, i) => <button key={i} type="button" style={btn(false)} onClick={() => upf((x) => ({ pins: [...x.pins, { type: p.type, where: p.where || '', lat: p.lat, lng: p.lng }] }))}>+ {p.type}{p.where ? ': ' + p.where : ''}</button>)}
           </div>
         )}
         <label><span className="ph-lab">Description (the steps, shown under the map)</span>
