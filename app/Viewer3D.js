@@ -1,4 +1,5 @@
 'use client';
+import SectionBoxes from './SectionBoxes';
 import IssuePanel from './IssuePanel';
 import Snapshots from './Snapshots';
 import CamViews from './CamViews';
@@ -718,6 +719,7 @@ export default function Viewer3D({ job = '', kiosk = null }) {
       {ready && <CamViews job={job} getCam={getCam} goCam={goCam} goEl={goElement} />}
       <div style={{ position: 'relative' }}>
         <div ref={box} className="v3-box" style={{ position: 'relative', height: ready ? 480 : 0, touchAction: 'none' }} />
+        {ready && job && <SectionBoxes job={job} getVw={() => viewer.current} />}
         {copyBtn}
         {frame && <div style={{ position: 'absolute', left: frame.x, top: frame.y, width: frame.w, height: frame.h, border: '2.5px dashed #e8710a', borderRadius: 6, pointerEvents: 'none', zIndex: 9 }} />}
         {ready && (
