@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { db } from '../../../lib/db';
 import ScenarioMap from '../../ScenarioMap';
 import { stripAi } from '../../../lib/aitext';
+import SavePicture from '../../SavePicture';
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Scenario', robots: { index: false, follow: false } };
 
@@ -28,7 +29,10 @@ export default async function Scenario({ params }) {
         </div>
       )}
       <div style={box}>
+        <div id="scn-pic" style={{ background: '#fff' }}>
         <ScenarioMap base={image ? 'image' : 'aerial'} image={image} pins={s.pins || []} marks={s.marks || []} view={s.view} frame={!image && s.view && s.view.bounds ? s.view.bounds : null} start={s.start} ratio={4 / 3} />
+        </div>
+        <div style={{ marginTop: 10 }}><SavePicture targetId="scn-pic" name={s.name} /></div>
       </div>
       {desc && <div style={box}><h2 style={{ margin: '0 0 8px', fontSize: 19 }}>What to do</h2><p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{desc}</p></div>}
     </main>

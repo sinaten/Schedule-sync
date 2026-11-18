@@ -4,6 +4,7 @@ import ScenarioMap from '../ScenarioMap';
 import { PIN_TYPES } from '../GuideMap';
 import AiText from './AiText';
 import MapPicker from './MapPicker';
+import SavePicture from '../SavePicture';
 
 // Admin > Projects > a site > Scenarios. Each scenario is a picture (aerial or uploaded) with pins, arrows, routes and labels, a description and its own link.
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -108,6 +109,7 @@ export default function Scenarios({ site, siteName, center, sitePins }) {
           <input className="ph-in" aria-label="Scenario name" placeholder="Scenario name, e.g. Delivery truck route" value={ed.name} onChange={(e) => up({ name: e.target.value })} style={{ flex: '1 1 220px', fontWeight: 600 }} />
           <button type="button" className="ph-btn pri" onClick={save} disabled={!dirty && !!token}>Save</button>
           {token && <button type="button" className="ph-btn" onClick={() => copy(token)}>Copy link</button>}
+          <SavePicture targetId="scn-ed-pic" name={ed.name} />
         </div>
         {msg && <div style={{ fontSize: 14, wordBreak: 'break-all' }}><b>{msg}</b></div>}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -130,6 +132,7 @@ export default function Scenarios({ site, siteName, center, sitePins }) {
         <div className="muted" style={{ fontSize: 13 }}>
           {tool === 'start' ? 'Click the map where the way begins (the real place). Drag the red pin to move it; click it to delete it.' : tool === '' ? 'No tool is on: drag the map to move it. Press a tool to use it; press it again to turn it off.' : tool === 'move' ? 'Drag pins and labels to move them. Click a pin, arrow or label to rename or delete it.' : tool === 'pin' ? 'Click the map to place a pin.' : tool === 'arrow' ? 'Click the start, then click the end.' : tool === 'route' ? 'Click each corner of the way, then press Finish route.' : 'Click the map to place the label.'}
         </div>
+        <div id="scn-ed-pic">
         <ScenarioMap key={ed.base + (ed.image ? ed.image.path : '')} base={ed.base} image={imgObj} center={center} view={ed.view} editable tool={tool} pinType={pinType} pinName={pinName} textVal={textVal} apiRef={api}
           pins={ed.pins} marks={ed.marks} ratio={4 / 3} start={ed.start} onPending={setPending}
           onAddPin={(la, lo) => upf((x) => ({ pins: [...x.pins, { type: pinType, where: pinName.trim(), lat: la, lng: lo }] }))}
@@ -142,6 +145,7 @@ export default function Scenarios({ site, siteName, center, sitePins }) {
           onEditMark={(id, t) => upf((x) => ({ marks: x.marks.map((m) => (m.id === id ? { ...m, text: t } : m)) }))}
           onRemoveMark={(id) => upf((x) => ({ marks: x.marks.filter((m) => m.id !== id) }))}
           onView={(v) => { setEd((x) => (x.view && Math.abs(x.view.lat - v.lat) < 1e-9 && Math.abs(x.view.lng - v.lng) < 1e-9 && x.view.zoom === v.zoom ? x : { ...x, view: v })); }} />
+        </div>
         {ed.base === 'aerial' && sitePins && sitePins.some((p) => p.lat != null) && (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             <span className="muted" style={{ fontSize: 14 }}>Add a pin from the site guide:</span>

@@ -27,8 +27,8 @@ export default function ScenarioMap({ base, image, pins, marks, view, center, st
         const c = view && view.lat != null ? [view.lat, view.lng] : has ? [center.lat, center.lng] : [39.5, -98.35];
         map = L.map(el.current, { zoomControl: true, zoomSnap: frame ? 0.25 : 1 }).setView(c, view && view.zoom != null ? view.zoom : has ? 18 : 4);
         if (frame) { map.fitBounds(frame, { animate: false }); map.setMinZoom(map.getZoom()); map.setMaxBounds(frame); map.options.maxBoundsViscosity = 1; } // the same frame for everyone: you can zoom in, never out
-        const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri' });
-        const street = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri, HERE, OpenStreetMap contributors' });
+        const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri', crossOrigin: true });
+        const street = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri, HERE, OpenStreetMap contributors', crossOrigin: true });
         sat.addTo(map);
         if (!frame) L.control.layers({ Aerial: sat, Map: street }, null, { position: 'topright' }).addTo(map);
       }
