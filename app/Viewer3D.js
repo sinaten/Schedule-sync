@@ -594,6 +594,7 @@ export default function Viewer3D({ job = '', kiosk = null }) {
         const A = window.Autodesk.Viewing;
         if (viewer.current) viewer.current.finish();
         viewer.current = new A.GuiViewer3D(box.current);
+        window.__ssViewer = viewer.current;
         viewer.current.start();
         A.Document.load(
           'urn:' + info.model.urn,

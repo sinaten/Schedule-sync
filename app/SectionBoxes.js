@@ -4,6 +4,20 @@ import { useEffect, useRef, useState } from 'react';
 // Saved section boxes for the 3D model. "New" turns on Autodesk's own section box tool (drag the six faces), "Save" keeps the box under a name,
 // and any saved box can be shown again with one tap. Self-contained: remove this file and its one line in Viewer3D.js to take it away.
 const pill = { border: '1px solid #d9d5c8', background: '#fff', borderRadius: 14, padding: '5px 12px', font: 'inherit', fontSize: 12.5, cursor: 'pointer', color: '#141413' };
+// The six saved planes of an upright box -> its two corners, so Autodesk's box tool (with its arrows) can be given the same box. null when the box is turned.
+export const corners = (pl) => {
+  const lo = [null, null, null], hi = [null, null, null];
+  for (const p of pl) {
+    const n = [p[0], p[1], p[2]];
+    const k = n.findIndex((v) => Math.abs(Math.abs(v) - 1) < 1e-3);
+    if (k < 0 || n.some((v, i) => i !== k && Math.abs(v) > 1e-3)) return null;
+    const at = -p[3] / n[k]; // plane n.x + w = 0 -> the coordinate of the face
+    if (lo[k] === null) lo[k] = at; else hi[k] = at; // which one is the low face is sorted out below, so the sign rule of the viewer does not matter
+  }
+  if (!lo.every((v) => v !== null) || !hi.every((v) => v !== null)) return null;
+  return { min: lo.map((v, i) => Math.min(v, hi[i])), max: lo.map((v, i) => Math.max(v, hi[i])) };
+};
+
 export default function SectionBoxes({ job, getVw }) {
   const [open, setOpen] = useState(false);
   const [list, setList] = useState([]);
@@ -43,19 +57,6 @@ export default function SectionBoxes({ job, getVw }) {
     const j = await r.json().catch(() => ({}));
     if (!r.ok) { setMsg(j.error || 'Could not save.'); return; }
     setList(j.boxes || []); setEditing(false); setMsg('Saved as "' + name + '".');
-  };
-  // The six saved planes of an upright box -> its two corners, so Autodesk's box tool (with its arrows) can be given the same box. null when the box is turned.
-  const corners = (pl) => {
-    const lo = [null, null, null], hi = [null, null, null];
-    for (const p of pl) {
-      const n = [p[0], p[1], p[2]];
-      const k = n.findIndex((v) => Math.abs(Math.abs(v) - 1) < 1e-3);
-      if (k < 0 || n.some((v, i) => i !== k && Math.abs(v) > 1e-3)) return null;
-      const at = -p[3] / n[k]; // plane n.x + w = 0 -> the coordinate of the face
-      if (lo[k] === null) lo[k] = at; else hi[k] = at; // which one is the low face is sorted out below, so the sign rule of the viewer does not matter
-    }
-    if (!lo.every((v) => v !== null) || !hi.every((v) => v !== null)) return null;
-    return { min: lo.map((v, i) => Math.min(v, hi[i])), max: lo.map((v, i) => Math.max(v, hi[i])) };
   };
   const show = async (b) => {
     const vw = getVw();
