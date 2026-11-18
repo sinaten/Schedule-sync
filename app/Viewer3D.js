@@ -771,10 +771,10 @@ export default function Viewer3D({ job = '', kiosk = null }) {
                   const on = !flagged;
                   setIssueOn((o) => ({ ...o, [key]: on }));
                   try {
-                    const r = await fetch('/api/schedules/' + encodeURIComponent(isq.tb.id) + '/edits', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ elementId: isq.tb.element_id, col: isq.c.name, value: on }) });
+                    const r = await fetch('/api/schedules/' + encodeURIComponent(isq.tb.id) + '/edits', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ elementId: isq.tb.element_id, col: isq.c.name, value: on, layer: true }) });
                     const j = await r.json().catch(() => ({}));
                     if (!r.ok) { setIssueOn((o) => ({ ...o, [key]: !on })); setMsg(j.error || 'Could not set the issue.'); return; }
-                    setMsg(on ? 'Issue sent to Revit. The colour follows in about a minute.' : 'Issue cleared. Revit updates in about a minute.');
+                    await loadLayer(); setMsg(on ? 'Issue saved in your own layer.' : 'Issue cleared in your own layer.');
                   } catch (e) { setIssueOn((o) => ({ ...o, [key]: !on })); setMsg('No connection to the website.'); }
                 };
                 return (
