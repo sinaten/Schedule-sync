@@ -38,6 +38,8 @@ export default function Scenarios({ site, siteName, center, sitePins }) {
   const [msg, setMsg] = useState('');
   const [pick, setPick] = useState(false);
   const api = useRef(null);
+  const armed = useRef(false); // true once the map has settled, so only the person's own zoom or drag counts as a change
+  useEffect(() => { armed.current = false; if (!ed) return; const t = setTimeout(() => { armed.current = true; }, 1200); return () => clearTimeout(t); }, [!!ed, ed && ed.base, ed && ed.image && ed.image.path]);
 
   const load = () => fetch('/api/admin/scenarios?site=' + encodeURIComponent(site), { cache: 'no-store' }).then((r) => r.json()).then((d) => setList(d.scenarios || [])).catch(() => setList([]));
   useEffect(() => { setEd(null); setList(null); load(); }, [site]);
@@ -52,7 +54,7 @@ export default function Scenarios({ site, siteName, center, sitePins }) {
     const r = await fetch('/api/admin/scenarios?token=' + t, { cache: 'no-store' });
     const d = await r.json();
     if (!r.ok) { setMsg(d.error || 'Could not open'); return; }
-    setEd({ ...EMPTY, ...d.scenario }); setToken(t); setDirty(false); setTool('move');
+    setEd({ ...EMPTY, ...d.scenario }); setToken(t); setDirty(false); setTool('');
   };
   const back = () => { if (dirty && !confirm('You have changes that are not saved. Leave without saving?')) return; setEd(null); load(); };
   const save = async () => {
@@ -144,7 +146,7 @@ export default function Scenarios({ site, siteName, center, sitePins }) {
           onMoveMark={(id, pt) => upf((x) => ({ marks: x.marks.map((m) => (m.id === id ? { ...m, pts: [pt] } : m)) }))}
           onEditMark={(id, t) => upf((x) => ({ marks: x.marks.map((m) => (m.id === id ? { ...m, text: t } : m)) }))}
           onRemoveMark={(id) => upf((x) => ({ marks: x.marks.filter((m) => m.id !== id) }))}
-          onView={(v) => { setEd((x) => (x.view && Math.abs(x.view.lat - v.lat) < 1e-9 && Math.abs(x.view.lng - v.lng) < 1e-9 && x.view.zoom === v.zoom ? x : { ...x, view: v })); }} />
+          onView={(v) => { setEd((x) => (x.view && Math.abs(x.view.lat - v.lat) < 1e-9 && Math.abs(x.view.lng - v.lng) < 1e-9 && x.view.zoom === v.zoom ? x : { ...x, view: v })); if (armed.current) setDirty(true); }} />
         </div>
         {ed.base === 'aerial' && sitePins && sitePins.some((p) => p.lat != null) && (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
