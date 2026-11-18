@@ -38,6 +38,7 @@ export async function DELETE(req) {
   if (!isAdmin(await currentUser())) return no();
   const t = new URL(req.url).searchParams.get('token');
   if (!okTok(t)) return Response.json({ error: 'No scenario' }, { status: 404 });
-  await (await db())`delete from settings where key = ${'scn:' + t}`;
+  const sql = await db();
+  await sql`delete from settings where key = ${'scn:' + t}`;
   return Response.json({ ok: true });
 }

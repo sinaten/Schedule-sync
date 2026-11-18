@@ -9,7 +9,8 @@ export const metadata = { title: 'Scenario', robots: { index: false, follow: fal
 export default async function Scenario({ params }) {
   const t = String(params.token || '');
   if (!/^[a-f0-9]{32}$/.test(t)) notFound();
-  const [r] = await (await db())`select value from settings where key = ${'scn:' + t}`;
+  const sql = await db();
+  const [r] = await sql`select value from settings where key = ${'scn:' + t}`;
   if (!r) notFound();
   const s = r.value;
   const image = s.base === 'image' && s.image ? { url: '/scenario/' + t + '/img', w: s.image.w, h: s.image.h } : null;
