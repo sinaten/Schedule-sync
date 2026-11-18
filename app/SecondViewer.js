@@ -49,7 +49,18 @@ export default function SecondViewer({ job }) {
         const sz = bb.getSize(new T.Vector3());
         b = bb.clone().expandByScalar(Math.max(Math.max(sz.x, sz.y, sz.z) * PAD, 0.5));
       }
-      e.activate('box'); e.setSectionBox(b);
+      e.activate('box');
+      // the tool may want the box in model coordinates (with the model's global offset) or in viewer coordinates: use the one whose cut really contains the element
+      const c = b.getCenter(new T.Vector3());
+      const off = (v.model.getGlobalOffset && v.model.getGlobalOffset()) || { x: 0, y: 0, z: 0 };
+      const inside = () => { const pl = (v.getCutPlanes && v.getCutPlanes()) || []; const sg = pl.map((p) => Math.sign(p.x * c.x + p.y * c.y + p.z * c.z + p.w)); return pl.length >= 6 && sg.every((x) => x !== 0 && x === sg[0]); };
+      let ok = false;
+      for (const k of [0, 1, -1]) {
+        const bb2 = b.clone(); bb2.translate(new T.Vector3(off.x * k, off.y * k, off.z * k));
+        e.setSectionBox(bb2);
+        if (inside()) { ok = true; break; }
+      }
+      if (!ok) { setMsg('The box does not contain the element (offset ' + Math.round(off.x) + ', ' + Math.round(off.y) + ', ' + Math.round(off.z) + ').'); return; }
       try { v.fitToView([d], v.model, true); } catch (x) {}
       setMsg(keep ? 'Saved box.' : 'Automatic box. Drag its faces, then Save.');
     } catch (x) { setMsg('The box could not be placed.'); }
@@ -74,6 +85,7 @@ export default function SecondViewer({ job }) {
   const [msg, setMsg] = useState('');
   const [el, setEl] = useState('');
   const [can, setCan] = useState(false);
+  const [size, setSize] = useState(() => { try { const j = JSON.parse(localStorage.getItem('ss-second-size') || 'null'); if (j && j.w > 200 && j.h > 150) return j; } catch (e) {} return null; });
   const ids = useRef(null), boxes = useRef({}), cur = useRef('');
   // where the viewer is wanted: wide landscape screen, the Inspection tab (or the desktop page), and the card list in view
   useEffect(() => {
@@ -123,13 +135,14 @@ export default function SecondViewer({ job }) {
     })();
   }, [on, job]);
   useEffect(() => () => { try { if (vw.current) vw.current.finish(); } catch (e) {} vw.current = null; }, []);
+  useEffect(() => { if (vw.current) { const t = setTimeout(() => { try { vw.current.resize(); } catch (e) {} }, 80); return () => clearTimeout(t); } return undefined; }, [size]);
   useEffect(() => { if (show && vw.current) { const t = setTimeout(() => { try { vw.current.resize(); } catch (e) {} }, 60); return () => clearTimeout(t); } return undefined; }, [show]);
   if (!SECOND) return null;
   return (
     <>
       <span ref={sent} style={{ display: 'none' }} />
       {on && (
-        <div style={{ position: 'fixed', left: '56vw', right: '10vw', top: '18vh', height: '36vh', zIndex: 50, border: '2px solid #5b6b8c', borderRadius: 12, background: '#e8ebf2', overflow: 'hidden', visibility: show ? 'visible' : 'hidden', pointerEvents: show ? 'auto' : 'none' }}>
+        <div style={{ position: 'fixed', right: '10vw', top: '18vh', width: size ? size.w : '34vw', height: size ? size.h : '36vh', zIndex: 50, border: '2px solid #5b6b8c', borderRadius: 12, background: '#e8ebf2', overflow: 'hidden', visibility: show ? 'visible' : 'hidden', pointerEvents: show ? 'auto' : 'none' }}>
           <div ref={box} style={{ position: 'absolute', inset: 0, touchAction: 'none' }} />
           {el ? (
             <div style={{ position: 'absolute', left: 6, right: 6, top: 6, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', zIndex: 5 }}>
@@ -139,6 +152,18 @@ export default function SecondViewer({ job }) {
               {can && <button type="button" onClick={reset} style={{ border: '1px solid #d9d5c8', background: '#fff', borderRadius: 14, padding: '4px 12px', font: 'inherit', fontSize: 12.5, cursor: 'pointer' }}>Reset</button>}
             </div>
           ) : <span style={{ position: 'absolute', left: 10, top: 6, fontSize: 9.5, letterSpacing: 0.4, fontWeight: 700, color: '#5b6b8c', pointerEvents: 'none' }}>3D MODEL</span>}
+          <div
+            role="separator" aria-label="Drag to resize the model window" title="Drag to resize"
+            onPointerDown={(e) => {
+              e.preventDefault(); e.stopPropagation();
+              const el0 = e.currentTarget.parentElement; const r0 = el0.getBoundingClientRect();
+              const sx = e.clientX, sy = e.clientY, w0 = r0.width, h0 = r0.height;
+              const mv = (ev) => { const w = Math.min(Math.max(w0 + (sx - ev.clientX), 240), window.innerWidth - 24), h = Math.min(Math.max(h0 + (ev.clientY - sy), 180), window.innerHeight - 24); setSize({ w, h }); };
+              const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); try { setSize((z) => { if (z) localStorage.setItem('ss-second-size', JSON.stringify(z)); return z; }); } catch (x) {} };
+              window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+            }}
+            style={{ position: 'absolute', left: 0, bottom: 0, width: 30, height: 30, cursor: 'nesw-resize', touchAction: 'none', zIndex: 6, background: 'linear-gradient(45deg, transparent 50%, #5b6b8c 50%, #5b6b8c 58%, transparent 58%, transparent 70%, #5b6b8c 70%, #5b6b8c 78%, transparent 78%)', borderBottomLeftRadius: 10, transform: 'scaleX(-1)' }}
+          />
           {msg && <div style={{ position: 'absolute', left: 10, right: 10, bottom: 8, fontSize: 12, color: '#6b675c' }}>{msg}</div>}
         </div>
       )}

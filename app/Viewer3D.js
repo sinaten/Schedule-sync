@@ -464,6 +464,7 @@ export default function Viewer3D({ job = '', kiosk = null }) {
     return () => window.removeEventListener('ss-kiosk-pick', f);
   }, [!!kiosk]);
   const popId = kiosk ? kPick : popup && popup.id;
+  useEffect(() => { if (!kiosk && popup && popup.id && /^\d+$/.test(String(popup.id))) window.dispatchEvent(new CustomEvent('ss-second-open', { detail: { element: String(popup.id) } })); }, [popup && popup.id]); // the second viewer beside the cards follows the element chosen here
   useEffect(() => {
     setCopied(false);
     if (!popId) { setCp(null); return; }
