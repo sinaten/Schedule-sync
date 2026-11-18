@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 
 // Aerial map with labeled pins (Leaflet + Esri imagery, no API key). Used by the admin (editable: click to add, drag to move) and by the public guide page (read only).
 const CDN = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/';
-function loadLeaflet() {
+export function loadLeaflet() {
   if (window.L) return Promise.resolve(window.L);
   if (window.__leafletP) return window.__leafletP;
   window.__leafletP = new Promise((res, rej) => {
@@ -20,7 +20,7 @@ function loadLeaflet() {
 }
 
 export const PIN_TYPES = { Entrance: '#BA7517', Parking: '#378ADD', Restroom: '#1D9E75', 'First aid': '#E24B4A', 'Muster point': '#7F77DD', Office: '#5F5E5A', Other: '#D4537E' };
-const esc = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+export const esc = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 export default function GuideMap({ pins, center, editable, onAdd, onMove, onRename, onRemove, height = 340 }) {
   const el = useRef(null);

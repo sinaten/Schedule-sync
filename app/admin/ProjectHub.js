@@ -4,6 +4,7 @@ import MapPicker from './MapPicker';
 import GuideMap, { PIN_TYPES } from '../GuideMap';
 import Projects from './Projects';
 import AiText from './AiText';
+import Scenarios from './Scenarios';
 import { WORKFLOWS } from '../../lib/projmeta';
 
 // Admin > Projects. A site comes first: it has the address, the pin on the map and what all its projects share (contacts, places, workflows).
@@ -508,6 +509,11 @@ export default function ProjectHub() {
               <label><span className="ph-lab">How it works (AI reads this, not shown to workers)</span><AiText rows={4} placeholder="Everyone attends before the first day. Call the HSE lead first, then email the signed form…" value={o.how || ''} onChange={(t) => upO({ how: t })} /></label>
             </div>
           )}
+        </div>
+
+        <div className="ph-sec">
+          {head('scn', 'Scenarios')}
+          {op.scn && <div className="ph-body"><Scenarios site={selSite} siteName={ds.name} center={ds.lat != null ? { lat: ds.lat, lng: ds.lng } : null} sitePins={ds.places} /></div>}
         </div>
 
         <div className="ph-sec">
