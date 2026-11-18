@@ -26,7 +26,7 @@ function Bell({ n }) {
 // The Follow-up page: seven horizontal bars; a bell with the number of new items from others, the name, a + to add; touching a bar opens it like a drawer.
 const fsBody = (on, wide) => (on ? (wide ? { flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)' } : { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }) : { display: 'contents' });
 const fsTop = (on, wide) => (on ? (wide ? { display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0, borderRight: '1.5px solid #cdb893' } : { display: 'flex', flexDirection: 'column', flex: '0.85 1 0', minHeight: 0, minWidth: 0, overflowY: 'auto' }) : { display: 'contents' });
-const fsHalf = (on, wide, kind) => (on ? wide ? { flex: '1 1 0', minHeight: 0, minWidth: 0, overflowY: 'auto', overflowX: 'hidden' } : { flex: '0 0 auto', minWidth: 0, overflowX: 'hidden' } : {});
+const fsHalf = (on, wide, kind) => (on ? wide ? { flex: (kind === 'issue' ? '0.85' : '1.15') + ' 1 0', minHeight: 0, minWidth: 0, overflowY: 'auto', overflowX: 'hidden' } : { flex: '0 0 auto', minWidth: 0, overflowX: 'hidden' } : {});
 export default function FollowUp({ job }) {
   useModelIds();
   const [items, setItems] = useState([]);
