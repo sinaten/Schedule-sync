@@ -52,9 +52,10 @@ export default function SectionBoxes({ job, getVw }) {
       const k = n.findIndex((v) => Math.abs(Math.abs(v) - 1) < 1e-3);
       if (k < 0 || n.some((v, i) => i !== k && Math.abs(v) > 1e-3)) return null;
       const at = -p[3] / n[k]; // plane n.x + w = 0 -> the coordinate of the face
-      if (n[k] > 0) lo[k] = at; else hi[k] = at;
+      if (lo[k] === null) lo[k] = at; else hi[k] = at; // which one is the low face is sorted out below, so the sign rule of the viewer does not matter
     }
-    return lo.every((v) => v !== null) && hi.every((v) => v !== null) ? { min: lo, max: hi } : null;
+    if (!lo.every((v) => v !== null) || !hi.every((v) => v !== null)) return null;
+    return { min: lo.map((v, i) => Math.min(v, hi[i])), max: lo.map((v, i) => Math.max(v, hi[i])) };
   };
   const show = async (b) => {
     const vw = getVw();
@@ -65,7 +66,12 @@ export default function SectionBoxes({ job, getVw }) {
       const e = await ext();
       let live = false;
       if (c && e && e.setSectionBox) {
-        try { e.activate('box'); e.setSectionBox(new T.Box3(new T.Vector3(...c.min), new T.Vector3(...c.max))); live = true; } catch (x) { live = false; }
+        try {
+          e.activate('box'); e.setSectionBox(new T.Box3(new T.Vector3(...c.min), new T.Vector3(...c.max)));
+          // safety: the tool must have made the very same cut as the saved one, otherwise the saved planes are used as they are
+          const now = (vw.getCutPlanes ? vw.getCutPlanes() : []) || [];
+          live = b.planes.every((p) => now.some((q) => Math.abs(q.x - p[0]) < 1e-3 && Math.abs(q.y - p[1]) < 1e-3 && Math.abs(q.z - p[2]) < 1e-3 && Math.abs(q.w - p[3]) <= 1e-3 * Math.max(1, Math.abs(p[3]))));
+        } catch (x) { live = false; }
       }
       if (!live) { await clear(); vw.setCutPlanes(b.planes.map((p) => new T.Vector4(p[0], p[1], p[2], p[3]))); window.__ssSavedCut = true; }
       setShown(b.id); setMsg('Showing "' + b.name + '".' + (live ? ' Drag the faces to change it; tap the name again to go back to the saved size.' : ''));
