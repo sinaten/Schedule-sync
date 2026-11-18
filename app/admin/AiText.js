@@ -16,7 +16,7 @@ export default function AiText({ value, onChange, rows = 4, placeholder }) {
   });
   const parts = aiParts(v);
   return (
-    <div style={{ position: 'relative' }}>
+    <div data-ai-managed="1" style={{ position: 'relative' }}>
       <div ref={bk} aria-hidden="true" style={{ ...base, position: 'absolute', inset: 0, background: '#fff', color: 'var(--ink)', pointerEvents: 'none', overflow: 'hidden' }}>
         {parts.map((p, i) => <span key={i} style={p.ai ? { color: 'var(--acc)', fontWeight: 600, textDecoration: 'underline' } : null}>{p.text}</span>)}
         {'​'}
