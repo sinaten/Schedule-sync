@@ -113,7 +113,7 @@ export default function Scenarios({ site, siteName, center, sitePins }) {
           <label style={{ ...btn(ed.base === 'image'), display: 'inline-block' }}>Upload a picture<input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { setImage(e.target.files && e.target.files[0]); e.target.value = ''; }} /></label>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {TOOLS.map(([k, n]) => <button key={k} type="button" style={btn(tool === k)} onClick={() => setTool(k)}>{n}</button>)}
+          {TOOLS.map(([k, n]) => <button key={k} type="button" style={btn(tool === k)} onClick={() => setTool(tool === k ? '' : k)}>{n}</button>)}
           {tool === 'route' && <button type="button" style={btn(false)} disabled={pending < 2} onClick={() => api.current && api.current.finishRoute()}>Finish route ({pending} points)</button>}
           {(tool === 'route' || tool === 'arrow') && pending > 0 && <button type="button" style={btn(false)} onClick={() => api.current && api.current.cancelPending()}>Cancel</button>}
         </div>
@@ -125,7 +125,7 @@ export default function Scenarios({ site, siteName, center, sitePins }) {
         )}
         {tool === 'text' && <input className="ph-in" aria-label="Text for the next label" placeholder="Type the label, then click the map, e.g. Turn left here" value={textVal} onChange={(e) => setTextVal(e.target.value)} />}
         <div className="muted" style={{ fontSize: 13 }}>
-          {tool === 'move' ? 'Drag pins and labels to move them. Click a pin, arrow or label to rename or delete it.' : tool === 'pin' ? 'Click the map to place a pin.' : tool === 'arrow' ? 'Click the start, then click the end.' : tool === 'route' ? 'Click each corner of the way, then press Finish route.' : 'Click the map to place the label.'}
+          {tool === '' ? 'No tool is on: drag the map to move it. Press a tool to use it; press it again to turn it off.' : tool === 'move' ? 'Drag pins and labels to move them. Click a pin, arrow or label to rename or delete it.' : tool === 'pin' ? 'Click the map to place a pin.' : tool === 'arrow' ? 'Click the start, then click the end.' : tool === 'route' ? 'Click each corner of the way, then press Finish route.' : 'Click the map to place the label.'}
         </div>
         <ScenarioMap key={ed.base + (ed.image ? ed.image.path : '')} base={ed.base} image={imgObj} center={center} view={ed.view} editable tool={tool} pinType={pinType} pinName={pinName} textVal={textVal} apiRef={api}
           pins={ed.pins} marks={ed.marks} height={460} onPending={setPending}
