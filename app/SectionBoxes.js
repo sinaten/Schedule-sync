@@ -44,13 +44,31 @@ export default function SectionBoxes({ job, getVw }) {
     if (!r.ok) { setMsg(j.error || 'Could not save.'); return; }
     setList(j.boxes || []); setEditing(false); setMsg('Saved as "' + name + '".');
   };
+  // The six saved planes of an upright box -> its two corners, so Autodesk's box tool (with its arrows) can be given the same box. null when the box is turned.
+  const corners = (pl) => {
+    const lo = [null, null, null], hi = [null, null, null];
+    for (const p of pl) {
+      const n = [p[0], p[1], p[2]];
+      const k = n.findIndex((v) => Math.abs(Math.abs(v) - 1) < 1e-3);
+      if (k < 0 || n.some((v, i) => i !== k && Math.abs(v) > 1e-3)) return null;
+      const at = -p[3] / n[k]; // plane n.x + w = 0 -> the coordinate of the face
+      if (n[k] > 0) lo[k] = at; else hi[k] = at;
+    }
+    return lo.every((v) => v !== null) && hi.every((v) => v !== null) ? { min: lo, max: hi } : null;
+  };
   const show = async (b) => {
     const vw = getVw();
     await clear(); setEditing(false);
     try {
       const T = window.THREE;
-      vw.setCutPlanes(b.planes.map((p) => new T.Vector4(p[0], p[1], p[2], p[3])));
-      window.__ssSavedCut = true; setShown(b.id); setMsg('Showing "' + b.name + '".');
+      const c = corners(b.planes);
+      const e = await ext();
+      let live = false;
+      if (c && e && e.setSectionBox) {
+        try { e.activate('box'); e.setSectionBox(new T.Box3(new T.Vector3(...c.min), new T.Vector3(...c.max))); live = true; } catch (x) { live = false; }
+      }
+      if (!live) { await clear(); vw.setCutPlanes(b.planes.map((p) => new T.Vector4(p[0], p[1], p[2], p[3]))); window.__ssSavedCut = true; }
+      setShown(b.id); setMsg('Showing "' + b.name + '".' + (live ? ' Drag the faces to change it; tap the name again to go back to the saved size.' : ''));
     } catch (e) { setMsg('Could not show this box.'); }
   };
   const del = async (b) => {
