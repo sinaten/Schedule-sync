@@ -22,11 +22,11 @@ function loadLeaflet() {
 export const PIN_TYPES = { Entrance: '#BA7517', Parking: '#378ADD', Restroom: '#1D9E75', 'First aid': '#E24B4A', 'Muster point': '#7F77DD', Office: '#5F5E5A', Other: '#D4537E' };
 const esc = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-export default function GuideMap({ pins, center, editable, onAdd, onMove, height = 340 }) {
+export default function GuideMap({ pins, center, editable, onAdd, onMove, onRename, onRemove, height = 340 }) {
   const el = useRef(null);
   const st = useRef({});
   const cb = useRef({});
-  cb.current = { onAdd, onMove, editable };
+  cb.current = { onAdd, onMove, onRename, onRemove, editable };
 
   useEffect(() => {
     let dead = false;
@@ -55,9 +55,23 @@ export default function GuideMap({ pins, center, editable, onAdd, onMove, height
     (pins || []).forEach((p, i) => {
       if (p.lat == null || p.lng == null) return;
       const c = PIN_TYPES[p.type] || PIN_TYPES.Other;
-      const label = esc(p.where ? p.type + ': ' + p.where : p.type);
-      const icon = L.divIcon({ className: '', iconSize: [0, 0], html: '<div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;pointer-events:none"><div style="width:26px;height:26px;border-radius:50%;background:' + c + ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;color:#fff;font:700 13px system-ui">' + esc((p.type || '?').slice(0, 1)) + '</div><div style="margin-top:2px;font:600 12px system-ui;background:#fff;color:#16262e;border-radius:6px;padding:1px 6px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.3)">' + label + '</div></div>' });
+      const label = esc(p.where ? (p.type === 'Other' ? p.where : p.type + ': ' + p.where) : p.type);
+      const icon = L.divIcon({ className: '', iconSize: [0, 0], popupAnchor: [0, -34], html: '<div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;pointer-events:none"><div style="pointer-events:auto;cursor:pointer;width:26px;height:26px;border-radius:50%;background:' + c + ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;color:#fff;font:700 13px system-ui">' + esc((p.type || '?').slice(0, 1)) + '</div><div style="margin-top:2px;font:600 12px system-ui;background:#fff;color:#16262e;border-radius:6px;padding:1px 6px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.3)">' + label + '</div></div>' });
       const m = L.marker([p.lat, p.lng], { icon, draggable: !!cb.current.editable, keyboard: false }).addTo(layer);
+      if (cb.current.editable) {
+        const box = document.createElement('div');
+        box.style.cssText = 'display:flex;flex-direction:column;gap:6px;min-width:170px';
+        const inp = document.createElement('input');
+        inp.value = p.where || ''; inp.placeholder = 'Name of this pin';
+        inp.style.cssText = 'padding:6px;font-size:15px;border:1px solid #c7d2d6;border-radius:6px';
+        inp.addEventListener('change', () => { if (cb.current.onRename) cb.current.onRename(i, inp.value); });
+        const del = document.createElement('button');
+        del.type = 'button'; del.textContent = 'Delete this pin';
+        del.style.cssText = 'padding:6px;font-size:15px;border:1px solid #E24B4A;color:#E24B4A;background:#fff;border-radius:6px;cursor:pointer';
+        del.addEventListener('click', () => { if (cb.current.onRemove) cb.current.onRemove(i); });
+        box.appendChild(inp); box.appendChild(del);
+        m.bindPopup(box);
+      }
       if (cb.current.editable) m.on('dragend', () => { const q = m.getLatLng(); if (cb.current.onMove) cb.current.onMove(i, q.lat, q.lng); });
       ll.push([p.lat, p.lng]);
     });

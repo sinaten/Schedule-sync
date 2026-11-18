@@ -78,6 +78,8 @@ export default function ProjectHub() {
   const [ct, setCt] = useState(null);
   const [map, setMap] = useState('');
   const [gType, setGType] = useState('Entrance');
+  const [gName, setGName] = useState('');
+  const [pinSel, setPinSel] = useState({});
   const [addSite, setAddSite] = useState(false);
   const [newSite, setNewSite] = useState('');
   const [addProj, setAddProj] = useState(false);
@@ -211,6 +213,18 @@ export default function ProjectHub() {
     document.addEventListener('focusout', onOut, true);
     return () => { document.removeEventListener('pointerdown', onDown, true); document.removeEventListener('focusout', onOut, true); };
   }, []);
+  // Pins get an id so a link can point at chosen pins only.
+  useEffect(() => {
+    if ((ds.places || []).some((p) => !p.id)) { setDs((x) => ({ ...x, places: (x.places || []).map((p) => (p.id ? p : { ...p, id: uid() })) })); setDirtyS(true); }
+  }, [ds.places]);
+  const pinLink = (ids) => (ds.guide && ids.length ? location.origin + '/guide/' + ds.guide + '?pins=' + ids.join(',') : '');
+  const copyPinLink = async (ids) => {
+    if (!ds.guide) { setMsg('Create the share link first (below).'); return; }
+    if (!ids.length) { setMsg('Tick at least one pin.'); return; }
+    if (dirty) { try { await save(); } catch {} }
+    const l = pinLink(ids);
+    try { await navigator.clipboard.writeText(l); setMsg('Link copied: ' + l); } catch { setMsg('Link: ' + l); }
+  };
   async function assign(job, siteId) {
     if (!siteId) return;
     setMsg('Saving…');
@@ -499,21 +513,25 @@ export default function ProjectHub() {
           {head('guide', 'Site guide map', ds.places.filter((p) => p.lat != null).length + ' pins')}
           {op.guide && (
             <div className="ph-body">
-              <div className="muted" style={{ fontSize: 13 }}>Pick a pin type, then click the aerial view. Drag a pin to move it.{ds.lat == null && !ds.places.some((p) => p.lat != null) ? ' Pin the site above first so the map opens at the right place.' : ''}</div>
+              <div className="muted" style={{ fontSize: 13 }}>Pick a pin type, optionally type a name, then click the aerial view. Drag a pin to move it. Click a pin to rename or delete it.{ds.lat == null && !ds.places.some((p) => p.lat != null) ? ' Pin the site above first so the map opens at the right place.' : ''}</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {Object.keys(PIN_TYPES).map((k) => <button key={k} type="button" className="ph-btn" style={{ padding: '5px 10px', fontSize: 14, ...(gType === k ? { background: '#e3f1f2', borderColor: 'var(--acc)' } : {}) }} onClick={() => setGType(k)}><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: PIN_TYPES[k], marginRight: 6 }} />{k}</button>)}
               </div>
-              <GuideMap editable pins={ds.places} center={ds.lat != null ? { lat: ds.lat, lng: ds.lng } : null}
-                onAdd={(la, lo) => upS({ places: [...ds.places, { type: gType, where: '', lat: la, lng: lo }] })}
+              <input className="ph-in" aria-label="Name for the next pin" placeholder="Name for the next pin (optional), e.g. East gate parking" value={gName} onChange={(e) => setGName(e.target.value)} />
+              <GuideMap editable pins={ds.places} onRename={(i, t) => upS({ places: ds.places.map((x, j) => (j === i ? { ...x, where: t } : x)) })} onRemove={(i) => upS({ places: ds.places.filter((_, j) => j !== i) })} center={ds.lat != null ? { lat: ds.lat, lng: ds.lng } : null}
+                onAdd={(la, lo) => upS({ places: [...ds.places, { id: uid(), type: gType, where: gName.trim(), lat: la, lng: lo }] })}
                 onMove={(i, la, lo) => upS({ places: ds.places.map((p, j) => (j === i ? { ...p, lat: la, lng: lo } : p)) })} />
               {ds.places.map((p, i) => (
-                <div className="ph-row" key={i}>
+                <div className="ph-row" key={p.id || i}>
+                  <input type="checkbox" aria-label="Select pin for a link" checked={!!pinSel[p.id]} onChange={(e) => setPinSel({ ...pinSel, [p.id]: e.target.checked })} style={{ width: 20, height: 20, flex: '0 0 auto' }} />
                   <input className="ph-in" style={{ flex: '1 1 130px', width: 'auto' }} list="ph-places" placeholder="Type" aria-label="Type" value={p.type || ''} onChange={(e) => upS({ places: ds.places.map((x, j) => (j === i ? { ...x, type: e.target.value } : x)) })} />
                   <input className="ph-in" style={{ flex: '2 1 200px', width: 'auto' }} placeholder="Where it is, e.g. east gate" aria-label="Where it is" value={p.where || ''} onChange={(e) => upS({ places: ds.places.map((x, j) => (j === i ? { ...x, where: e.target.value } : x)) })} />
                   <span className={'ph-tag' + (p.lat != null ? ' s' : '')}>{p.lat != null ? 'On the map' : 'No pin'}</span>
-                  <button type="button" className="ph-btn" style={{ padding: '6px 10px' }} aria-label="Remove" onClick={() => upS({ places: ds.places.filter((_, j) => j !== i) })}>&times;</button>
+                  <button type="button" className="ph-btn" style={{ padding: '6px 10px' }} aria-label="Copy link to this pin" onClick={() => copyPinLink([p.id])}>Link</button>
+                  <button type="button" className="ph-btn" style={{ padding: '6px 10px' }} aria-label="Delete pin" onClick={() => upS({ places: ds.places.filter((_, j) => j !== i) })}>Delete</button>
                 </div>
               ))}
+              {ds.places.length > 0 && <div><button type="button" className="ph-btn" onClick={() => copyPinLink(ds.places.filter((p) => pinSel[p.id] && p.lat != null).map((p) => p.id))}>Copy link for the ticked pins ({ds.places.filter((p) => pinSel[p.id]).length})</button></div>}
               <div className="ph-note">
                 {ds.guide ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

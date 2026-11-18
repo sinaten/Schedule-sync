@@ -7,7 +7,7 @@ export const metadata = { title: 'Site guide', robots: { index: false, follow: f
 const dir = (la, lo) => 'https://www.google.com/maps/dir/?api=1&destination=' + la + ',' + lo;
 
 // Public page (no login): anyone with the site's secret link sees where to go: the aerial map with pins, and the orientation card.
-export default async function Guide({ params }) {
+export default async function Guide({ params, searchParams }) {
   const t = String(params.token || '');
   if (!/^[a-f0-9]{20,40}$/.test(t)) notFound();
   const sql = await db();
@@ -16,8 +16,9 @@ export default async function Guide({ params }) {
   const s = r.value, o = s.orientation || {};
   const people = s.contacts || [];
   const call = people.find((x) => x.id && x.id === o.callId), mail = people.find((x) => x.id && x.id === o.mailId);
-  const pins = (s.places || []).filter((p) => p.lat != null && p.lng != null);
-  const hasO = o.when || o.where || o.address || call || mail || (o.files || []).length || o.rules;
+  const only = String((searchParams && searchParams.pins) || '').split(',').filter(Boolean);
+  const pins = (s.places || []).filter((p) => p.lat != null && p.lng != null && (!only.length || (p.id && only.includes(p.id))));
+  const hasO = !only.length && (o.when || o.where || o.address || call || mail || (o.files || []).length || o.rules);
   const box = { border: '1px solid var(--line)', borderRadius: 10, padding: 14, background: '#fff', marginBottom: 14 };
   const btn = { display: 'inline-block', padding: '8px 14px', border: '1px solid var(--line)', borderRadius: 8, textDecoration: 'none', color: 'var(--ink)', background: '#fff', fontSize: 15 };
   return (
@@ -45,7 +46,7 @@ export default async function Guide({ params }) {
 
       {pins.length > 0 && (
         <div style={box}>
-          <h2 style={{ margin: '0 0 8px', fontSize: 19 }}>Where things are</h2>
+          <h2 style={{ margin: '0 0 8px', fontSize: 19 }}>{only.length ? 'Where to go' : 'Where things are'}</h2>
           <GuideMap pins={pins} center={s.lat != null ? { lat: s.lat, lng: s.lng } : null} height={380} />
           <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {pins.map((p, i) => (
