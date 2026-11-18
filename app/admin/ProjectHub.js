@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import MapPicker from './MapPicker';
 import GuideMap, { PIN_TYPES } from '../GuideMap';
 import Projects from './Projects';
+import AiText from './AiText';
 import { WORKFLOWS } from '../../lib/projmeta';
 
 // Admin > Projects. A site comes first: it has the address, the pin on the map and what all its projects share (contacts, places, workflows).
@@ -458,7 +459,7 @@ export default function ProjectHub() {
           {head('about', 'How this site works (AI reads this)')}
           {op.about && (
             <div className="ph-body">
-              <textarea className="ph-in" rows={5} placeholder="Explain in your own words how things work on this site: who decides what, the order of steps, anything a newcomer must know." value={ds.about || ''} onChange={(e) => upS({ about: e.target.value })} />
+              <AiText rows={5} placeholder="Explain in your own words how things work on this site: who decides what, the order of steps, anything a newcomer must know. Write (AI. like this) for notes only the AI reads." value={ds.about || ''} onChange={(t) => upS({ about: t })} />
             </div>
           )}
         </div>
@@ -503,8 +504,8 @@ export default function ProjectHub() {
                   <label className="ph-btn" style={{ cursor: 'pointer' }}>Add file<input type="file" hidden onChange={(e) => { addFile(e.target.files[0]); e.target.value = ''; }} /></label>
                 </div>
               </div>
-              <label><span className="ph-lab">Rules (shown to workers on the share page)</span><textarea className="ph-in" rows={3} value={o.rules || ''} onChange={(e) => upO({ rules: e.target.value })} /></label>
-              <label><span className="ph-lab">How it works (AI reads this, not shown to workers)</span><textarea className="ph-in" rows={4} placeholder="Everyone attends before the first day. Call the HSE lead first, then email the signed form…" value={o.how || ''} onChange={(e) => upO({ how: e.target.value })} /></label>
+              <label><span className="ph-lab">Rules (shown to workers on the share page)</span><AiText rows={3} placeholder="Anything in (AI. like this) is hidden from workers" value={o.rules || ''} onChange={(t) => upO({ rules: t })} /></label>
+              <label><span className="ph-lab">How it works (AI reads this, not shown to workers)</span><AiText rows={4} placeholder="Everyone attends before the first day. Call the HSE lead first, then email the signed form…" value={o.how || ''} onChange={(t) => upO({ how: t })} /></label>
             </div>
           )}
         </div>

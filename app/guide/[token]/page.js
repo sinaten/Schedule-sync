@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { db } from '../../../lib/db';
 import GuideMap from '../../GuideMap';
+import { stripAi } from '../../../lib/aitext';
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Site guide', robots: { index: false, follow: false } };
 
@@ -18,7 +19,7 @@ export default async function Guide({ params, searchParams }) {
   const call = people.find((x) => x.id && x.id === o.callId), mail = people.find((x) => x.id && x.id === o.mailId);
   const only = String((searchParams && searchParams.pins) || '').split(',').filter(Boolean);
   const pins = (s.places || []).filter((p) => p.lat != null && p.lng != null && (!only.length || (p.id && only.includes(p.id))));
-  const hasO = !only.length && (o.when || o.where || o.address || call || mail || (o.files || []).length || o.rules);
+  const hasO = !only.length && (o.when || o.where || o.address || call || mail || (o.files || []).length || stripAi(o.rules));
   const box = { border: '1px solid var(--line)', borderRadius: 10, padding: 14, background: '#fff', marginBottom: 14 };
   const btn = { display: 'inline-block', padding: '8px 14px', border: '1px solid var(--line)', borderRadius: 8, textDecoration: 'none', color: 'var(--ink)', background: '#fff', fontSize: 15 };
   return (
@@ -40,7 +41,7 @@ export default async function Guide({ params, searchParams }) {
               {o.files.map((f, i) => <a key={i} style={{ ...btn, margin: '4px 6px 0 0' }} href={'/guide/' + t + '/f?i=' + i + '&raw=1'} target="_blank" rel="noreferrer">{f.name}</a>)}
             </p>
           )}
-          {o.rules && <p style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap' }}>{o.rules}</p>}
+          {stripAi(o.rules) && <p style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap' }}>{stripAi(o.rules)}</p>}
         </div>
       )}
 
