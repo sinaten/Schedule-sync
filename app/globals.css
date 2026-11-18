@@ -95,11 +95,11 @@ tr.rowp td:first-child{box-shadow:inset 4px 0 var(--amber)}
   .ms-tabs{display:flex;gap:3px;padding:3px;background:#f4f3ee;border-radius:14px}
   .ms-tab{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:9px 0;border:0;border-radius:11px;background:transparent;font:inherit;font-size:14.5px;font-weight:500;color:#8a877b;cursor:pointer;-webkit-tap-highlight-color:transparent}
   .ms-tab i{width:7px;height:7px;border-radius:50%;opacity:.55}
-  .ms-tab-i i{background:#d93025}
+  .ms-tab-i i{background:#1a73e8}
   .ms-tab-f i{background:#1e9e5a}
   .ms-tab.on{background:#fff;box-shadow:0 1px 4px rgba(20,20,19,.15);font-weight:600}
   .ms-tab.on i{opacity:1}
-  .ms-tab-i.on{color:#d93025}
+  .ms-tab-i.on{color:#1a73e8}
   .ms-tab-f.on{color:#1e9e5a}
   /* Issues tab: the page below is empty for now */
   body[data-ms-tab="follow"] > :not(header):not(nav):not(.ms-tabs-wrap):not(.ms-spacer):not(.ms-follow):not(.mp-root):not(script){position:fixed!important;left:-200vw!important;top:0!important;width:100vw!important;visibility:hidden!important;pointer-events:none!important}
@@ -123,11 +123,11 @@ tr.rowp td:first-child{box-shadow:inset 4px 0 var(--amber)}
   .ms-tabs{display:flex;gap:3px;padding:3px;background:#f4f3ee;border-radius:12px;max-width:340px;margin:0 auto}
   .ms-tab{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:5px 0;border:0;border-radius:9px;background:transparent;font:inherit;font-size:13px;font-weight:500;color:#8a877b;cursor:pointer}
   .ms-tab i{width:7px;height:7px;border-radius:50%;opacity:.55}
-  .ms-tab-i i{background:#d93025}
+  .ms-tab-i i{background:#1a73e8}
   .ms-tab-f i{background:#1e9e5a}
   .ms-tab.on{background:#fff;box-shadow:0 1px 3px rgba(20,20,19,.15);font-weight:600}
   .ms-tab.on i{opacity:1}
-  .ms-tab-i.on{color:#d93025}
+  .ms-tab-i.on{color:#1a73e8}
   .ms-tab-f.on{color:#1e9e5a}
   body[data-ms-tab="follow"] > :not(header):not(nav):not(.ms-tabs-wrap):not(.ms-spacer):not(.ms-follow):not(.mp-root):not(script){position:fixed!important;left:-200vw!important;top:0!important;width:100vw!important;visibility:hidden!important;pointer-events:none!important}
 }

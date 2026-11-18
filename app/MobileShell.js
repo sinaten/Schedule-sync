@@ -141,8 +141,8 @@ export default function MobileShell({ name, role, admin }) {
           </>
         )}
       </header>
-      {job && (<div className="ms-tabs-wrap"><div className="ms-tabs" role="tablist" aria-label="Issues and follow-up">
-        <button type="button" role="tab" aria-selected={tab === 'issues'} className={'ms-tab ms-tab-i' + (tab === 'issues' ? ' on' : '')} onClick={() => setTab('issues')}><i />Issues</button>
+      {job && (<div className="ms-tabs-wrap"><div className="ms-tabs" role="tablist" aria-label="Inspection and follow-up">
+        <button type="button" role="tab" aria-selected={tab === 'issues'} className={'ms-tab ms-tab-i' + (tab === 'issues' ? ' on' : '')} onClick={() => setTab('issues')}><i />Inspection</button>
         <button type="button" role="tab" aria-selected={tab === 'follow'} className={'ms-tab ms-tab-f' + (tab === 'follow' ? ' on' : '')} onClick={() => setTab('follow')}><i />Follow-up</button>
       </div></div>)}
       <div className="ms-spacer" />
