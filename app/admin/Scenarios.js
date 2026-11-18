@@ -130,7 +130,7 @@ export default function Scenarios({ site, siteName, center, sitePins }) {
           {tool === '' ? 'No tool is on: drag the map to move it. Press a tool to use it; press it again to turn it off.' : tool === 'move' ? 'Drag pins and labels to move them. Click a pin, arrow or label to rename or delete it.' : tool === 'pin' ? 'Click the map to place a pin.' : tool === 'arrow' ? 'Click the start, then click the end.' : tool === 'route' ? 'Click each corner of the way, then press Finish route.' : 'Click the map to place the label.'}
         </div>
         <ScenarioMap key={ed.base + (ed.image ? ed.image.path : '')} base={ed.base} image={imgObj} center={center} view={ed.view} editable tool={tool} pinType={pinType} pinName={pinName} textVal={textVal} apiRef={api}
-          pins={ed.pins} marks={ed.marks} height={460} onPending={setPending}
+          pins={ed.pins} marks={ed.marks} ratio={4 / 3} start={ed.start} onPending={setPending}
           onAddPin={(la, lo) => upf((x) => ({ pins: [...x.pins, { type: pinType, where: pinName.trim(), lat: la, lng: lo }] }))}
           onMovePin={(i, la, lo) => upf((x) => ({ pins: x.pins.map((p, j) => (j === i ? { ...p, lat: la, lng: lo } : p)) }))}
           onRenamePin={(i, t) => upf((x) => ({ pins: x.pins.map((p, j) => (j === i ? { ...p, where: t } : p)) }))}
@@ -139,7 +139,7 @@ export default function Scenarios({ site, siteName, center, sitePins }) {
           onMoveMark={(id, pt) => upf((x) => ({ marks: x.marks.map((m) => (m.id === id ? { ...m, pts: [pt] } : m)) }))}
           onEditMark={(id, t) => upf((x) => ({ marks: x.marks.map((m) => (m.id === id ? { ...m, text: t } : m)) }))}
           onRemoveMark={(id) => upf((x) => ({ marks: x.marks.filter((m) => m.id !== id) }))}
-          onView={(v) => { if (ed.view === null || Math.abs((ed.view.lat || 0) - v.lat) > 1e-9 || ed.view.zoom !== v.zoom) setEd((x) => ({ ...x, view: v })); }} />
+          onView={(v) => { setEd((x) => (x.view && Math.abs(x.view.lat - v.lat) < 1e-9 && Math.abs(x.view.lng - v.lng) < 1e-9 && x.view.zoom === v.zoom ? x : { ...x, view: v })); }} />
         {ed.base === 'aerial' && sitePins && sitePins.some((p) => p.lat != null) && (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             <span className="muted" style={{ fontSize: 14 }}>Add a pin from the site guide:</span>
@@ -148,7 +148,7 @@ export default function Scenarios({ site, siteName, center, sitePins }) {
         )}
         <div style={{ border: '1px solid var(--line)', borderRadius: 8, padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <b style={{ fontSize: 15 }}>Start point (GPS)</b>
-          <div className="muted" style={{ fontSize: 13 }}>Where the way begins in the real world. The person who opens the link taps it and Google Maps takes them there; from there they follow your arrows.</div>
+          <div className="muted" style={{ fontSize: 13 }}>Where the way begins in the real world. On the link, a red Start pin sits on the map: tapping it opens Google Maps to take them there; from there they follow your arrows. The frame you leave on screen when you press Save is the frame everyone sees: they can zoom in, not out.</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <button type="button" className="ph-btn" onClick={() => setPick(true)}>{ed.start ? 'Move the start point' : 'Set the start point on the map'}</button>
             {ed.start && <button type="button" className="ph-btn" onClick={() => up({ start: null })}>Remove</button>}

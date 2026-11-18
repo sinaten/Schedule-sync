@@ -5,7 +5,7 @@ import { loadLeaflet, PIN_TYPES, esc } from './GuideMap';
 // The map of a scenario: aerial view or an uploaded picture, with pins, arrows, routes and labels.
 // Read only on the public page. In the admin (editable) the tool says what a click does: pin, arrow (2 clicks), route (many clicks, then Finish), text.
 const RED = '#E24B4A';
-export default function ScenarioMap({ base, image, pins, marks, view, center, editable, tool, pinType, pinName, textVal, apiRef, onAddPin, onMovePin, onRenamePin, onRemovePin, onAddMark, onMoveMark, onEditMark, onRemoveMark, onView, onPending, height = 420 }) {
+export default function ScenarioMap({ base, image, pins, marks, view, center, start, frame, ratio, editable, tool, pinType, pinName, textVal, apiRef, onAddPin, onMovePin, onRenamePin, onRemovePin, onAddMark, onMoveMark, onEditMark, onRemoveMark, onView, onPending, height = 420 }) {
   const el = useRef(null), st = useRef({}), cb = useRef({}), pend = useRef([]);
   cb.current = { editable, tool, pinType, pinName, textVal, onAddPin, onMovePin, onRenamePin, onRemovePin, onAddMark, onMoveMark, onEditMark, onRemoveMark, onView, onPending };
   const img = image && image.url ? image : null;
@@ -20,29 +20,31 @@ export default function ScenarioMap({ base, image, pins, marks, view, center, ed
         const b = [[0, 0], [img.h, img.w]];
         L.imageOverlay(img.url, b).addTo(map);
         map.fitBounds(b);
-        map.setMaxBounds([[-img.h * 0.5, -img.w * 0.5], [img.h * 1.5, img.w * 1.5]]);
+        if (cb.current.editable) map.setMaxBounds([[-img.h * 0.5, -img.w * 0.5], [img.h * 1.5, img.w * 1.5]]);
+        else { map.setMinZoom(map.getZoom()); map.setMaxBounds(b); map.options.maxBoundsViscosity = 1; } // read only: you can zoom in, never out of the picture
       } else {
         const has = (view && view.lat != null) || (center && center.lat != null);
         const c = view && view.lat != null ? [view.lat, view.lng] : has ? [center.lat, center.lng] : [39.5, -98.35];
-        map = L.map(el.current, { zoomControl: true }).setView(c, view && view.zoom != null ? view.zoom : has ? 18 : 4);
+        map = L.map(el.current, { zoomControl: true, zoomSnap: frame ? 0.25 : 1 }).setView(c, view && view.zoom != null ? view.zoom : has ? 18 : 4);
+        if (frame) { map.fitBounds(frame, { animate: false }); map.setMinZoom(map.getZoom()); map.setMaxBounds(frame); map.options.maxBoundsViscosity = 1; } // the same frame for everyone: you can zoom in, never out
         const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri' });
         const street = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri, HERE, OpenStreetMap contributors' });
         sat.addTo(map);
-        L.control.layers({ Aerial: sat, Map: street }, null, { position: 'topright' }).addTo(map);
+        if (!frame) L.control.layers({ Aerial: sat, Map: street }, null, { position: 'topright' }).addTo(map);
       }
       const layer = L.layerGroup().addTo(map), tmp = L.layerGroup().addTo(map);
       st.current = { L, map, layer, tmp, fitted: false };
       map.on('click', (e) => click(e.latlng));
       map.on('dblclick', () => {});
       map.on('zoomend', () => draw());
-      map.on('moveend', () => { if (cb.current.onView) { const c = map.getCenter(); cb.current.onView({ lat: c.lat, lng: c.lng, zoom: map.getZoom() }); } });
+      map.on('moveend', () => { if (cb.current.onView) { const c = map.getCenter(), bb = map.getBounds(); cb.current.onView({ lat: c.lat, lng: c.lng, zoom: map.getZoom(), bounds: [[bb.getSouth(), bb.getWest()], [bb.getNorth(), bb.getEast()]] }); } });
       if (apiRef) apiRef.current = { finishRoute, cancelPending };
       if (cb.current.editable && cb.current.tool === 'move') map.dragging.disable();
       draw(); drawTmp();
       setTimeout(() => map.invalidateSize(), 200);
     }).catch(() => {});
     return () => { dead = true; if (st.current.map) { st.current.map.remove(); st.current = {}; } };
-  }, [base, img && img.url]);
+  }, [base, img && img.url, frame ? 1 : 0]);
 
   function cancelPending() { pend.current = []; drawTmp(); if (cb.current.onPending) cb.current.onPending(0); }
   function finishRoute() {
@@ -116,11 +118,17 @@ export default function ScenarioMap({ base, image, pins, marks, view, center, ed
       if (ed) { m.bindPopup(box(i, arr, 'pin')); m.on('dragend', () => { const q = m.getLatLng(); cb.current.onMovePin && cb.current.onMovePin(i, q.lat, q.lng); }); }
       ll.push([p.lat, p.lng]);
     });
-    if (!st.current.fitted && ll.length && !(view && view.lat != null)) { st.current.fitted = true; map.fitBounds(ll, { padding: [50, 50], maxZoom: base === 'image' ? 3 : 19 }); }
+    const sp = startRef.current;
+    if (sp && base !== 'image' && sp.lat != null) {
+      const sic = L.divIcon({ className: '', iconSize: [0, 0], popupAnchor: [0, -40], html: '<div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center"><svg width="34" height="44" viewBox="0 0 34 44"><path d="M17 43C17 43 3 27 3 16a14 14 0 0 1 28 0c0 11-14 27-14 27z" fill="#E24B4A" stroke="#fff" stroke-width="3"/><circle cx="17" cy="16" r="5.5" fill="#fff"/></svg><div style="margin-top:2px;font:700 12px system-ui;background:#E24B4A;color:#fff;border-radius:6px;padding:2px 7px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.4)">Start' + (sp.name ? ': ' + esc(sp.name) : '') + '</div></div>' });
+      const sm = L.marker([sp.lat, sp.lng], { icon: sic, keyboard: false, zIndexOffset: 1000 }).addTo(layer);
+      sm.on('click', () => { window.open('https://www.google.com/maps/dir/?api=1&destination=' + sp.lat + ',' + sp.lng, '_blank', 'noopener'); });
+    }
+    if (!st.current.fitted && ll.length && !(view && view.lat != null) && !frame) { st.current.fitted = true; map.fitBounds(ll, { padding: [50, 50], maxZoom: base === 'image' ? 3 : 19 }); }
   }
-  const pinsRef = useRef(pins), marksRef = useRef(marks);
-  pinsRef.current = pins; marksRef.current = marks;
-  useEffect(() => { draw(); }, [pins, marks, editable]);
+  const pinsRef = useRef(pins), marksRef = useRef(marks), startRef = useRef(start);
+  pinsRef.current = pins; marksRef.current = marks; startRef.current = start;
+  useEffect(() => { draw(); }, [pins, marks, editable, start && start.lat, start && start.lng, start && start.name]);
   useEffect(() => { if (tool !== 'arrow' && tool !== 'route') cancelPending(); }, [tool]);
   // Move / edit: the map stays still, only pins, arrows and labels can be touched. Any other tool: the map can be dragged.
   useEffect(() => {
@@ -128,5 +136,5 @@ export default function ScenarioMap({ base, image, pins, marks, view, center, ed
     if (editable && tool === 'move') map.dragging.disable(); else map.dragging.enable();
   }, [tool, editable, base, img && img.url]);
 
-  return <div ref={el} style={{ height, borderRadius: 10, border: '1px solid #c7d2d6', background: '#eef1f3', cursor: editable && tool && tool !== 'move' ? 'crosshair' : 'grab' }} />;
+  return <div ref={el} style={{ ...(ratio ? { aspectRatio: String(ratio), width: '100%' } : { height }), borderRadius: 10, border: '1px solid #c7d2d6', background: '#eef1f3', cursor: editable && tool && tool !== 'move' ? 'crosshair' : 'grab' }} />;
 }

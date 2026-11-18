@@ -28,7 +28,7 @@ export default async function Scenario({ params }) {
         </div>
       )}
       <div style={box}>
-        <ScenarioMap base={image ? 'image' : 'aerial'} image={image} pins={s.pins || []} marks={s.marks || []} view={s.view} height={440} />
+        <ScenarioMap base={image ? 'image' : 'aerial'} image={image} pins={s.pins || []} marks={s.marks || []} view={s.view} frame={!image && s.view && s.view.bounds ? s.view.bounds : null} start={s.start} ratio={4 / 3} />
       </div>
       {desc && <div style={box}><h2 style={{ margin: '0 0 8px', fontSize: 19 }}>What to do</h2><p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{desc}</p></div>}
     </main>
