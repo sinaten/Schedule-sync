@@ -6,8 +6,18 @@ export default function DataMapping() {
   const [f, setF] = useState(null);
   const [open, setOpen] = useState({});
   const [q, setQ] = useState('');
+  const [pm, setPm] = useState({ meta: {}, sites: {} });
+  const [sq, setSq] = useState({});
+  const [msg, setMsg] = useState('');
   const load = () => fetch('/api/admin/datamap').then((r) => r.json()).then((d) => setF(d.folders || [])).catch(() => setF([]));
-  useEffect(() => { load(); }, []);
+  const loadPm = () => fetch('/api/admin/projmeta').then((r) => r.json()).then((d) => setPm({ meta: d.meta || {}, sites: d.sites || {} })).catch(() => {});
+  useEffect(() => { load(); loadPm(); }, []);
+  const assign = async (job, siteId) => {
+    setMsg('');
+    const r = await fetch('/api/admin/projmeta', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, meta: { ...(pm.meta[job] || {}), siteId } }) });
+    setMsg(r.ok ? 'Saved' : 'Could not save');
+    await loadPm(); load();
+  };
   const when = (t) => { if (!t) return ''; const d = new Date(t); return isNaN(d) ? '' : d.toLocaleString(); };
   const list = (f || []).filter((x) => !q || x.job.toLowerCase().includes(q.toLowerCase()) || (x.title || '').toLowerCase().includes(q.toLowerCase()));
   const chip = (x) => x.state === 'deleted' ? ['Deleted in Revit', '#b3261e'] : x.state === 'inactive' ? ['Inactive', '#8a6d00'] : ['Active', '#1b7a3a'];
@@ -30,7 +40,13 @@ export default function DataMapping() {
               </button>
               {o && (
                 <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <div className="muted" style={{ fontSize: 14 }}>{x.site ? 'Site: ' + x.site : 'Not attached to a site yet (attach it in Projects).'}</div>
+                  <div style={{ fontSize: 14 }}><b>Site:</b> {x.site || <span className="muted">not attached yet</span>}</div>
+                  <input value={sq[x.job] || ''} onChange={(e) => setSq({ ...sq, [x.job]: e.target.value })} placeholder="Search sites" style={{ maxWidth: 320 }} />
+                  <select value={x.siteId || ''} onChange={(e) => assign(x.job, e.target.value)} style={{ maxWidth: 320 }}>
+                    <option value="">No site</option>
+                    {Object.entries(pm.sites).filter(([id, v]) => id === x.siteId || !(sq[x.job] || '').trim() || [v.name, v.city, v.country, v.address].join(' ').toLowerCase().includes(sq[x.job].trim().toLowerCase())).sort((a, b) => String(a[1].name).localeCompare(String(b[1].name))).map(([id, v]) => <option key={id} value={id}>{v.name}{v.city ? ' — ' + v.city : ''}</option>)}
+                  </select>
+                  {msg ? <div className="muted" style={{ fontSize: 13 }}>{msg}</div> : null}
                   {x.state === 'deleted' && <div style={{ color: '#b3261e', fontSize: 14 }}>Deleted in Revit — its models and schedules were removed here.</div>}
                   <b style={{ fontSize: 14 }}>Models ({x.models.length})</b>
                   {x.models.map((m, i) => <div key={i} style={{ fontSize: 14 }}>{m.name} <span className="muted">{when(m.at)}</span></div>)}
