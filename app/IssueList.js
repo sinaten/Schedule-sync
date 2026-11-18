@@ -6,6 +6,7 @@ import { goPart, linkNums, useModelIds } from './ElemLinks';
 import IssuePanel from './IssuePanel';
 import WeatherStrip from './WeatherStrip';
 import ModelSlot from './ModelSlot';
+import SecondViewer from './SecondViewer';
 import { SWAP, fsBody, fsTop, fsHalf } from './layoutSwap';
 
 // Status model of an issue (same words as Procore).
@@ -227,6 +228,7 @@ export default function IssueList({ job }) {
   const chip = (k, label) => <button key={k} type="button" onClick={() => setF(k)} style={{ border: 0, borderRadius: 14, padding: '5px 12px', font: 'inherit', fontSize: 12.5, cursor: 'pointer', background: f === k ? 'rgba(20,20,19,.82)' : '#f4f3ee', color: f === k ? '#fff' : '#141413', fontWeight: f === k ? 600 : 500 }}>{label}</button>;
   return (
     <section style={{ margin: '18px 0', maxWidth: 560 }}>
+      {job && <SecondViewer job={job} />}
       {src && (
         <div aria-disabled="true" title="Choose the Issue bar under the model to use the issues" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', border: '1px solid #e7e3d8', borderRadius: 14, background: '#f1f0ec', color: '#a8a496', cursor: 'default' }}>
           <span style={{ fontSize: 15.5, fontWeight: 600 }}>Issues</span>
@@ -270,14 +272,14 @@ export default function IssueList({ job }) {
               const mine = ed && ed.element_id === r.element_id;
               const info = (k, v) => v ? <div style={{ display: 'flex', gap: 8, fontSize: 12.5, lineHeight: 1.6 }}><span style={{ width: 84, flex: 'none', color: '#8a8576', fontWeight: 700, fontSize: 11, letterSpacing: 0.3, textTransform: 'uppercase', paddingTop: 1 }}>{k}</span><span style={{ color: '#141413', wordBreak: 'break-word' }}>{v}</span></div> : null;
               return (
-                <div key={r.element_id} style={{ border: '1px solid #e7e3d8', borderRadius: 12, background: '#fff', ...fullBox(full === r.element_id) }}>
+                <div key={r.element_id} data-mini-card={r.element_id} style={{ border: '1px solid #e7e3d8', borderRadius: 12, background: '#fff', ...fullBox(full === r.element_id) }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#f7f5ef', borderRadius: full === r.element_id ? 0 : '12px 12px 0 0', flexWrap: 'wrap', ...(full === r.element_id ? { position: 'sticky', top: 0, zIndex: 3 } : {}) }}>
                     <b style={{ fontSize: 13.5 }}>{r.card}</b>
                     <StatusChip st={r.status} onPick={(k) => setStatus(r, k)} locked={!can} />
                     <PriorityTag pr={r.priority} />
                     <span style={{ flex: 1 }} />
                     <button type="button" disabled={!can} title={can ? 'Edit this issue' : 'Only the author, an editor or a manager can edit'} onClick={() => setEd(mine ? null : { element_id: r.element_id, text: r.description || '', pr: r.priority || 'noncritical' })} style={{ border: '1px solid ' + (can ? '#e8710a' : '#d9d5c8'), background: '#fff', color: can ? '#e8710a' : '#b0ab9a', borderRadius: 12, padding: '3px 12px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: can ? 'pointer' : 'not-allowed' }}>Edit</button>
-                    {/^\d+$/.test(r.element_id) && <button type="button" onClick={() => goPart(r.element_id)} style={{ border: 0, background: 'none', font: 'inherit', fontSize: 12.5, color: '#6b675c', cursor: 'pointer' }}>{'▣'} Go to 3D</button>}
+                    {/^\d+$/.test(r.element_id) && <button type="button" onClick={(e) => goPart(r.element_id, e.currentTarget)} style={{ border: 0, background: 'none', font: 'inherit', fontSize: 12.5, color: '#6b675c', cursor: 'pointer' }}>{'▣'} Go to 3D</button>}
                     <FullBtn on={full === r.element_id} toggle={() => setFull(full === r.element_id ? null : r.element_id)} />
                   </div>
                   <div style={SWAP ? fsBody(full === r.element_id, wide) : bodyBox(full === r.element_id, wide)}>
