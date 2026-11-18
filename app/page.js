@@ -1,5 +1,5 @@
 import { db } from '../lib/db';
-import JobList from './JobList';
+import HomeSites from './HomeSites';
 import { currentUser } from '../lib/user';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -21,10 +21,20 @@ export default async function Home() {
   }
   for (const [k, x] of map) { const s = stOf.get(k); if (s && s.state && s.state !== 'active') { x.state = s.state; x.by = s.by || ''; } }
   const jobs = [...map.entries()].filter(([k]) => !u || u.jobs === null || (k !== '' && u.jobs.includes(k))).map(([, x]) => x).sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
+  const meta = await sql`select substr(key, 10) as job, value from settings where key like 'projmeta:%'`;
+  const siteRows = await sql`select substr(key, 6) as id, value from settings where key like 'site:%'`;
+  const siteOf = new Map(meta.map((m) => [m.job, (m.value && m.value.siteId) || '']));
+  const sites = siteRows.map((r) => ({ id: r.id, name: (r.value && r.value.name) || 'Site', city: (r.value && r.value.city) || '', country: (r.value && r.value.country) || '', address: (r.value && r.value.address) || '', jobs: [] }));
+  const byId = new Map(sites.map((x) => [x.id, x]));
+  const none = { id: '', name: 'Not attached to a site', city: '', country: '', address: '', jobs: [] };
+  for (const j of jobs) { const x = byId.get(siteOf.get(j.slug) || ''); const pj = { ...j, title: (stOf.get(j.slug) || {}).title || '' }; (x || none).jobs.push(pj); }
+  const all = u && u.jobs !== null ? sites.filter((x) => x.jobs.length) : sites;
+  all.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  if (none.jobs.length) all.push(none);
   return (
-    <main>
-      <h1>Jobs</h1>
-      <JobList jobs={jobs} />
+    <main className="wide">
+      <h1>Sites</h1>
+      <HomeSites sites={all} />
     </main>
   );
 }
