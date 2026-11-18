@@ -5,6 +5,8 @@ import CamIcon from './CamIcon';
 import { goPart, linkNums, useModelIds } from './ElemLinks';
 import IssuePanel from './IssuePanel';
 import WeatherStrip from './WeatherStrip';
+import ModelSlot from './ModelSlot';
+import { SWAP, fsBody, fsTop, fsHalf } from './layoutSwap';
 
 // Status model of an issue (same words as Procore).
 export const ST = {
@@ -278,8 +280,9 @@ export default function IssueList({ job }) {
                     {/^\d+$/.test(r.element_id) && <button type="button" onClick={() => goPart(r.element_id)} style={{ border: 0, background: 'none', font: 'inherit', fontSize: 12.5, color: '#6b675c', cursor: 'pointer' }}>{'▣'} Go to 3D</button>}
                     <FullBtn on={full === r.element_id} toggle={() => setFull(full === r.element_id ? null : r.element_id)} />
                   </div>
-                  <div style={bodyBox(full === r.element_id, wide)}>
-                  <div style={{ ...halfStyle(full === r.element_id, wide, 'issue'), background: '#fbeedb', borderTop: '3px solid #e8710a' }}>
+                  <div style={SWAP ? fsBody(full === r.element_id, wide) : bodyBox(full === r.element_id, wide)}>
+                  <div style={SWAP ? fsTop(full === r.element_id, wide) : { display: 'contents' }}>
+                  <div style={{ ...(SWAP ? fsHalf(full === r.element_id, wide, 'issue') : halfStyle(full === r.element_id, wide, 'issue')), background: '#fbeedb', borderTop: '3px solid #e8710a' }}>
                   {mine ? (
                     <div style={{ padding: 10 }}>
                       <textarea value={camToEdit(ed.text, cvs)} onChange={(e) => setEd({ ...ed, text: camFromEdit(e.target.value, cvs) })} rows={4} placeholder="Describe the issue…" style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #e0dccf', borderRadius: 10, padding: 8, font: 'inherit', fontSize: 14, resize: 'vertical', outline: 'none' }} />
@@ -316,9 +319,11 @@ export default function IssueList({ job }) {
                     ))}
                   </div>
                   </div>
-                  <div style={halfStyle(full === r.element_id, wide, 'ap')}>
+                  <div style={SWAP ? { ...fsHalf(full === r.element_id, wide, 'ap'), background: '#eef8f0', borderTop: '3px solid #2e9e5b' } : halfStyle(full === r.element_id, wide, 'ap')}>
                   <ActionPlan job={job} r={r} can={who.can} post={apPost(r)} reload={load} forceOpen={full === r.element_id} openPan={(x) => setPan({ element: r.element_id, scope: 'ap', ...x })} />
                   </div>
+                  </div>
+                  {SWAP && full === r.element_id && <ModelSlot element={r.element_id} style={wide ? {} : { flex: '1.15 1 0' }} />}
                   </div>
                 </div>
               );
