@@ -10,7 +10,7 @@ export default function SavePicture({ targetId, name, style }) {
     setMsg('Making the picture…');
     try {
       const { default: html2canvas } = await import('html2canvas');
-      const c = await html2canvas(el, { useCORS: true, backgroundColor: '#ffffff', scale: Math.min(2, window.devicePixelRatio || 1.5), ignoreElements: (n) => !!(n.classList && (n.classList.contains('leaflet-control-container') || n.classList.contains('leaflet-popup-pane'))) });
+      const c = await html2canvas(el, { useCORS: true, backgroundColor: '#ffffff', scale: Math.min(2, window.devicePixelRatio || 1.5), ignoreElements: (n) => !!((n.dataset && n.dataset.nopic) || n.classList && (n.classList.contains('leaflet-control-container') || n.classList.contains('leaflet-popup-pane'))) });
       const blob = await new Promise((res) => c.toBlob(res, 'image/png'));
       if (!blob) throw new Error('empty');
       const file = new File([blob], (String(name || 'scenario').replace(/[^\w.-]+/g, '_') || 'scenario') + '.png', { type: 'image/png' });

@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { loadLeaflet, PIN_TYPES, esc } from './GuideMap';
 
 // The map of a scenario: aerial view or an uploaded picture, with pins, arrows, routes and labels.
@@ -7,6 +7,7 @@ import { loadLeaflet, PIN_TYPES, esc } from './GuideMap';
 const RED = '#E24B4A';
 export default function ScenarioMap({ base, image, pins, marks, view, center, start, frame, ratio, editable, tool, pinType, pinName, textVal, apiRef, onAddPin, onMovePin, onRenamePin, onRemovePin, onAddMark, onMoveMark, onEditMark, onRemoveMark, onSetStart, onRemoveStart, onView, onPending, height = 420 }) {
   const el = useRef(null), st = useRef({}), cb = useRef({}), pend = useRef([]);
+  const [full, setFull] = useState(false); // read only: the square button in the corner fills the whole browser page
   cb.current = { editable, tool, pinType, pinName, textVal, onAddPin, onMovePin, onRenamePin, onRemovePin, onAddMark, onMoveMark, onEditMark, onRemoveMark, onSetStart, onRemoveStart, onView, onPending };
   const img = image && image.url ? image : null;
 
@@ -34,6 +35,16 @@ export default function ScenarioMap({ base, image, pins, marks, view, center, st
       }
       const layer = L.layerGroup().addTo(map), tmp = L.layerGroup().addTo(map);
       st.current = { L, map, layer, tmp, fitted: false };
+      if (!cb.current.editable && typeof ResizeObserver !== 'undefined') {
+        const refit = () => {
+          if (!st.current.map) return;
+          map.invalidateSize({ animate: false });
+          const b = base === 'image' && img ? [[0, 0], [img.h, img.w]] : frame;
+          if (b) { map.setMinZoom(-10); map.fitBounds(b, { animate: false }); map.setMinZoom(map.getZoom()); }
+        };
+        let tm = null; const ro = new ResizeObserver(() => { clearTimeout(tm); tm = setTimeout(refit, 120); });
+        ro.observe(el.current); st.current.ro = ro;
+      }
       map.on('click', (e) => click(e.latlng));
       map.on('dblclick', () => {});
       map.on('zoomend', () => draw());
@@ -43,7 +54,7 @@ export default function ScenarioMap({ base, image, pins, marks, view, center, st
       draw(); drawTmp();
       setTimeout(() => map.invalidateSize(), 200);
     }).catch(() => {});
-    return () => { dead = true; if (st.current.map) { st.current.map.remove(); st.current = {}; } };
+    return () => { dead = true; if (st.current.ro) st.current.ro.disconnect(); if (st.current.map) { st.current.map.remove(); st.current = {}; } };
   }, [base, img && img.url, frame ? 1 : 0]);
 
   function cancelPending() { pend.current = []; drawTmp(); if (cb.current.onPending) cb.current.onPending(0); }
@@ -144,5 +155,26 @@ export default function ScenarioMap({ base, image, pins, marks, view, center, st
     if (editable && tool === 'move') map.dragging.disable(); else map.dragging.enable();
   }, [tool, editable, base, img && img.url]);
 
-  return <div ref={el} style={{ ...(ratio ? { aspectRatio: String(ratio), width: '100%' } : { height }), borderRadius: 10, border: '1px solid #c7d2d6', background: '#eef1f3', cursor: editable && tool && tool !== 'move' ? 'crosshair' : 'grab' }} />;
+  useEffect(() => {
+    if (!full) return;
+    const onKey = (e) => { if (e.key === 'Escape') setFull(false); };
+    document.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow; document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+  }, [full]);
+
+  const outer = full ? { position: 'fixed', inset: 0, zIndex: 2000, background: '#fff' } : { position: 'relative', ...(ratio ? { aspectRatio: String(ratio), width: '100%' } : { height }) };
+  return (
+    <div style={outer}>
+      <div ref={el} style={{ width: '100%', height: '100%', borderRadius: full ? 0 : 10, border: full ? 0 : '1px solid #c7d2d6', background: '#eef1f3', cursor: editable && tool && tool !== 'move' ? 'crosshair' : 'grab', boxSizing: 'border-box' }} />
+      {!editable && (
+        <button type="button" data-nopic="1" onClick={() => setFull(!full)} aria-label={full ? 'Close full page' : 'Full page'} title={full ? 'Close full page' : 'Full page'}
+          style={{ position: 'absolute', right: 10, top: 10, zIndex: 2100, width: 38, height: 38, border: '2px solid rgba(0,0,0,.35)', borderRadius: 8, background: '#fff', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {full
+            ? <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#16262e" strokeWidth="2" strokeLinecap="round"><path d="M5 5l10 10M15 5L5 15" /></svg>
+            : <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#16262e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8V3h5M12 3h5v5M17 12v5h-5M8 17H3v-5" /></svg>}
+        </button>
+      )}
+    </div>
+  );
 }
