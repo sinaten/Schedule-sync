@@ -19,7 +19,12 @@ export function isPart(n) {
 export function goPart(n, from) {
   try {
     const card = SECOND && from && from.closest && from.closest('[data-mini-card]');
-    if (card && miniInline()) { window.dispatchEvent(new CustomEvent('ss-second-open', { detail: { element: String(n) } })); return; }
+    if (card && miniInline()) { window.dispatchEvent(new CustomEvent('ss-second-open', { detail: { element: String(n) } }));
+      // the main model still zooms to the element and draws its dotted frame, as before; the page does not jump up because the second viewer is beside the cards
+      const r0 = window.__ssGoElement ? window.__ssGoElement(n) : null;
+      if (r0 && !r0.ok) window.dispatchEvent(new CustomEvent('ss-elem-msg', { detail: r0.msg }));
+      return;
+    }
   } catch (e) { /* fall through to the main model */ }
   try { const b = document.querySelector('.v3-box'); if (b) b.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { /* ignore */ }
   const r = window.__ssGoElement ? window.__ssGoElement(n) : null;
