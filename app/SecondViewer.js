@@ -55,7 +55,13 @@ export default function SecondViewer({ job }) {
       const e = await v.loadExtension('Autodesk.Section');
       try { e.deactivate(); } catch (x) {}
       try { v.setCutPlanes([]); } catch (x) {}
-      if (place(v, e, new T.Box3(new T.Vector3(...cc.min), new T.Vector3(...cc.max)))) setMsg('"' + bx.name + '". Change it with the arrows if you like. Save makes it this element\'s box.');
+      const b3 = new T.Box3(new T.Vector3(...cc.min), new T.Vector3(...cc.max));
+      if (place(v, e, b3)) {
+        try { v.navigation.fitBounds(false, b3); } catch (x) {} // look at the box itself, so the view is never pointing at empty space
+        const has = !!ctr && ctr.every((c, i) => c >= cc.min[i] && c <= cc.max[i]);
+        const sz = b3.getSize(new T.Vector3());
+        setMsg('"' + bx.name + '" (' + Math.round(sz.x) + ' x ' + Math.round(sz.y) + ' x ' + Math.round(sz.z) + '). ' + (has ? '' : 'This box does not contain the selected element. ') + 'Change it with the arrows if you like. Save makes it this element\'s box.');
+      }
     } catch (x) { setMsg('The box could not be placed.'); }
     setOpen(false);
   }
@@ -104,7 +110,7 @@ export default function SecondViewer({ job }) {
   const [saved, setSaved] = useState([]);
   const [ctr, setCtr] = useState(null);
   const [open, setOpen] = useState(false);
-  const [size, setSize] = useState(() => { try { const j = JSON.parse(localStorage.getItem('ss-second-size') || 'null'); if (j && j.w > 200 && j.h > 150) return j; } catch (e) {} return null; });
+  const [rect, setRect] = useState(() => { try { const j = JSON.parse(localStorage.getItem('ss-second-rect') || 'null'); if (j && j.w >= 240 && j.h >= 180) return j; } catch (e) {} return null; });
   const ids = useRef(null), boxes = useRef({}), cur = useRef('');
   // where the viewer is wanted: wide landscape screen, the Inspection tab (or the desktop page), and the card list in view
   useEffect(() => {
@@ -155,14 +161,14 @@ export default function SecondViewer({ job }) {
     })();
   }, [on, job]);
   useEffect(() => () => { try { if (vw.current) vw.current.finish(); } catch (e) {} vw.current = null; }, []);
-  useEffect(() => { if (vw.current) { const t = setTimeout(() => { try { vw.current.resize(); } catch (e) {} }, 80); return () => clearTimeout(t); } return undefined; }, [size]);
+  useEffect(() => { if (vw.current) { const t = setTimeout(() => { try { vw.current.resize(); } catch (e) {} }, 80); return () => clearTimeout(t); } return undefined; }, [rect]);
   useEffect(() => { if (show && vw.current) { const t = setTimeout(() => { try { vw.current.resize(); } catch (e) {} }, 60); return () => clearTimeout(t); } return undefined; }, [show]);
   if (!SECOND) return null;
   return (
     <>
       <span ref={sent} style={{ display: 'none' }} />
       {on && (
-        <div style={{ position: 'fixed', right: '10vw', top: '18vh', width: size ? size.w : '34vw', height: size ? size.h : '36vh', zIndex: 50, border: '2px solid #5b6b8c', borderRadius: 12, background: '#e8ebf2', overflow: 'hidden', visibility: show ? 'visible' : 'hidden', pointerEvents: show ? 'auto' : 'none' }}>
+        <div style={{ position: 'fixed', ...(rect ? { left: rect.l, top: rect.t, width: rect.w, height: rect.h } : { right: '10vw', top: '18vh', width: '34vw', height: '36vh' }), zIndex: 50, border: '2px solid #5b6b8c', borderRadius: 12, background: '#e8ebf2', overflow: 'hidden', visibility: show ? 'visible' : 'hidden', pointerEvents: show ? 'auto' : 'none' }}>
           <div ref={box} style={{ position: 'absolute', inset: 0, touchAction: 'none' }} />
           {el && open && (
             <div style={{ position: 'absolute', left: 6, right: 6, top: 40, maxHeight: '60%', overflowY: 'auto', zIndex: 7, background: '#fff', border: '1.5px solid #e8710a', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,.22)', padding: 6 }}>
@@ -183,18 +189,31 @@ export default function SecondViewer({ job }) {
               {can && <button type="button" onClick={reset} style={{ border: '1px solid #d9d5c8', background: '#fff', borderRadius: 14, padding: '4px 12px', font: 'inherit', fontSize: 12.5, cursor: 'pointer' }}>Reset</button>}
             </div>
           ) : <span style={{ position: 'absolute', left: 10, top: 6, fontSize: 9.5, letterSpacing: 0.4, fontWeight: 700, color: '#5b6b8c', pointerEvents: 'none' }}>3D MODEL</span>}
-          <div
-            role="separator" aria-label="Drag to resize the model window" title="Drag to resize"
-            onPointerDown={(e) => {
-              e.preventDefault(); e.stopPropagation();
-              const el0 = e.currentTarget.parentElement; const r0 = el0.getBoundingClientRect();
-              const sx = e.clientX, sy = e.clientY, w0 = r0.width, h0 = r0.height;
-              const mv = (ev) => { const w = Math.min(Math.max(w0 + (sx - ev.clientX), 240), window.innerWidth - 24), h = Math.min(Math.max(h0 + (ev.clientY - sy), 180), window.innerHeight - 24); setSize({ w, h }); };
-              const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); try { setSize((z) => { if (z) localStorage.setItem('ss-second-size', JSON.stringify(z)); return z; }); } catch (x) {} };
-              window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
-            }}
-            style={{ position: 'absolute', left: 0, bottom: 0, width: 30, height: 30, cursor: 'nesw-resize', touchAction: 'none', zIndex: 6, background: 'linear-gradient(45deg, transparent 50%, #5b6b8c 50%, #5b6b8c 58%, transparent 58%, transparent 70%, #5b6b8c 70%, #5b6b8c 78%, transparent 78%)', borderBottomLeftRadius: 10, transform: 'scaleX(-1)' }}
-          />
+          {['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].map((d) => {
+            const edge = d.length === 1, C = 22, E = 12;
+            const pos = { n: { left: C, right: C, top: 0, height: E }, s: { left: C, right: C, bottom: 0, height: E }, e: { top: C, bottom: C, right: 0, width: E }, w: { top: C, bottom: C, left: 0, width: E }, ne: { top: 0, right: 0 }, nw: { top: 0, left: 0 }, se: { bottom: 0, right: 0 }, sw: { bottom: 0, left: 0 } }[d];
+            const cur = { n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize', ne: 'nesw-resize', sw: 'nesw-resize', nw: 'nwse-resize', se: 'nwse-resize' }[d];
+            return (
+              <div key={d} role="separator" aria-label="Drag to resize the model window" title="Drag to resize"
+                onPointerDown={(e) => {
+                  e.preventDefault(); e.stopPropagation();
+                  const r0 = e.currentTarget.parentElement.getBoundingClientRect();
+                  const sx = e.clientX, sy = e.clientY, W = window.innerWidth, H = window.innerHeight;
+                  const mv = (ev) => {
+                    let l = r0.left, t = r0.top, r = r0.right, b = r0.bottom; const dx = ev.clientX - sx, dy = ev.clientY - sy;
+                    if (d.includes('w')) l = Math.min(Math.max(r0.left + dx, 0), r - 240);
+                    if (d.includes('e')) r = Math.max(Math.min(r0.right + dx, W), l + 240);
+                    if (d.includes('n')) t = Math.min(Math.max(r0.top + dy, 0), b - 180);
+                    if (d.includes('s')) b = Math.max(Math.min(r0.bottom + dy, H), t + 180);
+                    setRect({ l, t, w: r - l, h: b - t });
+                  };
+                  const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); try { setRect((z) => { if (z) localStorage.setItem('ss-second-rect', JSON.stringify(z)); return z; }); } catch (x) {} };
+                  window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+                }}
+                style={{ position: 'absolute', ...pos, width: edge ? pos.width : C, height: edge ? pos.height : C, cursor: cur, touchAction: 'none', zIndex: 6, background: edge ? 'transparent' : 'rgba(91,107,140,.35)', borderRadius: edge ? 0 : 6 }}
+              />
+            );
+          })}
           {msg && <div style={{ position: 'absolute', left: 10, right: 10, bottom: 8, fontSize: 12, color: '#6b675c' }}>{msg}</div>}
         </div>
       )}
