@@ -30,6 +30,35 @@ function loadAssets() {
 
 export default function SecondViewer({ job }) {
   // show an element: zoom to it and put the section box around it (the saved one if this element has one)
+  // put the box into Autodesk's tool; it may want the box in model coordinates (with the global offset) or in viewer coordinates: use the one whose cut really contains the box centre
+  function place(v, e, b) {
+    const T = window.THREE;
+    e.activate('box');
+    const c = b.getCenter(new T.Vector3());
+    const off = (v.model.getGlobalOffset && v.model.getGlobalOffset()) || { x: 0, y: 0, z: 0 };
+    const inside = () => { const pl = (v.getCutPlanes && v.getCutPlanes()) || []; const sg = pl.map((p) => Math.sign(p.x * c.x + p.y * c.y + p.z * c.z + p.w)); return pl.length >= 6 && sg.every((x) => x !== 0 && x === sg[0]); };
+    for (const k of [0, 1, -1]) {
+      const b2 = b.clone(); b2.translate(new T.Vector3(off.x * k, off.y * k, off.z * k));
+      e.setSectionBox(b2);
+      if (inside()) return true;
+    }
+    setMsg('The box could not be placed (offset ' + Math.round(off.x) + ', ' + Math.round(off.y) + ', ' + Math.round(off.z) + ').');
+    return false;
+  }
+  // choose one of the saved section boxes for this element (temporary until Save)
+  async function pickBox(bx) {
+    const v = vw.current; const T = window.THREE;
+    if (!v || !v.model) return;
+    const cc = corners(bx.planes);
+    if (!cc) { setMsg('This box is turned, so it cannot be used here.'); return; }
+    try {
+      const e = await v.loadExtension('Autodesk.Section');
+      try { e.deactivate(); } catch (x) {}
+      try { v.setCutPlanes([]); } catch (x) {}
+      if (place(v, e, new T.Box3(new T.Vector3(...cc.min), new T.Vector3(...cc.max)))) setMsg('"' + bx.name + '". Change it with the arrows if you like. Save makes it this element\'s box.');
+    } catch (x) { setMsg('The box could not be placed.'); }
+    setOpen(false);
+  }
   async function focus(element) {
     const v = vw.current; const T = window.THREE;
     if (!v || !v.model || !ids.current) return;
@@ -40,27 +69,14 @@ export default function SecondViewer({ job }) {
       try { e.deactivate(); } catch (x) {}
       try { v.setCutPlanes([]); } catch (x) {}
       const keep = boxes.current[element];
+      const bb = new T.Box3(), tmp = new T.Box3(), fl = v.model.getFragmentList();
+      v.model.getInstanceTree().enumNodeFragments(d, (f) => { fl.getWorldBounds(f, tmp); bb.union(tmp); }, true);
+      if (bb.isEmpty()) { setMsg('Could not measure this element.'); return; }
+      const cc = bb.getCenter(new T.Vector3()); setCtr([cc.x, cc.y, cc.z]); setOpen(false);
       let b;
       if (keep) b = new T.Box3(new T.Vector3(...keep.min), new T.Vector3(...keep.max));
-      else {
-        const bb = new T.Box3(), tmp = new T.Box3(), fl = v.model.getFragmentList();
-        v.model.getInstanceTree().enumNodeFragments(d, (f) => { fl.getWorldBounds(f, tmp); bb.union(tmp); }, true);
-        if (bb.isEmpty()) { setMsg('Could not measure this element.'); return; }
-        const sz = bb.getSize(new T.Vector3());
-        b = bb.clone().expandByScalar(Math.max(Math.max(sz.x, sz.y, sz.z) * PAD, 0.5));
-      }
-      e.activate('box');
-      // the tool may want the box in model coordinates (with the model's global offset) or in viewer coordinates: use the one whose cut really contains the element
-      const c = b.getCenter(new T.Vector3());
-      const off = (v.model.getGlobalOffset && v.model.getGlobalOffset()) || { x: 0, y: 0, z: 0 };
-      const inside = () => { const pl = (v.getCutPlanes && v.getCutPlanes()) || []; const sg = pl.map((p) => Math.sign(p.x * c.x + p.y * c.y + p.z * c.z + p.w)); return pl.length >= 6 && sg.every((x) => x !== 0 && x === sg[0]); };
-      let ok = false;
-      for (const k of [0, 1, -1]) {
-        const bb2 = b.clone(); bb2.translate(new T.Vector3(off.x * k, off.y * k, off.z * k));
-        e.setSectionBox(bb2);
-        if (inside()) { ok = true; break; }
-      }
-      if (!ok) { setMsg('The box does not contain the element (offset ' + Math.round(off.x) + ', ' + Math.round(off.y) + ', ' + Math.round(off.z) + ').'); return; }
+      else { const sz = bb.getSize(new T.Vector3()); b = bb.clone().expandByScalar(Math.max(Math.max(sz.x, sz.y, sz.z) * PAD, 0.5)); }
+      if (!place(v, e, b)) return;
       try { v.fitToView([d], v.model, true); } catch (x) {}
       setMsg(keep ? 'Saved box.' : 'Automatic box. Drag its faces, then Save.');
     } catch (x) { setMsg('The box could not be placed.'); }
@@ -85,6 +101,9 @@ export default function SecondViewer({ job }) {
   const [msg, setMsg] = useState('');
   const [el, setEl] = useState('');
   const [can, setCan] = useState(false);
+  const [saved, setSaved] = useState([]);
+  const [ctr, setCtr] = useState(null);
+  const [open, setOpen] = useState(false);
   const [size, setSize] = useState(() => { try { const j = JSON.parse(localStorage.getItem('ss-second-size') || 'null'); if (j && j.w > 200 && j.h > 150) return j; } catch (e) {} return null; });
   const ids = useRef(null), boxes = useRef({}), cur = useRef('');
   // where the viewer is wanted: wide landscape screen, the Inspection tab (or the desktop page), and the card list in view
@@ -106,6 +125,7 @@ export default function SecondViewer({ job }) {
   useEffect(() => {
     if (!SECOND || !job) return undefined;
     fetch('/api/elemsec?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { boxes.current = j.boxes || {}; setCan(!!j.can); }).catch(() => {});
+    fetch('/api/secbox?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => setSaved((j.boxes || []).map((x) => ({ ...x, cc: corners(x.planes) })).filter((x) => x.cc))).catch(() => {});
     const f = (e) => { const n = String((e.detail || {}).element || ''); if (!n) return; cur.current = n; setEl(n); focus(n); };
     window.addEventListener('ss-second-open', f);
     return () => window.removeEventListener('ss-second-open', f);
@@ -144,10 +164,21 @@ export default function SecondViewer({ job }) {
       {on && (
         <div style={{ position: 'fixed', right: '10vw', top: '18vh', width: size ? size.w : '34vw', height: size ? size.h : '36vh', zIndex: 50, border: '2px solid #5b6b8c', borderRadius: 12, background: '#e8ebf2', overflow: 'hidden', visibility: show ? 'visible' : 'hidden', pointerEvents: show ? 'auto' : 'none' }}>
           <div ref={box} style={{ position: 'absolute', inset: 0, touchAction: 'none' }} />
+          {el && open && (
+            <div style={{ position: 'absolute', left: 6, right: 6, top: 40, maxHeight: '60%', overflowY: 'auto', zIndex: 7, background: '#fff', border: '1.5px solid #e8710a', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,.22)', padding: 6 }}>
+              {[...saved].map((x) => ({ x, has: !!ctr && ctr.every((c, i) => c >= x.cc.min[i] && c <= x.cc.max[i]) })).sort((p, q) => Number(q.has) - Number(p.has)).map(({ x, has }) => (
+                <button key={x.id} type="button" onClick={() => pickBox(x)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', border: 0, borderBottom: '1px solid #f1ede4', background: has ? '#fff7ef' : '#fff', padding: '8px 10px', font: 'inherit', fontSize: 13, cursor: 'pointer', color: has ? '#141413' : '#8a8576' }}>
+                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.name}</span>
+                  <span style={{ fontSize: 11.5, color: has ? '#2e9e5b' : '#9a9686', flex: 'none' }}>{has ? '\u2713 has this element' : 'does not have it'}</span>
+                </button>
+              ))}
+            </div>
+          )}
           {el ? (
             <div style={{ position: 'absolute', left: 6, right: 6, top: 6, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', zIndex: 5 }}>
               <b style={{ fontSize: 12, background: 'rgba(255,255,255,.9)', borderRadius: 12, padding: '3px 10px' }}>Element {el}</b>
               <span style={{ flex: 1 }} />
+              {saved.length > 0 && <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} style={{ border: '1px solid #d9d5c8', background: '#fff', borderRadius: 14, padding: '4px 12px', font: 'inherit', fontSize: 12.5, cursor: 'pointer' }}>{'\u25A3'} Boxes</button>}
               {can && <button type="button" onClick={save} style={{ border: 0, background: '#e8710a', color: '#fff', borderRadius: 14, padding: '4px 14px', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Save</button>}
               {can && <button type="button" onClick={reset} style={{ border: '1px solid #d9d5c8', background: '#fff', borderRadius: 14, padding: '4px 12px', font: 'inherit', fontSize: 12.5, cursor: 'pointer' }}>Reset</button>}
             </div>
