@@ -12,6 +12,8 @@ export default function IdCatalog({ job, base, onCount }) {
   const [acts, setActs] = useState({});
   const [msg, setMsg] = useState('');
   const [mode, setMode] = useState('');
+  const [chkRes, setChkRes] = useState(null);
+  const [chkBusy, setChkBusy] = useState(false);
   const [chk, setChk] = useState({});
   const load = () => fetch('/api/admin/id-catalog', { cache: 'no-store' }).then((r) => r.json()).then((j) => { setD(j); setCat(j.catalog); setPend(j.pending || []); if (onCount) onCount((j.pending || []).length); }).catch(() => setMsg('Could not load'));
   useEffect(() => { load(); }, []);
@@ -45,6 +47,11 @@ export default function IdCatalog({ job, base, onCount }) {
     if (!keys.length) { setMode(''); return; }
     await fetch('/api/admin/id-catalog', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ keys, op: mode, actions: acts }) });
     setMode(''); setChk({}); load();
+  }
+  async function runCheck() {
+    setChkBusy(true); setChkRes(null);
+    try { const r = await fetch('/api/admin/id-check', { cache: 'no-store' }); setChkRes(await r.json()); } catch (e) { setChkRes({ error: 'Check failed' }); }
+    setChkBusy(false);
   }
   const nChk = pend.filter((x) => chk[x.key]).length;
   const groups = [['item', 'Items (each one gets its own number)'], ['button', 'Buttons'], ['bar', 'Bars and tabs']];
@@ -112,6 +119,26 @@ export default function IdCatalog({ job, base, onCount }) {
           ))}
         </div>
       ))}
+      <div style={{ border: '1px solid #e6eaed', borderRadius: 10, padding: '8px 10px', marginBottom: 12, background: '#fff' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <button type="button" style={{ ...pill, fontSize: 13, padding: '5px 12px' }} onClick={runCheck} disabled={chkBusy}>{chkBusy ? 'Checking…' : 'Check duplicate element numbers'}</button>
+          <span style={{ fontSize: 12, color: '#8a979d' }}>Read only. Looks at every element number the site holds; nothing is changed.</span>
+        </div>
+        {chkRes && chkRes.error && <div style={{ fontSize: 13, color: '#b00020', marginTop: 6 }}>{chkRes.error}</div>}
+        {chkRes && !chkRes.error && (
+          <div style={{ fontSize: 13, color: '#16262e', marginTop: 8, lineHeight: 1.6 }}>
+            <div>Looked at {chkRes.scanned.rows} rows, {chkRes.scanned.elementNumbers} element numbers, {chkRes.scanned.projects} projects, {chkRes.scanned.models} models.</div>
+            <div style={{ color: chkRes.sameSchedule.length ? '#b00020' : '#2e7d32' }}>Same number twice in one schedule: {chkRes.sameSchedule.length ? chkRes.sameSchedule.length + ' found' : 'none found'}</div>
+            {chkRes.sameSchedule.slice(0, 10).map((x, i) => <div key={i} style={{ fontSize: 12, color: '#45565e' }}>{x.element} in {x.schedule} ({x.project}) x{x.times}</div>)}
+            <div style={{ color: chkRes.sameProjectOtherModel.length ? '#b00020' : '#2e7d32' }}>Same number in two models of one project: {chkRes.sameProjectOtherModel.length ? chkRes.sameProjectOtherModel.length + ' found' : 'none found'}</div>
+            {chkRes.sameProjectOtherModel.slice(0, 10).map((x, i) => <div key={i} style={{ fontSize: 12, color: '#45565e' }}>{x.element} in {x.project}</div>)}
+            <div style={{ color: chkRes.issuesAmbiguous.length ? '#b00020' : '#2e7d32' }}>Issue cards that point to a number used in two models: {chkRes.issuesAmbiguous.length ? chkRes.issuesAmbiguous.length + ' found' : 'none found'}</div>
+            <div style={{ color: '#6b675c' }}>Same number in different projects: {chkRes.otherProjects.count ? chkRes.otherProjects.count + ' found (not a problem: the project name is in every ID)' : 'none found'}</div>
+            {chkRes.otherProjects.examples.slice(0, 8).map((x, i) => <div key={i} style={{ fontSize: 12, color: '#45565e' }}>{x.element}: {x.projects.join(', ')}</div>)}
+            {chkRes.note && <div style={{ fontSize: 12, color: '#8a979d' }}>{chkRes.note}</div>}
+          </div>
+        )}
+      </div>
       <div style={{ fontSize: 13, fontWeight: 600, color: '#16262e', marginBottom: 4 }}>Pages (their code goes into every button on that page)</div>
       {cat.pages.map((p) => (
         <div key={p.k} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', fontSize: 13, color: '#45565e' }}>
