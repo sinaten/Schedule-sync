@@ -8,6 +8,7 @@ export default function IdFormat() {
   const [jobs, setJobs] = useState([]);
   const [job, setJob] = useState('');
   const [sample, setSample] = useState('');
+  const [from, setFrom] = useState('');
   const [msg, setMsg] = useState('');
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -15,7 +16,7 @@ export default function IdFormat() {
     fetch('/api/admin/jobs', { cache: 'no-store' }).then((r) => r.json()).then((j) => { const l = (j.jobs || []).map((x) => x.job); setJobs(l); if (l[0]) setJob(l[0]); }).catch(() => {});
   }, []);
   async function make(fmt) {
-    try { const r = await fetch('/api/admin/id-format', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, format: fmt }) }); const j = await r.json(); setSample(j.id || ''); } catch (e) { setSample(''); }
+    try { const r = await fetch('/api/admin/id-format', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, format: fmt }) }); const j = await r.json(); setSample(j.id || ''); setFrom(j.from || ''); } catch (e) { setSample(''); }
   }
   useEffect(() => { if (f && job) make(f); }, [job, f]);
   async function save() {
@@ -40,7 +41,8 @@ export default function IdFormat() {
       {open && (
         <div style={{ borderTop: '1px solid #e6eaed', padding: '10px 14px', background: '#fafbfc' }}>
           <div style={{ fontSize: 12, color: '#8a979d', marginBottom: 4 }}>Sample (not stored)</div>
-          <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 16, fontWeight: 600, color: '#16262e', wordBreak: 'break-all', marginBottom: 6 }}>{sample || '…'}</div>
+          <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 16, fontWeight: 600, color: '#16262e', wordBreak: 'break-all', marginBottom: 2 }}>{sample || '…'}</div>
+          <div style={{ fontSize: 12, color: from === 'none' ? '#b00020' : '#8a979d', marginBottom: 6 }}>{from === 'gps' ? 'Country, state and city read from the map pin' : from === 'text' ? 'No map pin found: using the typed country, city and address' : from === 'none' ? 'This project has no location yet (Admin > Projects)' : ''}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#45565e', flexWrap: 'wrap', marginBottom: 8 }}>
             <span>for project</span>
             <select value={job} onChange={(e) => setJob(e.target.value)} style={{ ...field, maxWidth: 200 }}>{jobs.map((j) => <option key={j} value={j}>{j}</option>)}</select>

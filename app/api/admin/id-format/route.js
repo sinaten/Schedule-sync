@@ -24,5 +24,5 @@ export async function POST(req) {
   const sql = await db();
   const fmt = b && b.format ? cleanIdFormat(b.format) : await getIdFormat(sql);
   const ctx = await projectContext(sql, String((b && b.job) || ''));
-  return Response.json({ id: makeId(fmt, { ...ctx, creator: (u && u.name) || 'sina', access: 0, version: 1 }) });
+  return Response.json({ id: makeId(fmt, { ...ctx, creator: (u && u.name) || 'sina', access: 0, version: 1 }), from: ctx.from });
 }
