@@ -15,6 +15,7 @@ import UserManage from './UserManage';
 import ColourRules from './ColourRules';
 import FadeSettings from './FadeSettings';
 import CamQrTable from './CamQrTable';
+import IdFormat from './IdFormat';
 
 export default function AdminTabs({ initialTab, media }) {
   const [tab, setTab] = useState(['users', 'projects', 'workflow', 'datamap', 'media', 'analysis', 'manage', 'settings'].includes(initialTab) ? initialTab : 'users');
@@ -24,7 +25,7 @@ export default function AdminTabs({ initialTab, media }) {
   return (
     <>
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>{t('users', 'Users')}{t('projects', 'Projects')}{t('workflow', 'Workflow')}{t('datamap', 'Data mapping')}{t('media', 'Photos & videos')}{t('analysis', 'Analysis')}{t('manage', 'User manage')}{t('settings', 'Settings')}</div>
-      {tab === 'users' ? <Users /> : tab === 'projects' ? <ProjectHub /> : tab === 'workflow' ? <Workflow /> : tab === 'datamap' ? <DataMapping /> : tab === 'media' ? media : tab === 'analysis' ? <Analysis /> : tab === 'manage' ? <UserManage /> : <><Settings /><CamQrTable /><ColourRules /><FadeSettings /><div style={{ marginTop: 28 }}><MediaRules /></div><LocationRules /><AccessRules /><UserAccess /><HistoryRules /></>}
+      {tab === 'users' ? <Users /> : tab === 'projects' ? <ProjectHub /> : tab === 'workflow' ? <Workflow /> : tab === 'datamap' ? <DataMapping /> : tab === 'media' ? media : tab === 'analysis' ? <Analysis /> : tab === 'manage' ? <UserManage /> : <><Settings /><CamQrTable /><ColourRules /><FadeSettings /><div style={{ marginTop: 28 }}><MediaRules /></div><LocationRules /><AccessRules /><UserAccess /><HistoryRules /><IdFormat /></>}
     </>
   );
 }
