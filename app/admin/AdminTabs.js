@@ -16,9 +16,10 @@ import ColourRules from './ColourRules';
 import FadeSettings from './FadeSettings';
 import CamQrTable from './CamQrTable';
 import IdFormat from './IdFormat';
+import AiGuide from './AiGuide';
 
 export default function AdminTabs({ initialTab, media }) {
-  const [tab, setTab] = useState(['users', 'projects', 'workflow', 'datamap', 'media', 'analysis', 'manage', 'settings'].includes(initialTab) ? initialTab : 'users');
+  const [tab, setTab] = useState(['users', 'projects', 'workflow', 'datamap', 'media', 'analysis', 'manage', 'settings', 'ai'].includes(initialTab) ? initialTab : 'users');
   const [idn, setIdn] = useState(0);
   useEffect(() => { fetch('/api/admin/id-catalog?count=1', { cache: 'no-store' }).then((r) => r.json()).then((j) => setIdn(j.pending || 0)).catch(() => {}); }, []);
   const t = (k, label) => (
@@ -26,8 +27,8 @@ export default function AdminTabs({ initialTab, media }) {
   );
   return (
     <>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>{t('users', 'Users')}{t('projects', 'Projects')}{t('workflow', 'Workflow')}{t('datamap', idn > 0 ? <>Data mapping <span style={{ background: '#d64545', color: '#fff', borderRadius: 999, fontSize: 12, padding: '1px 7px', marginLeft: 4 }}>{idn}</span></> : 'Data mapping')}{t('media', 'Photos & videos')}{t('analysis', 'Analysis')}{t('manage', 'User manage')}{t('settings', 'Settings')}</div>
-      {tab === 'users' ? <Users /> : tab === 'projects' ? <ProjectHub /> : tab === 'workflow' ? <Workflow /> : tab === 'datamap' ? <><DataMapping /><IdFormat /></> : tab === 'media' ? media : tab === 'analysis' ? <Analysis /> : tab === 'manage' ? <UserManage /> : <><Settings /><CamQrTable /><ColourRules /><FadeSettings /><div style={{ marginTop: 28 }}><MediaRules /></div><LocationRules /><AccessRules /><UserAccess /><HistoryRules /></>}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>{t('users', 'Users')}{t('projects', 'Projects')}{t('workflow', 'Workflow')}{t('datamap', idn > 0 ? <>Data mapping <span style={{ background: '#d64545', color: '#fff', borderRadius: 999, fontSize: 12, padding: '1px 7px', marginLeft: 4 }}>{idn}</span></> : 'Data mapping')}{t('media', 'Photos & videos')}{t('analysis', 'Analysis')}{t('manage', 'User manage')}{t('settings', 'Settings')}{t('ai', 'AI')}</div>
+      {tab === 'users' ? <Users /> : tab === 'projects' ? <ProjectHub /> : tab === 'workflow' ? <Workflow /> : tab === 'datamap' ? <><DataMapping /><IdFormat /></> : tab === 'media' ? media : tab === 'analysis' ? <Analysis /> : tab === 'manage' ? <UserManage /> : tab === 'ai' ? <AiGuide /> : <><Settings /><CamQrTable /><ColourRules /><FadeSettings /><div style={{ marginTop: 28 }}><MediaRules /></div><LocationRules /><AccessRules /><UserAccess /><HistoryRules /></>}
     </>
   );
 }
