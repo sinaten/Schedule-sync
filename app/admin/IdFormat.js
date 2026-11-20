@@ -17,7 +17,7 @@ export default function IdFormat() {
   async function make(fmt) {
     try { const r = await fetch('/api/admin/id-format', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ job, format: fmt }) }); const j = await r.json(); setSample(j.id || ''); } catch (e) { setSample(''); }
   }
-  useEffect(() => { if (open && f && job) make(f); }, [open, job, f]);
+  useEffect(() => { if (f && job) make(f); }, [job, f]);
   async function save() {
     setMsg('Saving…');
     const r = await fetch('/api/admin/id-format', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ format: f }) });
@@ -31,10 +31,14 @@ export default function IdFormat() {
   const name = (k) => (parts.find((p) => p.k === k) || {}).n || k;
   const hint = (k) => (parts.find((p) => p.k === k) || {}).h || '';
   return (
-    <div style={{ marginBottom: 14 }}>
-      <button type="button" style={pill} onClick={() => setOpen(!open)} aria-expanded={open}>{'ID format ' + (open ? '▴' : '▾')}</button>
+    <div style={{ marginTop: 18, border: '1px solid #e6eaed', borderRadius: 12, background: '#fff', maxWidth: 640, overflow: 'hidden' }}>
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} style={{ font: 'inherit', display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 14px', background: 'none', border: 0, cursor: 'pointer', textAlign: 'left', color: '#16262e' }}>
+        <span style={{ flex: 1, fontSize: 15, fontWeight: 600 }}>Tracking IDs</span>
+        {!open && <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12, color: '#8a979d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 300 }}>{sample}</span>}
+        <span style={{ fontSize: 14, color: '#45565e' }}>{open ? '\u25B4' : '\u25BE'}</span>
+      </button>
       {open && (
-        <div style={{ marginTop: 8, border: '1px solid #e6eaed', borderRadius: 12, padding: '10px 14px', maxWidth: 520, background: '#fafbfc' }}>
+        <div style={{ borderTop: '1px solid #e6eaed', padding: '10px 14px', background: '#fafbfc' }}>
           <div style={{ fontSize: 12, color: '#8a979d', marginBottom: 4 }}>Sample (not stored)</div>
           <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 16, fontWeight: 600, color: '#16262e', wordBreak: 'break-all', marginBottom: 6 }}>{sample || '…'}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#45565e', flexWrap: 'wrap', marginBottom: 8 }}>
