@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import IdCatalog from './IdCatalog';
 
 // Admin: how the site builds an ID (order, parts on / off, separator, short codes). Collapsed to one small button. Only builds samples for now: no card uses it yet.
 export default function IdFormat() {
@@ -9,10 +10,12 @@ export default function IdFormat() {
   const [job, setJob] = useState('');
   const [sample, setSample] = useState('');
   const [from, setFrom] = useState('');
+  const [nPend, setNPend] = useState(0);
   const [msg, setMsg] = useState('');
   const [open, setOpen] = useState(false);
   useEffect(() => {
     fetch('/api/admin/id-format', { cache: 'no-store' }).then((r) => r.json()).then((j) => { setF(j.format); setParts(j.parts || []); }).catch(() => setMsg('Could not load'));
+    fetch('/api/admin/id-catalog?count=1', { cache: 'no-store' }).then((r) => r.json()).then((j) => setNPend(j.pending || 0)).catch(() => {});
     fetch('/api/admin/jobs', { cache: 'no-store' }).then((r) => r.json()).then((j) => { const l = (j.jobs || []).map((x) => x.job); setJobs(l); if (l[0]) setJob(l[0]); }).catch(() => {});
   }, []);
   async function make(fmt) {
@@ -34,7 +37,7 @@ export default function IdFormat() {
   return (
     <div style={{ marginTop: 18, border: '1px solid #e6eaed', borderRadius: 12, background: '#fff', maxWidth: 640, overflow: 'hidden' }}>
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} style={{ font: 'inherit', display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 14px', background: 'none', border: 0, cursor: 'pointer', textAlign: 'left', color: '#16262e' }}>
-        <span style={{ flex: 1, fontSize: 15, fontWeight: 600 }}>Tracking IDs</span>
+        <span style={{ flex: 1, fontSize: 15, fontWeight: 600 }}>Tracking IDs{nPend > 0 && <span style={{ marginLeft: 8, background: '#d64545', color: '#fff', borderRadius: 999, fontSize: 12, fontWeight: 600, padding: '1px 8px' }} aria-label={nPend + ' new things found'}>{nPend}</span>}</span>
         {!open && <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12, color: '#8a979d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 300 }}>{sample}</span>}
         <span style={{ fontSize: 14, color: '#45565e' }}>{open ? '\u25B4' : '\u25BE'}</span>
       </button>
@@ -71,6 +74,7 @@ export default function IdFormat() {
             <button type="button" onClick={save} style={{ ...pill, background: '#16262e', color: '#fff', border: 0 }}>Save</button>
             {msg && <b style={{ fontSize: 12, color: msg === 'Saved' ? '#2e7d32' : '#b00020' }}>{msg}</b>}
           </div>
+          <IdCatalog job={job} base={f} onCount={setNPend} />
         </div>
       )}
     </div>
