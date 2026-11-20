@@ -54,7 +54,7 @@ export default function IdCatalog({ job, base, onCount }) {
     setChkBusy(false);
   }
   const nChk = pend.filter((x) => chk[x.key]).length;
-  const groups = [['item', 'Items (each one gets its own number)'], ['button', 'Buttons'], ['bar', 'Bars and tabs']];
+  const groups = [['item', 'Items (each one gets its own number)'], ['message', 'Messages in Communication (who, when, what kind)'], ['button', 'Buttons'], ['bar', 'Bars and tabs']];
   return (
     <div style={{ marginTop: 14, borderTop: '1px solid #e6eaed', paddingTop: 10 }}>
       {pend.length > 0 && (

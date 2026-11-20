@@ -35,7 +35,8 @@ export async function POST(req) {
   const cat = b && b.catalog ? cleanCatalog(b.catalog) : await getCatalog(sql);
   const ctx = await projectContext(sql, String((b && b.job) || ''));
   const samples = {};
-  for (const t of cat.types) samples[t.key] = typeId(base, cat, t, { ...ctx, pageKey: PAGE_OF[t.key] || 'ISSUES', serial: 8, element: 1702105 });
+  let n = 0;
+  for (const t of cat.types) samples[t.key] = typeId(base, cat, t, { ...ctx, pageKey: PAGE_OF[t.key] || 'ISSUES', serial: 8, element: 1702105, seq: t.group === 'message' ? ++n : 1, when: new Date() });
   return Response.json({ samples, from: ctx.from });
 }
 export async function PATCH(req) {
