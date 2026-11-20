@@ -43,17 +43,20 @@ export async function PATCH(req) {
   const b = await req.json().catch(() => ({}));
   const sql = await db();
   const pend = await getPending(sql);
-  const it = pend.find((x) => x.key === b.key);
-  if (!it) return Response.json({ ok: true });
+  const keys = new Set(Array.isArray(b.keys) ? b.keys.map(String) : [String(b.key)]);
+  const hit = pend.filter((x) => keys.has(x.key));
+  if (!hit.length) return Response.json({ ok: true, pending: pend.length });
   if (b.op === 'approve') {
     const cat = await getCatalog(sql);
-    const k = 'n-' + slug(it.label).toLowerCase();
-    if (!cat.types.some((t) => t.key === k)) {
-      const act = slug(b.action || it.suggest || it.label);
+    for (const it of hit) {
+      const k = 'n-' + slug(it.label).toLowerCase();
+      if (cat.types.some((t) => t.key === k)) continue;
+      const act = slug((b.actions && b.actions[it.key]) || b.action || it.suggest || it.label);
       cat.types.push({ key: k, group: 'button', name: it.label, desc: 'Found on page ' + it.page, code: '', word: 'BTN', action: act, labels: [String(it.label).toLowerCase()], parts: [{ k: 'page', on: true }, { k: 'type', on: true }, { k: 'action', on: true }], added: true });
-      await sql`insert into settings(key, value) values(${catKey}, ${JSON.stringify(cleanCatalog(cat))}::jsonb) on conflict (key) do update set value = excluded.value`;
     }
+    await sql`insert into settings(key, value) values(${catKey}, ${JSON.stringify(cleanCatalog(cat))}::jsonb) on conflict (key) do update set value = excluded.value`;
   }
-  await setPending(sql, pend.filter((x) => x.key !== b.key));
-  return Response.json({ ok: true, pending: pend.length - 1 });
+  const rest = pend.filter((x) => !keys.has(x.key));
+  await setPending(sql, rest);
+  return Response.json({ ok: true, pending: rest.length });
 }

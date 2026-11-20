@@ -11,6 +11,8 @@ export default function IdCatalog({ job, base, onCount }) {
   const [edit, setEdit] = useState('');
   const [acts, setActs] = useState({});
   const [msg, setMsg] = useState('');
+  const [mode, setMode] = useState('');
+  const [chk, setChk] = useState({});
   const load = () => fetch('/api/admin/id-catalog', { cache: 'no-store' }).then((r) => r.json()).then((j) => { setD(j); setCat(j.catalog); setPend(j.pending || []); if (onCount) onCount((j.pending || []).length); }).catch(() => setMsg('Could not load'));
   useEffect(() => { load(); }, []);
   useEffect(() => {
@@ -37,23 +39,42 @@ export default function IdCatalog({ job, base, onCount }) {
     await fetch('/api/admin/id-catalog', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: it.key, op, action: acts[it.key] }) });
     load();
   }
+  function pickMode(m) { setMode(m); const c = {}; if (m) pend.forEach((x) => { c[x.key] = true; }); setChk(c); }
+  async function applyMode() {
+    const keys = pend.filter((x) => chk[x.key]).map((x) => x.key);
+    if (!keys.length) { setMode(''); return; }
+    await fetch('/api/admin/id-catalog', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ keys, op: mode, actions: acts }) });
+    setMode(''); setChk({}); load();
+  }
+  const nChk = pend.filter((x) => chk[x.key]).length;
   const groups = [['item', 'Items (each one gets its own number)'], ['button', 'Buttons'], ['bar', 'Bars and tabs']];
   return (
     <div style={{ marginTop: 14, borderTop: '1px solid #e6eaed', paddingTop: 10 }}>
       {pend.length > 0 && (
         <div style={{ border: '1px solid #f1c9a8', background: '#fff6ee', borderRadius: 10, padding: '8px 10px', marginBottom: 12 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: '#9a4b0c', marginBottom: 4 }}>{pend.length} new thing{pend.length > 1 ? 's' : ''} found</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
+            <select value={mode} onChange={(e) => pickMode(e.target.value)} style={{ ...field, width: 'auto' }} aria-label="Choose what to do with all of them">
+              <option value="">Normal (one by one)</option>
+              <option value="approve">Approve all</option>
+              <option value="dismiss">Dismiss all</option>
+            </select>
+            {mode && <button type="button" style={{ ...pill, background: mode === 'approve' ? '#16262e' : '#b00020', color: '#fff', border: 0 }} onClick={applyMode}>{'OK: ' + (mode === 'approve' ? 'approve ' : 'dismiss ') + nChk}</button>}
+            {mode && <button type="button" style={pill} onClick={() => pickMode('')}>Cancel</button>}
+            {mode && <span style={{ fontSize: 12, color: '#6b675c' }}>Untick the ones you do not want, then press OK.</span>}
+          </div>
           <div style={{ fontSize: 12, color: '#6b675c', marginBottom: 6 }}>These buttons are on the site but not in the list below. My suggestion: add each as a button type, with the action name shown. Approve to add it, or dismiss.</div>
-          {pend.slice(0, 25).map((it) => (
+          {pend.slice(0, mode ? 300 : 25).map((it) => (
             <div key={it.key} style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '4px 0', flexWrap: 'wrap', fontSize: 13 }}>
+              {mode && <input type="checkbox" checked={!!chk[it.key]} onChange={(e) => setChk({ ...chk, [it.key]: e.target.checked })} aria-label={'Include ' + it.label} />}
               <b style={{ minWidth: 110 }}>{it.label}</b>
               <span style={{ fontSize: 12, color: '#8a979d' }}>on {it.page}</span>
               <input style={{ ...field, width: 150, fontFamily: 'ui-monospace, Menlo, monospace' }} value={acts[it.key] ?? it.suggest} onChange={(e) => setActs({ ...acts, [it.key]: e.target.value })} aria-label="Action name" />
-              <button type="button" style={{ ...pill, background: '#16262e', color: '#fff', border: 0 }} onClick={() => answer(it, 'approve')}>Approve</button>
-              <button type="button" style={pill} onClick={() => answer(it, 'dismiss')}>Dismiss</button>
+              {!mode && <button type="button" style={{ ...pill, background: '#16262e', color: '#fff', border: 0 }} onClick={() => answer(it, 'approve')}>Approve</button>}
+              {!mode && <button type="button" style={pill} onClick={() => answer(it, 'dismiss')}>Dismiss</button>}
             </div>
           ))}
-          {pend.length > 25 && <div style={{ fontSize: 12, color: '#8a979d' }}>and {pend.length - 25} more</div>}
+          {!mode && pend.length > 25 && <div style={{ fontSize: 12, color: '#8a979d' }}>and {pend.length - 25} more</div>}
         </div>
       )}
       {groups.map(([g, title]) => (
