@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 // Save one History record: who, when (now), where, and which stage parameters changed.
 // Body: { username?, job?, lat?, lng?, changes: [{ element, name, param, from, to, at }] }. Allowed for the Revit add-in (x-api-key) or a signed-in user (then username is their own).
 export async function POST(req) {
-  const addin = isAddin(req);
+  const addin = await isAddin(req);
   const u = addin ? null : await currentUser();
   if (!addin && !u) return Response.json({ error: 'Not signed in' }, { status: 401 });
   const b = await req.json().catch(() => ({}));

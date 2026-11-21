@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 // How often a History record is taken. Admin sets it; the Revit add-in reads it (x-api-key).
 export async function GET(req) {
-  if (!isAddin(req) && !isAdmin(await currentUser())) return Response.json({ error: 'Admins only' }, { status: 403 });
+  if (!await isAddin(req) && !isAdmin(await currentUser())) return Response.json({ error: 'Admins only' }, { status: 403 });
   return Response.json(await getHistRules());
 }
 

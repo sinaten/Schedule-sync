@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 // Revit add-in (x-api-key): History records, oldest first. ?user=NAME (required; "*" = every user) &from=ISO &to=ISO (to is exclusive) &job=NUMBER
 export async function GET(req) {
-  if (!isAddin(req)) return deny();
+  if (!await isAddin(req)) return deny();
   const p = new URL(req.url).searchParams;
   let user = p.get('user');
   if (!user) return Response.json({ error: 'user required' }, { status: 400 });

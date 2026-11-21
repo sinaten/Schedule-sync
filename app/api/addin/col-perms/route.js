@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 // Revit add-in (x-api-key): which Yes/No columns each user may change on the website.
 // GET -> { users, columns (every Yes/No column of the schedules sent from Revit), perms: { user: [column] } }
 export async function GET(req) {
-  if (!isAddin(req)) return deny();
+  if (!await isAddin(req)) return deny();
   const sql = await db();
   const users = await sql`select username from users where role <> 'admin' order by username`;
   const sch = await sql`select columns from schedules`;
@@ -16,7 +16,7 @@ export async function GET(req) {
 
 // POST { username, columns: [name] } -> that user may change exactly these columns (empty list = none)
 export async function POST(req) {
-  if (!isAddin(req)) return deny();
+  if (!await isAddin(req)) return deny();
   const b = await req.json().catch(() => ({}));
   const username = String((b && b.username) || '').trim();
   const columns = Array.isArray(b && b.columns) ? b.columns.map((x) => String(x)).slice(0, 500) : [];

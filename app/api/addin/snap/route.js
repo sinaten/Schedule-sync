@@ -6,7 +6,7 @@ const MAX = 4 * 1024 * 1024;
 
 // Revit add-in (x-api-key): list, upload, show/hide and delete the snapshots of a job.
 export async function GET(req) {
-  if (!isAddin(req)) return deny();
+  if (!await isAddin(req)) return deny();
   const job = new URL(req.url).searchParams.get('job') || '';
   const sql = await snapsDb();
   const rows = await sql`select id, name, show, created_at from snaps where job = ${job} order by id desc`;
@@ -14,7 +14,7 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
-  if (!isAddin(req)) return deny();
+  if (!await isAddin(req)) return deny();
   const sql = await snapsDb();
   if ((req.headers.get('content-type') || '').includes('multipart/form-data')) {
     const f = await req.formData().catch(() => null);

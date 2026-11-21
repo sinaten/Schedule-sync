@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 // The Revit add-in: GET = every job the site knows with its status (active / inactive / deleted) and who set it;
 // POST { job, state, title } = Revit sets a job active / inactive / deleted (deleted also wipes the job's data on the website; a small blocked mark stays so Revit does not build it again).
 export async function GET(req) {
-  if (!isAddin(req)) return deny();
+  if (!await isAddin(req)) return deny();
   const sql = await db();
   const j = await sql`select distinct job from schedules where job is not null union select substr(key, 7) from settings where key like 'model:%' union select substr(key, 10) from settings where key like 'jobstate:%'`;
   const jobs = [];
@@ -18,7 +18,7 @@ export async function GET(req) {
   return Response.json({ jobs });
 }
 export async function POST(req) {
-  if (!isAddin(req)) return deny();
+  if (!await isAddin(req)) return deny();
   const b = await req.json().catch(() => ({}));
   const job = String(b.job || '').trim();
   const state = String(b.state || '');

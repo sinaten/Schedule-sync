@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 // The Revit add-in asks here (every few seconds) whether the phone wants the 3D model refreshed. Asking also tells the site that Revit is online.
 const put = (sql, k, v) => sql`insert into settings(key, value) values(${k}, ${JSON.stringify(v)}::jsonb) on conflict (key) do update set value = excluded.value`;
 export async function GET(req) {
-  if (!isAddin(req)) return deny();
+  if (!await isAddin(req)) return deny();
   const job = new URL(req.url).searchParams.get('job') || '';
   if (!job) return Response.json({ requested: false });
   const sql = await db();
@@ -17,7 +17,7 @@ export async function GET(req) {
   return Response.json({ jobState: 'active', requested: !!r && !!r.value && r.value.state === 'requested', mode: (r && r.value && r.value.mode) || 'full' });
 }
 export async function POST(req) {
-  if (!isAddin(req)) return deny();
+  if (!await isAddin(req)) return deny();
   const { job, state, msg, pct } = await req.json();
   if (!job) return Response.json({ error: 'job' }, { status: 400 });
   const sql = await db();

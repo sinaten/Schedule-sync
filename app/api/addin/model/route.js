@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 // The Revit add-in uploads the 3D model here (API key instead of the site password).
 export async function POST(req) {
-  if (!isAddin(req)) return deny();
+  if (!await isAddin(req)) return deny();
   try { const b = await req.clone().json(); if (b && b.job) await ensureFolder(await db(), b.job); } catch {}
   return apsPost(req);
 }

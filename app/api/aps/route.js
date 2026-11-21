@@ -135,7 +135,7 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
-  if (!isAddin(req)) return deny(); // models are published from Revit only
+  if (!await isAddin(req)) return deny(); // models are published from Revit only
   if (!ready()) return Response.json({ error: 'APS_CLIENT_ID / APS_CLIENT_SECRET are not set in Vercel' }, { status: 400 });
   try {
     const body = await req.json();

@@ -3,7 +3,7 @@ import { getLayer, putLayer } from '../../../../lib/layer';
 // Revit add-in ("Sync user"): moves one user's layer into the real data. Their changes become normal pending edits that the add-in writes into Revit; the layer is cleared.
 // POST { job, username } -> { moved }
 export async function POST(req) {
-  if (!isAddin(req)) return deny();
+  if (!await isAddin(req)) return deny();
   const b = await req.json().catch(() => ({}));
   const job = b.job || '';
   const username = String(b.username || '');

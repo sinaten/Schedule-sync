@@ -4,7 +4,7 @@ import { blocked } from '../../../../lib/jobstate';
 import { ensureFolder } from '../../../../lib/folders';
 // Add-in sends: { id, name, hash, columns:[{name,type:'bool'|'number'|'text',readOnly,unit?}], rows:[{elementId, values:{col:value}}] }
 export async function POST(req) {
-  if (!isAddin(req)) return deny();
+  if (!await isAddin(req)) return deny();
   const { id, name, hash, columns, rows, job, src } = await req.json();
   const sql = await db();
   if (await blocked(sql, job)) return Response.json({ changed: false, inactive: true }); // inactive / deleted job: nothing is stored

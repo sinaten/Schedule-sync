@@ -9,14 +9,14 @@ async function load(sql) {
 }
 
 export async function GET(req) {
-  if (!isAddin(req)) return deny();
+  if (!await isAddin(req)) return deny();
   const sql = await db();
   const users = await sql`select username, role from users where role <> 'admin' order by username`;
   return Response.json({ users: users.map((u) => u.username), views: await load(sql) });
 }
 
 export async function POST(req) {
-  if (!isAddin(req)) return deny();
+  if (!await isAddin(req)) return deny();
   const b = await req.json().catch(() => ({}));
   const job = String((b && b.job) || '').trim();
   const username = String((b && b.username) || '').trim();

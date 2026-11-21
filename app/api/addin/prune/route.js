@@ -1,7 +1,7 @@
 import { db, isAddin, deny } from '../../../../lib/db';
 // Add-in sends { job, src, keep:[scheduleUniqueIds] }: schedules of this job that came from this Revit file but are no longer in it get removed.
 export async function POST(req) {
-  if (!isAddin(req)) return deny();
+  if (!await isAddin(req)) return deny();
   const { job, src, keep } = await req.json();
   if (!job || !src || !Array.isArray(keep)) return Response.json({ removed: 0 });
   const sql = await db();

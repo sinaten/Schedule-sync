@@ -4,14 +4,14 @@ export const dynamic = 'force-dynamic';
 
 // Revit add-in: which parameter names to use.
 export async function GET(req) {
-  if (!isAddin(req)) return deny();
+  if (!await isAddin(req)) return deny();
   return Response.json(await getQrConfig());
 }
 
 // Revit add-in: send { job, names: [...] }. Every new name gets a QR (an existing one is reused, never changed).
 // Returns { results: [{ name, url }] } where url is the public PDF download link.
 export async function POST(req) {
-  if (!isAddin(req)) return deny();
+  if (!await isAddin(req)) return deny();
   const b = await req.json().catch(() => ({}));
   const job = String(b.job || '').trim().slice(0, 80);
   const names = [...new Set((Array.isArray(b.names) ? b.names : []).map((x) => String(x || '').trim().slice(0, 120)).filter(Boolean))].slice(0, 2000);

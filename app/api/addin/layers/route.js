@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 // Revit add-in: which user layers of this job still need their colours worked out.
 // GET ?job= -> { users: [{ username, rev, edits: [{ scheduleId, elementId, col, value }] }] }
 export async function GET(req) {
-  if (!isAddin(req)) return deny();
+  if (!await isAddin(req)) return deny();
   const job = new URL(req.url).searchParams.get('job') || '';
   const prefix = 'layer:' + job + ':';
   const sql = await db();
@@ -17,7 +17,7 @@ export async function GET(req) {
 }
 // POST { job, username, rev, look: { colors } } -> kept only if the layer has not changed meanwhile
 export async function POST(req) {
-  if (!isAddin(req)) return deny();
+  if (!await isAddin(req)) return deny();
   const b = await req.json().catch(() => ({}));
   const sql = await db();
   const L = await getLayer(sql, b.job || '', b.username);
