@@ -38,6 +38,22 @@ export async function GET(req) {
       if (!pts.length) return Response.json({ none: true });
       lat = pts.reduce((a, x) => a + Number(x.lat), 0) / pts.length; lng = pts.reduce((a, x) => a + Number(x.lng), 0) / pts.length;
     }
+    // A date range (the action plan's start and end): hour by hour from Open-Meteo for those days; empty when it has nothing for them (too far ahead or too far back).
+    const from = p.get('from') || '', to = p.get('to') || '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(from)) {
+      let end = /^\d{4}-\d{2}-\d{2}$/.test(to) && to >= from ? to : from;
+      if ((new Date(end) - new Date(from)) / 86400000 > 30) end = new Date(new Date(from).getTime() + 30 * 86400000).toISOString().slice(0, 10);
+      let rh = [];
+      try {
+        const ru = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat.toFixed(4) + '&longitude=' + lng.toFixed(4) + '&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,is_day&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&start_date=' + from + '&end_date=' + end;
+        const rr = await fetch(ru, { cache: 'no-store' });
+        if (rr.ok) {
+          const wj = await rr.json();
+          if (wj.hourly && wj.hourly.time) rh = wj.hourly.time.map((t, i) => ({ t: t.slice(0, 16), temp: wj.hourly.temperature_2m[i] == null ? null : Math.round(wj.hourly.temperature_2m[i]), prob: (wj.hourly.precipitation_probability && wj.hourly.precipitation_probability[i]) || 0, wind: Math.round((wj.hourly.wind_speed_10m && wj.hourly.wind_speed_10m[i]) || 0), text: '', night: wj.hourly.is_day ? wj.hourly.is_day[i] === 0 : false, code: wj.hourly.weather_code[i] })).filter((x) => x.temp !== null && x.code !== null && x.code !== undefined);
+        }
+      } catch (e) {}
+      return Response.json({ range: true, place, from, to: end, hours: rh });
+    }
     const grade = (o) => {
       const why = []; let level = 'ok';
       if (o.wet || o.rain >= 0.02 || o.snow > 0 || o.prob >= 50) { level = 'no'; why.push(o.snowy ? 'snow' : o.storm ? 'thunderstorm' : 'rain'); }

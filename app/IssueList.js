@@ -117,7 +117,7 @@ function ActionPlan({ job, r, can, post, reload, openPan, forceOpen }) {
       </div>
       {o && (
         <div style={{ padding: '4px 12px 12px' }}>
-          <WeatherStrip job={job} />
+          <WeatherStrip job={job} start={sd} end={ed} />
           <div style={{ display: 'flex', gap: 6, margin: '0 0 10px' }}>
             <label style={{ flex: '0.8 1 0', minWidth: 0, overflow: 'hidden' }}><span style={lab}>Job number</span>
               {can ? <input value={jno} onChange={(e) => setJno(e.target.value)} onBlur={() => { if (jno.trim() && jno !== ap.jobNo) save({ job_no: jno }); }} placeholder="Job number" style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #cfe9d6', borderRadius: 10, height: 34, padding: '0 6px', margin: '4px 0 0', font: 'inherit', fontSize: 12.5, textOverflow: 'ellipsis', outline: 'none', background: '#fff' }} /> : <div style={{ fontSize: 13, margin: '4px 0 0' }}>{ap.jobNo}</div>}
