@@ -10,6 +10,8 @@ import SecondViewer from './SecondViewer';
 import { SWAP, fsBody, fsTop, fsHalf } from './layoutSwap';
 
 // Status model of an issue (same words as Procore).
+const ISS_LAB = { fontSize: 11, fontWeight: 700, letterSpacing: 0.3, color: '#8a8576', textTransform: 'uppercase' };
+const ISS_BOX = { display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #f0cfa3', borderRadius: 10, padding: 8, margin: '4px 0 4px', minHeight: 72, font: 'inherit', fontSize: 14, lineHeight: 1.55, background: '#fff', outline: 'none' };
 export const ST = {
   open: { l: 'Open', bg: '#fdecea', c: '#c0392b' },
   prog: { l: 'In Progress', bg: '#fff3dc', c: '#a86400' },
@@ -250,7 +252,8 @@ export default function IssueList({ job }) {
           {nw && (
             <div style={{ border: '1.5px solid #e8710a', borderRadius: 12, background: '#fffaf4', padding: 10, marginBottom: 10 }}>
               <div style={{ fontSize: 12.5, fontWeight: 700, color: '#8a4a0a', marginBottom: 6 }}>New issue</div>
-              <textarea autoFocus value={nw.text} onChange={(e) => setNw({ ...nw, text: e.target.value })} rows={4} placeholder="Describe the issue… (you can type element numbers in the text)" style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #e0dccf', borderRadius: 10, padding: 8, font: 'inherit', fontSize: 14, resize: 'vertical', outline: 'none', background: '#fff' }} />
+              <div style={ISS_LAB}>Issue</div>
+              <textarea autoFocus value={nw.text} onChange={(e) => setNw({ ...nw, text: e.target.value })} rows={3} placeholder="Describe the issue… (you can type element numbers in the text)" style={{ ...ISS_BOX, resize: 'vertical' }} />
               <div style={{ display: 'flex', gap: 6, margin: '8px 0', alignItems: 'center' }}>
                 <span style={{ fontSize: 12, color: '#8a8576', marginRight: 4 }}>Importance</span>
                 {['critical', 'noncritical'].map((k) => <button key={k} type="button" onClick={() => setNw({ ...nw, pr: k })} style={{ border: '1.5px solid ' + (nw.pr === k ? PR[k].bg : '#e0dccf'), background: nw.pr === k ? PR[k].bg : '#fff', color: nw.pr === k ? '#fff' : '#141413', borderRadius: 12, padding: '3px 11px', font: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{PR[k].l}</button>)}
@@ -288,7 +291,8 @@ export default function IssueList({ job }) {
                   <div style={{ ...(SWAP ? fsHalf(full === r.element_id, wide, 'issue') : halfStyle(full === r.element_id, wide, 'issue')), background: '#fbeedb', borderTop: '3px solid #e8710a' }}>
                   {mine ? (
                     <div style={{ padding: 10 }}>
-                      <textarea value={camToEdit(ed.text, cvs)} onChange={(e) => setEd({ ...ed, text: camFromEdit(e.target.value, cvs) })} rows={4} placeholder="Describe the issue…" style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #e0dccf', borderRadius: 10, padding: 8, font: 'inherit', fontSize: 14, resize: 'vertical', outline: 'none' }} />
+                      <div style={ISS_LAB}>Issue</div>
+                      <textarea value={camToEdit(ed.text, cvs)} onChange={(e) => setEd({ ...ed, text: camFromEdit(e.target.value, cvs) })} rows={3} placeholder="Describe the issue…" style={{ ...ISS_BOX, resize: 'vertical' }} />
                       <div style={{ display: 'flex', gap: 6, margin: '8px 0', alignItems: 'center' }}>
                         <span style={{ fontSize: 12, color: '#8a8576', marginRight: 4 }}>Importance</span>
                         {['critical', 'noncritical'].map((k) => <button key={k} type="button" onClick={() => setEd({ ...ed, pr: k })} style={{ border: '1.5px solid ' + (ed.pr === k ? PR[k].bg : '#e0dccf'), background: ed.pr === k ? PR[k].bg : '#fff', color: ed.pr === k ? '#fff' : '#141413', borderRadius: 12, padding: '3px 11px', font: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{PR[k].l}</button>)}
@@ -299,8 +303,11 @@ export default function IssueList({ job }) {
                       </div>
                     </div>
                   ) : (
-                    <div style={{ padding: '8px 12px', fontSize: 14, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: '#141413' }}>
-                      {r.description ? rich(r.description, 'i' + r.no) : <span style={{ color: '#9a9686' }}>No description.</span>}
+                    <div style={{ padding: '8px 12px 4px' }}>
+                      <div style={ISS_LAB}>Issue</div>
+                      <div style={{ ...ISS_BOX, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: '#141413' }}>
+                        {r.description ? rich(r.description, 'i' + r.no) : <span style={{ color: '#9a9686' }}>No description.</span>}
+                      </div>
                     </div>
                   )}
                   <div style={{ padding: '4px 12px 8px', borderTop: '1px solid #f1ede4' }}>
