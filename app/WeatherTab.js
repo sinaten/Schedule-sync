@@ -87,7 +87,7 @@ export default function WeatherTab({ job, bare, asBar }) {
                 {rows.map((h) => (
                   <div key={h.t} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderTop: '1px solid #f1f3f1', fontSize: 12.5 }}>
                     <span style={{ width: 44, color: '#6b675c' }}>{hr(Number(h.t.slice(11, 13)))}</span>
-                    <span style={{ width: 22, display: 'inline-flex' }}><WxIcon code={h.code} size={16} /></span>
+                    <span style={{ width: 22, display: 'inline-flex' }}><WxIcon code={h.code} size={16} night={!!h.night} /></span>
                     <span style={{ width: 38, fontWeight: 600 }}>{h.temp}{'°'}</span>
                     <span style={{ flex: 1, color: h.prob >= 50 ? '#c0392b' : '#6b675c' }}>{h.prob}% rain</span>
                     <span style={{ color: '#6b675c' }}>{h.wind} mph</span>

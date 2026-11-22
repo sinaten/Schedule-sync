@@ -42,7 +42,7 @@ export default function WeatherStrip({ job }) {
         return (
           <span key={h.t} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', minWidth: 0, lineHeight: 1.05, flex: '1 1 0' }}>
             <span style={{ fontSize: 9, color: '#9a9686' }}>{hr(n)}</span>
-            <WxIcon code={h.code} size={15} color={h.prob >= 50 ? '#c0392b' : '#6b675c'} />
+            <WxIcon code={h.code} night={!!h.night} size={15} color={h.prob >= 50 ? '#c0392b' : '#6b675c'} />
             <span style={{ fontSize: 9.5, color: h.prob >= 50 ? '#c0392b' : '#6b675c', fontWeight: h.prob >= 50 ? 700 : 400 }}>{h.temp}{'°'}</span>
           </span>
         );

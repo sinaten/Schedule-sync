@@ -74,7 +74,7 @@ export async function GET(req) {
       source = 'National Weather Service';
       try {
         const hr = await fetch(pj.forecastHourly, H);
-        if (hr.ok) hours = (await hr.json()).properties.periods.slice(0, 150).map((x) => { const t = String(x.shortForecast); return { t: x.startTime.slice(0, 16), temp: x.temperature, prob: (x.probabilityOfPrecipitation && x.probabilityOfPrecipitation.value) || 0, wind: Math.max(...(String(x.windSpeed).match(/\d+/g) || [0]).map(Number)), text: t, code: /thunder/i.test(t) ? 95 : /snow|flurr|sleet/i.test(t) ? 71 : /rain|shower|drizzle/i.test(t) ? 61 : /fog/i.test(t) ? 45 : /cloud|overcast/i.test(t) ? 3 : /partly|mostly sunny/i.test(t) ? 2 : 0 }; });
+        if (hr.ok) hours = (await hr.json()).properties.periods.slice(0, 150).map((x) => { const t = String(x.shortForecast); return { t: x.startTime.slice(0, 16), temp: x.temperature, prob: (x.probabilityOfPrecipitation && x.probabilityOfPrecipitation.value) || 0, wind: Math.max(...(String(x.windSpeed).match(/\d+/g) || [0]).map(Number)), text: t, night: x.isDaytime === false, code: /thunder/i.test(t) ? 95 : /snow|flurr|sleet/i.test(t) ? 71 : /rain|shower|drizzle/i.test(t) ? 61 : /fog/i.test(t) ? 45 : /cloud|overcast/i.test(t) ? 3 : /partly|mostly sunny/i.test(t) ? 2 : 0 }; });
       } catch (e) {}
       try {
         const ar = await fetch('https://api.weather.gov/alerts/active?point=' + lat.toFixed(4) + ',' + lng.toFixed(4), H);
@@ -87,11 +87,11 @@ export async function GET(req) {
     } catch (e) { days = null; }
     if (!days) {
       try {
-        const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat.toFixed(4) + '&longitude=' + lng.toFixed(4) + '&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,snowfall_sum,wind_gusts_10m_max&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=6';
+        const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat.toFixed(4) + '&longitude=' + lng.toFixed(4) + '&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,snowfall_sum,wind_gusts_10m_max&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=6';
         const r = await fetch(url, { cache: 'no-store' });
         if (!r.ok) throw new Error('weather ' + r.status);
         const wj = await r.json(); const w = wj.daily;
-        if (wj.hourly) hours = wj.hourly.time.map((t, i) => ({ t: t.slice(0, 16), temp: Math.round(wj.hourly.temperature_2m[i]), prob: wj.hourly.precipitation_probability[i] || 0, wind: Math.round(wj.hourly.wind_speed_10m[i] || 0), text: '', code: wj.hourly.weather_code[i] }));
+        if (wj.hourly) hours = wj.hourly.time.map((t, i) => ({ t: t.slice(0, 16), temp: Math.round(wj.hourly.temperature_2m[i]), prob: wj.hourly.precipitation_probability[i] || 0, wind: Math.round(wj.hourly.wind_speed_10m[i] || 0), text: '', night: wj.hourly.is_day ? wj.hourly.is_day[i] === 0 : false, code: wj.hourly.weather_code[i] }));
         days = w.time.map((t, i) => {
           const code = w.weather_code[i];
           const o = { wet: (code >= 51 && code <= 67) || (code >= 71 && code <= 77) || (code >= 80 && code <= 99), snowy: (code >= 71 && code <= 77) || code === 85 || code === 86 || (w.snowfall_sum[i] || 0) > 0, storm: code >= 95, prob: w.precipitation_probability_max[i] || 0, rain: w.precipitation_sum[i] || 0, snow: w.snowfall_sum[i] || 0, gust: w.wind_gusts_10m_max[i] || 0, hi: w.temperature_2m_max[i], lo: w.temperature_2m_min[i] };
