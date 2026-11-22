@@ -217,7 +217,7 @@ export default function IssueList({ job }) {
     while ((m = re.exec(t))) {
       if (m.index > last) out.push(<span key={k++}>{linkNums(t.slice(last, m.index), key + 'a' + k)}</span>);
       const v = cvs.find((x) => x.id === m[1]);
-      out.push(v ? <button key={k++} type="button" title={v.name} onClick={() => window.dispatchEvent(new CustomEvent('ss-goto-view', { detail: { id: v.id } }))} style={{ display: 'inline', border: 0, background: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }}><CamIcon n={v.n} /></button> : <span key={k++} style={{ opacity: 0.4 }}>{'\u{1F6AB}'}</span>);
+      out.push(v ? <button key={k++} type="button" title={v.name} onClick={() => { try { const b = document.querySelector('.v3-box'); if (b) b.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (x) { /* ignore */ } window.dispatchEvent(new CustomEvent('ss-goto-view', { detail: { id: v.id } })); }} style={{ display: 'inline', border: 0, background: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }}><CamIcon n={v.n} /></button> : <span key={k++} style={{ opacity: 0.4 }}>{'\u{1F6AB}'}</span>);
       last = m.index + m[0].length;
     }
     if (last < t.length) out.push(<span key={k++}>{linkNums(t.slice(last), key + 'z' + k)}</span>);
