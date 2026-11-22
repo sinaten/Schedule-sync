@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import MapPicker from './admin/MapPicker';
 import WxIcon from './WxIcon';
+import { hourLevel } from './wxLevel';
 
 // The weather tab: closed it shows the six coming days at a glance; open it shows the chosen day hour by hour and the official warnings.
 // Without a saved location a tap opens the map instead; the chosen place is saved as the location of the project's HSE.
@@ -84,15 +85,16 @@ export default function WeatherTab({ job, bare, asBar }) {
             return (
               <div key={nm} style={{ marginTop: 8 }}>
                 <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, color: '#8a8576', textTransform: 'uppercase', margin: '0 0 2px' }}>{nm}</div>
-                {rows.map((h) => (
+                {rows.map((h) => { const lv = hourLevel(h, alerts); return (
                   <div key={h.t} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderTop: '1px solid #f1f3f1', fontSize: 12.5 }}>
                     <span style={{ width: 44, color: '#6b675c' }}>{hr(Number(h.t.slice(11, 13)))}</span>
-                    <span style={{ width: 22, display: 'inline-flex' }}><WxIcon code={h.code} size={16} night={!!h.night} /></span>
+                    <span style={{ width: 22, display: 'inline-flex' }}><WxIcon code={h.code} size={16} night={!!h.night} color={lv.c} /></span>
                     <span style={{ width: 38, fontWeight: 600 }}>{h.temp}{'°'}</span>
-                    <span style={{ flex: 1, color: h.prob >= 50 ? '#c0392b' : '#6b675c' }}>{h.prob}% rain</span>
+                    <span style={{ width: 62, color: h.prob >= 50 ? '#c0392b' : '#6b675c' }}>{h.prob}% rain</span>
+                    <span style={{ flex: 1, textAlign: 'center', fontSize: 11.5, fontWeight: 700, color: lv.c }}>{lv.t}</span>
                     <span style={{ color: '#6b675c' }}>{h.wind} mph</span>
                   </div>
-                ))}
+                ); })}
               </div>
             );
           })}
