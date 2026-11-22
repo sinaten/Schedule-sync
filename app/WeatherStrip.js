@@ -40,11 +40,12 @@ export default function WeatherStrip({ job }) {
       <span style={{ width: 8, height: 8, borderRadius: 4, background: DOT[lv], flex: 'none' }} />
       {cells.length === 0 ? <span style={{ fontSize: 10.5, color: '#9a9686' }}><WxIcon code={d0.code} size={15} /> {d0.hi}{'°'}F</span> : cells.map((h) => {
         const n = hh(h);
+        const lc = hourLevel(h, w.alerts).c;
         return (
           <span key={h.t} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', minWidth: 0, lineHeight: 1.05, flex: '1 1 0' }}>
-            <span style={{ fontSize: 9, color: '#9a9686' }}>{hr(n)}</span>
-            <WxIcon code={h.code} night={!!h.night} size={15} color={hourLevel(h, w.alerts).c} />
-            <span style={{ fontSize: 9.5, color: h.prob >= 50 ? '#c0392b' : '#6b675c', fontWeight: h.prob >= 50 ? 700 : 400 }}>{h.temp}{'°'}</span>
+            <span style={{ fontSize: 9, color: lc }}>{hr(n)}</span>
+            <WxIcon code={h.code} night={!!h.night} size={15} color={lc} />
+            <span style={{ fontSize: 9.5, color: lc, fontWeight: 700 }}>{h.temp}{'°'}</span>
           </span>
         );
       })}
