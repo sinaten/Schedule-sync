@@ -30,3 +30,18 @@ export function hourLevel(h, alerts) {
   }
   return WX_LEVELS[n - 1];
 }
+
+// Why an hour got its level, in a few words (for the worst-case line).
+export function hourWhy(h, alerts) {
+  const code = Number(h.code) || 0; const prob = Number(h.prob) || 0; const wind = Number(h.wind) || 0; const temp = Number(h.temp);
+  const w = [];
+  const lvl = hourLevel(h, alerts).n;
+  for (const a of alerts || []) { const end = String((a && a.ends) || '').slice(0, 16); if ((!end || String(h.t).slice(0, 16) < end) && a.event) { w.push(a.event); break; } }
+  if (code >= 95) w.push('thunderstorm');
+  else if ((code >= 71 && code <= 77) || code === 85 || code === 86) w.push('snow');
+  else if (code >= 51 && prob >= 30) w.push('rain ' + prob + '%');
+  else if (prob >= 30) w.push('chance of rain ' + prob + '%');
+  if (wind >= 20) w.push('wind ' + wind + ' mph');
+  if (temp <= 32) w.push('freezing ' + temp + ' F'); else if (temp >= 90) w.push('hot ' + temp + ' F');
+  return w.length ? w.slice(0, 3).join(', ') : (lvl > 1 ? 'conditions' : '');
+}

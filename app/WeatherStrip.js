@@ -49,6 +49,40 @@ export default function WeatherStrip({ job, start = '', end = '' }) {
   const winStart = !ranged || (s0 <= today && e0 >= today) ? ymd(now) + 'T' + z(now.getHours()) + ':00' : s0 + 'T00:00';
   const winEnd = ranged ? e0 + 'T23:59' : '9999';
   let cells = keys.filter((k) => k >= winStart && k <= winEnd).map((k) => all[k]).filter((_, i) => i % 2 === 0);
+  // The bad hours of the whole period (not only the cells in view), grouped by day: tomorrow's bad weather shows even when today is fine.
+  // Nothing bad = no line at all. Each day: its date (colour = the day's worst level), then its bad hour ranges, each in its own level colour.
+  const alOf = (h) => (new Date(h.t) >= now ? w.alerts : []);
+  const inWin = keys.filter((k) => k >= winStart && k <= winEnd).map((k) => all[k]);
+  const byDay = {};
+  for (const h of inWin) {
+    const l = hourLevel(h, alOf(h));
+    if (l.n < 2) continue;
+    (byDay[h.t.slice(0, 10)] ||= []).push({ n: Number(h.t.slice(11, 13)), l });
+  }
+  const bad = Object.keys(byDay).sort().map((d) => {
+    const rs = [];
+    for (const x of byDay[d]) { const r = rs[rs.length - 1]; if (r && r.l.n === x.l.n && x.n === r.b + 1) r.b = x.n; else rs.push({ a: x.n, b: x.n, l: x.l }); }
+    return { d, rs, top: rs.reduce((m, r) => (r.l.n > m.n ? r.l : m), rs[0].l) };
+  });
+  const top = bad.reduce((m, x) => (x.top.n > m.n ? x.top : m), { n: 0 });
+  const dd = (d) => new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const banner = bad.length ? (
+    <div style={{ borderLeft: '3px solid ' + top.c, background: 'rgba(255,255,255,.55)', padding: '4px 8px', margin: '4px 4px 4px 2px', lineHeight: 1.3 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 700, color: top.c, marginBottom: 2 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={top.c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flex: 'none' }}><path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17v.5" /></svg>
+        {'Check weather: ' + top.t}
+      </div>
+      <div style={{ fontSize: 10.5, lineHeight: 1.65 }}>
+        {bad.map((x, i) => (
+          <span key={x.d}>
+            {i > 0 && <span style={{ color: '#b9b6a8' }}>{' | '}</span>}
+            <span style={{ color: x.top.c }}>{dd(x.d) + ':'}</span>{' '}
+            {x.rs.map((r, j) => <span key={j}>{j > 0 && ', '}<span style={{ color: r.l.c }}>{r.a === r.b ? hr(r.a) : hr(r.a) + '-' + hr(r.b)}</span></span>)}
+          </span>
+        ))}
+      </div>
+    </div>
+  ) : null;
   const lastAsked = ranged ? e0 + 'T23:00' : '';
   const missing = ranged && (cells.length === 0 || cells[cells.length - 1].t.slice(0, 13) < lastAsked.slice(0, 13) && (new Date(lastAsked) - new Date(cells[cells.length - 1].t)) / 3600000 > 2);
   // Rough confidence by how far ahead it is (an estimate by lead time, not an official figure); what already happened is 100%.
@@ -58,6 +92,8 @@ export default function WeatherStrip({ job, start = '', end = '' }) {
   const lab = { fontSize: 8.5, color: '#9a9686', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', display: 'flex', alignItems: 'center' };
   if (cells.length === 0) return <div style={{ margin: '6px 4px', fontSize: 10.5, color: '#9a9686', borderTop: '0.5px solid #d9dfd9', paddingTop: 4 }}>No forecast for these dates yet.</div>;
   return (
+    <>
+    {banner}
     <div title={(d0.why || []).join(', ')} style={{ margin: '4px 0 6px', padding: '2px 4px 2px 2px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
       <div style={{ display: 'flex', alignItems: 'stretch', width: 'max-content', minWidth: '100%' }}>
         <div style={{ width: LABW, flex: 'none', display: 'flex', flexDirection: 'column', position: 'sticky', left: 0, background: BG, zIndex: 1 }}>
@@ -83,5 +119,6 @@ export default function WeatherStrip({ job, start = '', end = '' }) {
         {missing && <span style={{ flex: 'none', display: 'flex', alignItems: 'center', borderLeft: '0.5px dashed #b9c2b9', marginLeft: 2, paddingLeft: 6, fontSize: 9, color: '#9a9686', whiteSpace: 'nowrap' }}>no forecast after {dt(cells[cells.length - 1])}</span>}
       </div>
     </div>
+    </>
   );
 }
