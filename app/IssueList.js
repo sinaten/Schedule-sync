@@ -118,11 +118,12 @@ function ActionPlan({ job, r, can, post, reload, openPan, forceOpen }) {
       {o && (
         <div style={{ padding: '4px 12px 12px' }}>
           <WeatherStrip job={job} />
-          <div style={lab}>Job number</div>
-          {can ? <input value={jno} onChange={(e) => setJno(e.target.value)} onBlur={() => { if (jno.trim() && jno !== ap.jobNo) save({ job_no: jno }); }} placeholder="Job number" style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #cfe9d6', borderRadius: 10, height: 34, padding: '0 10px', margin: '4px 0 10px', font: 'inherit', fontSize: 14, outline: 'none', background: '#fff' }} /> : <div style={{ fontSize: 14, margin: '4px 0 10px' }}>{ap.jobNo}</div>}
-          <div style={{ display: 'flex', gap: 10, margin: '0 0 10px' }}>
+          <div style={{ display: 'flex', gap: 6, margin: '0 0 10px' }}>
+            <label style={{ flex: '0.8 1 0', minWidth: 0 }}><span style={lab}>Job number</span>
+              {can ? <input value={jno} onChange={(e) => setJno(e.target.value)} onBlur={() => { if (jno.trim() && jno !== ap.jobNo) save({ job_no: jno }); }} placeholder="Job number" style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #cfe9d6', borderRadius: 10, height: 34, padding: '0 6px', margin: '4px 0 0', font: 'inherit', fontSize: 12.5, textOverflow: 'ellipsis', outline: 'none', background: '#fff' }} /> : <div style={{ fontSize: 13, margin: '4px 0 0' }}>{ap.jobNo}</div>}
+            </label>
             {[['Start date', sd, setSd, 'start_date'], ['End date', ed, setEd, 'end_date']].map(([l, v, set, k]) => (
-              <label key={k} style={{ flex: 1, minWidth: 0 }}><span style={lab}>{l}</span>
+              <label key={k} style={{ flex: '1.1 1 0', minWidth: 0 }}><span style={lab}>{l}</span>
                 {can ? <input type="date" value={v} min={k === 'end_date' ? sd || undefined : undefined} onChange={(e) => { set(e.target.value); save({ [k]: e.target.value }); }} style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #cfe9d6', borderRadius: 10, height: 34, padding: '0 8px', margin: '4px 0 0', font: 'inherit', fontSize: 13.5, outline: 'none', background: '#fff' }} /> : <div style={{ fontSize: 14, marginTop: 4 }}>{v || '-'}</div>}
               </label>
             ))}
