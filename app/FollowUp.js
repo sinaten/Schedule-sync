@@ -7,6 +7,7 @@ import ModelSlot from './ModelSlot';
 import { linkNums, useModelIds, goPart } from './ElemLinks';
 import HseBar from './HseBar';
 import OrdersBar from './OrdersBar';
+import OrderChips from './OrderChips';
 import { StatusChip, PriorityTag, AssigneeChip, FullBtn, fullBox, useWide, bodyBox, halfStyle } from './IssueList';
 import { SWAP } from './layoutSwap';
 
@@ -136,6 +137,7 @@ export default function FollowUp({ job }) {
                             <PriorityTag pr={a.priority} small />
                           </div>
                           <div style={{ marginTop: 7 }}><WeatherCapsules job={job} /></div>
+                          <div style={{ marginTop: 6 }}><OrderChips job={job} element={a.element_id} /></div>
                         </div>
                         <div style={SWAP ? bodyBox(full === a.element_id, wide) : fsBody(full === a.element_id, wide)}>
                         <div style={SWAP ? { display: 'contents' } : fsTop(full === a.element_id, wide)}>

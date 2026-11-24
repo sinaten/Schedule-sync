@@ -5,6 +5,7 @@ import CamIcon from './CamIcon';
 import { goPart, linkNums, useModelIds } from './ElemLinks';
 import IssuePanel from './IssuePanel';
 import WeatherStrip from './WeatherStrip';
+import OrderChips from './OrderChips';
 import ModelSlot from './ModelSlot';
 import SecondViewer from './SecondViewer';
 import { SWAP, fsBody, fsTop, fsHalf } from './layoutSwap';
@@ -132,6 +133,7 @@ function ActionPlan({ job, r, can, post, reload, openPan, forceOpen, cvs }) {
       </div>
       {o && (
         <div style={{ padding: '4px 12px 12px' }}>
+          <OrderChips job={job} element={r.element_id} />
           <WeatherStrip job={job} start={sd} end={ed} />
           <div style={{ display: 'flex', gap: 6, margin: '0 0 10px' }}>
             <label style={{ flex: '0.8 1 0', minWidth: 0, overflow: 'hidden' }}><span style={lab}>Job number</span>

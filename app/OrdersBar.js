@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 
 const OR = '#e8710a';
 // The six looks of a tracking status: icon, words, colours.
-const ST = {
+export const ST = {
   unknown: { l: 'Not found yet', bg: '#f1efe8', c: '#444441', ic: 'M9 9a3 3 0 1 1 4.5 2.6c-1 .6-1.5 1.1-1.5 2.4 M12 17v.01' },
   created: { l: 'Label created', bg: '#f1efe8', c: '#444441', ic: 'M12 7v5l3 2' },
   transit: { l: 'In transit', bg: '#e1effb', c: '#0c447c', ic: 'M3 7h11v9H3z M14 10h4l3 3v3h-7z' },
@@ -11,7 +11,7 @@ const ST = {
   delivered: { l: 'Delivered', bg: '#e4f5ea', c: '#27500a', ic: 'M5 12l5 5L20 7' },
   delayed: { l: 'Delayed', bg: '#fdecea', c: '#791f1f', ic: 'M12 4l9 16H3z M12 10v4 M12 17v.01' },
 };
-const Ic = ({ d, s = 18, c = 'currentColor' }) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flex: 'none' }}><path d={d} /></svg>;
+export const Ic = ({ d, s = 18, c = 'currentColor' }) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flex: 'none' }}><path d={d} /></svg>;
 const when = (t) => { const d = new Date(t); return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ', ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); };
 const lab = { fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, color: '#8a8576', textTransform: 'uppercase' };
 const inp = { display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #e0dccf', borderRadius: 10, padding: '7px 10px', font: 'inherit', fontSize: 14, background: '#fff' };
@@ -29,11 +29,29 @@ function Copy({ text }) {
     : <button type="button" aria-label="Copy tracking number" title="Copy" onClick={go} style={{ border: 0, background: 'none', padding: 2, cursor: 'pointer', color: '#9a9686', lineHeight: 0 }}><Ic d="M9 9h10v11H9z M5 15V4h10" s={14} /></button>;
 }
 
+
+// Element numbers of an order: chips with a x, a box to paste a number and a Create button.
+function ElementsField({ list, onChange }) {
+  const [v, setV] = useState('');
+  const make = () => { const n = v.trim().replace(/[^\w-]/g, ''); if (!n) return; if (!list.includes(n)) onChange([...list, n]); setV(''); };
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4, alignItems: 'center' }}>
+        {list.map((e) => <span key={e} style={{ background: '#e1effb', color: '#0c447c', borderRadius: 12, padding: '3px 6px 3px 10px', fontSize: 13, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>{e}<button type="button" aria-label={'Remove ' + e} onClick={() => onChange(list.filter((x) => x !== e))} style={{ border: 0, background: 'none', color: '#0c447c', opacity: 0.6, cursor: 'pointer', padding: 0, fontSize: 14, lineHeight: 1 }}>{'\u00D7'}</button></span>)}
+      </div>
+      <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+        <input value={v} onChange={(e) => setV(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); make(); } }} inputMode="numeric" placeholder="Paste the element number" style={{ ...inp, flex: 1, minWidth: 0 }} />
+        {v.trim() && <button type="button" onClick={make} style={{ border: 0, borderRadius: 16, padding: '0 16px', background: OR, color: '#fff', font: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Create</button>}
+      </div>
+    </div>
+  );
+}
+
 // The Orders bar: the things ordered for the job. Each card: what, who, where it is dropped off (a Scenario of the site), and the tracking number with a short status.
 export default function OrdersBar({ job }) {
   const [d, setD] = useState({ orders: [], drops: [], me: '', can: false, admin: false });
   const [add, setAdd] = useState(false);
-  const [f, setF] = useState({ title: '', details: '', drop: '' });
+  const [f, setF] = useState({ title: '', details: '', drop: '', elements: [] });
   const [tr, setTr] = useState({});
   const [msg, setMsg] = useState('');
   const [ed, setEd] = useState(null); // the order being edited: { id, title, details, drop }
@@ -47,12 +65,12 @@ export default function OrdersBar({ job }) {
   };
   const create = async () => {
     if (!f.title.trim()) { setMsg('Write what you ordered.'); return; }
-    if (await call('POST', { job, ...f })) { setF({ title: '', details: '', drop: '' }); setAdd(false); load(); }
+    if (await call('POST', { job, ...f })) { setF({ title: '', details: '', drop: '', elements: [] }); setAdd(false); load(); }
   };
   const saveTr = async (o) => { const t = (tr[o.id] ?? o.tracking ?? '').trim(); if (t === (o.tracking || '')) return; if (await call('PATCH', { job, id: o.id, tracking: t })) { setTr((x) => { const n = { ...x }; delete n[o.id]; return n; }); load(); } };
   const saveEd = async () => {
     if (!ed.title.trim()) { setMsg('Write what you ordered.'); return; }
-    if (await call('PATCH', { job, id: ed.id, title: ed.title, details: ed.details, drop: ed.drop })) { setEd(null); load(); }
+    if (await call('PATCH', { job, id: ed.id, title: ed.title, details: ed.details, drop: ed.drop, elements: ed.elements })) { setEd(null); load(); }
   };
   const del = async (o) => { if (await call('DELETE', null, '?job=' + encodeURIComponent(job) + '&id=' + o.id)) load(); };
   return (
@@ -64,6 +82,8 @@ export default function OrdersBar({ job }) {
           <input autoFocus value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder="Spare part, material…" style={inp} />
           <div style={{ ...lab, marginTop: 8 }}>Notes</div>
           <textarea value={f.details} onChange={(e) => setF({ ...f, details: e.target.value })} rows={2} placeholder="Part number, quantity, anything to know" style={{ ...inp, resize: 'vertical' }} />
+          <div style={{ ...lab, marginTop: 8 }}>For element</div>
+          <ElementsField list={f.elements} onChange={(a) => setF({ ...f, elements: a })} />
           <div style={{ ...lab, marginTop: 8 }}>Drop-off</div>
           {d.drops.length ? (
             <select value={f.drop} onChange={(e) => setF({ ...f, drop: e.target.value })} style={inp}>
@@ -87,7 +107,7 @@ export default function OrdersBar({ job }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, color: '#a86400', background: '#fff3dc', borderRadius: 5, padding: '2px 7px' }}>ORDER {num}</span>
               <b style={{ fontSize: 14.5, flex: 1, minWidth: 0 }}>{o.title}</b>
-              {mine && <button type="button" aria-label="Edit order" title="Edit" onClick={() => setEd(ed && ed.id === o.id ? null : { id: o.id, title: o.title, details: o.details || '', drop: o.drop_token || '' })} style={{ border: 0, background: 'none', color: '#9a9686', cursor: 'pointer', padding: 2, lineHeight: 0 }}><Ic d="M4 20h4L19 9l-4-4L4 16z M13.5 6.5l4 4" s={16} /></button>}
+              {mine && <button type="button" aria-label="Edit order" title="Edit" onClick={() => setEd(ed && ed.id === o.id ? null : { id: o.id, title: o.title, details: o.details || '', drop: o.drop_token || '', elements: o.elements || [] })} style={{ border: 0, background: 'none', color: '#9a9686', cursor: 'pointer', padding: 2, lineHeight: 0 }}><Ic d="M4 20h4L19 9l-4-4L4 16z M13.5 6.5l4 4" s={16} /></button>}
               {mine && <button type="button" aria-label="Remove order" onClick={() => del(o)} style={{ border: 0, background: 'none', color: '#9a9686', fontSize: 15, cursor: 'pointer', padding: 2 }}>{'✕'}</button>}
             </div>
             {ed && ed.id === o.id && (
@@ -96,6 +116,8 @@ export default function OrdersBar({ job }) {
                 <input value={ed.title} onChange={(e) => setEd({ ...ed, title: e.target.value })} style={inp} />
                 <div style={{ ...lab, marginTop: 8 }}>Notes</div>
                 <textarea value={ed.details} onChange={(e) => setEd({ ...ed, details: e.target.value })} rows={2} style={{ ...inp, resize: 'vertical' }} />
+                <div style={{ ...lab, marginTop: 8 }}>For element</div>
+                <ElementsField list={ed.elements} onChange={(a) => setEd({ ...ed, elements: a })} />
                 <div style={{ ...lab, marginTop: 8 }}>Drop-off</div>
                 <select value={ed.drop} onChange={(e) => setEd({ ...ed, drop: e.target.value })} style={inp}>
                   <option value="">No drop-off chosen</option>
@@ -107,6 +129,7 @@ export default function OrdersBar({ job }) {
                 </div>
               </div>
             )}
+            {(o.elements || []).length > 0 && !(ed && ed.id === o.id) && <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 5 }}>{o.elements.map((e) => <span key={e} style={{ background: '#e1effb', color: '#0c447c', borderRadius: 12, padding: '2px 9px', fontSize: 12.5, fontWeight: 600 }}>Element {e}</span>)}</div>}
             {o.details && <div style={{ fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-wrap', margin: '4px 0 0', color: '#3d3b33' }}>{o.details}</div>}
             <div style={{ fontSize: 12.5, color: '#6b675c', marginTop: 6, display: 'flex', gap: '2px 14px', flexWrap: 'wrap' }}>
               <span>Ordered by {o.author || 'admin'}</span>

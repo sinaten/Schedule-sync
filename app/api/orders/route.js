@@ -1,5 +1,5 @@
 import { currentUser, canJob, canEdit, isAdmin } from '../../../lib/user';
-import { ordersDb, carrierOf, dropsOf } from '../../../lib/orders';
+import { ordersDb, carrierOf, dropsOf, elsOf, cleanEls } from '../../../lib/orders';
 export const dynamic = 'force-dynamic';
 const nm = (u) => (u && u.name) || 'admin';
 const no = () => Response.json({ error: 'No access' }, { status: 403 });
@@ -14,11 +14,17 @@ export async function GET(req) {
   const u = await currentUser();
   if (!u || !job || !canJob(u, job)) return no();
   const sql = await ordersDb();
-  const orders = await sql`select id, title, details, author, drop_token, drop_name, tracking, carrier, status, status_note, eta, last_scan, checked_at, created_at from orders where job = ${job} order by created_at desc, id desc`;
+  if (new URL(req.url).searchParams.get('chips')) {
+    const rs = await sql`select id, elements, status, eta from orders where job = ${job} and elements is not null and elements <> ''`;
+    const map = {};
+    for (const r of rs) for (const e of elsOf(r.elements)) (map[e] ||= []).push({ id: r.id, status: r.status, eta: r.eta });
+    return Response.json({ map });
+  }
+  const orders = await sql`select id, elements, title, details, author, drop_token, drop_name, tracking, carrier, status, status_note, eta, last_scan, checked_at, created_at from orders where job = ${job} order by created_at desc, id desc`;
   const all = await dropsOf(sql, job);
   const flagged = all.filter((x) => x.drop);
   const drops = (flagged.length ? flagged : all).map((x) => ({ token: x.token, name: x.name }));
-  const rows = orders.map((o) => { const d = all.find((x) => x.token === o.drop_token); return { ...o, phones: d ? d.phones : [] }; });
+  const rows = orders.map((o) => { const d = all.find((x) => x.token === o.drop_token); return { ...o, elements: elsOf(o.elements), phones: d ? d.phones : [] }; });
   return Response.json({ me: nm(u), can: canEdit(u), admin: isAdmin(u) || !!u.legacy, orders: rows, drops, marked: flagged.length > 0 });
 }
 export async function POST(req) {
@@ -30,7 +36,7 @@ export async function POST(req) {
   const sql = await ordersDb();
   const drops = await dropsOf(sql, job);
   const d = drops.find((x) => x.token === b.drop) || null;
-  const [r] = await sql`insert into orders(job, title, details, author, drop_token, drop_name) values(${job}, ${title}, ${str(b.details, 2000)}, ${nm(u)}, ${d ? d.token : null}, ${d ? d.name : null}) returning id`;
+  const [r] = await sql`insert into orders(job, title, details, author, drop_token, drop_name, elements) values(${job}, ${title}, ${str(b.details, 2000)}, ${nm(u)}, ${d ? d.token : null}, ${d ? d.name : null}, ${cleanEls(b.elements).join(',') || null}) returning id`;
   return Response.json({ ok: true, id: r.id });
 }
 export async function PATCH(req) {
@@ -47,6 +53,7 @@ export async function PATCH(req) {
     await sql`update orders set tracking = ${t || null}, carrier = ${carrierOf(t) || null}, status = 'unknown', status_note = null, eta = null, last_scan = null, checked_at = null where id = ${id} and job = ${job}`;
   }
   if (typeof b.title === 'string' && str(b.title, 160)) await sql`update orders set title = ${str(b.title, 160)} where id = ${id} and job = ${job}`;
+  if (Array.isArray(b.elements)) await sql`update orders set elements = ${cleanEls(b.elements).join(',') || null} where id = ${id} and job = ${job}`;
   if (typeof b.details === 'string') await sql`update orders set details = ${str(b.details, 2000)} where id = ${id} and job = ${job}`;
   if (typeof b.drop === 'string') {
     const d = (await dropsOf(sql, job)).find((x) => x.token === b.drop) || null;
