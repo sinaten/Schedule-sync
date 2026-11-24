@@ -8,7 +8,7 @@ import SavePicture from '../SavePicture';
 
 // Admin > Projects > a site > Scenarios. Each scenario is a picture (aerial or uploaded) with pins, arrows, routes and labels, a description and its own link.
 const uid = () => Math.random().toString(36).slice(2, 10);
-const EMPTY = { name: '', base: 'aerial', image: null, pins: [], marks: [], view: null, start: null, desc: '' };
+const EMPTY = { name: '', base: 'aerial', image: null, pins: [], marks: [], view: null, start: null, desc: '', drop: false, phones: [] };
 const TOOLS = [['move', 'Move / edit'], ['start', 'Start pin'], ['pin', 'Pin'], ['arrow', 'Arrow'], ['route', 'Route'], ['text', 'Text']];
 const StartIcon = () => <svg width="16" height="20" viewBox="0 0 34 44" style={{ verticalAlign: 'middle', marginRight: 6 }} aria-hidden="true"><path d="M17 43C17 43 3 27 3 16a14 14 0 0 1 28 0c0 11-14 27-14 27z" fill="#E24B4A" stroke="#fff" strokeWidth="3" /><circle cx="17" cy="16" r="5.5" fill="#fff" /></svg>;
 
@@ -118,6 +118,22 @@ export default function Scenarios({ site, siteName, center, sitePins }) {
           <span className="muted" style={{ fontSize: 14 }}>Picture:</span>
           <button type="button" style={btn(ed.base === 'aerial')} onClick={() => { if (ed.base !== 'aerial') up({ base: 'aerial', view: null, pins: [], marks: [] }); }}>Aerial view of {siteName || 'the site'}</button>
           <label style={{ ...btn(ed.base === 'image'), display: 'inline-block' }}>Upload a picture<input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { setImage(e.target.files && e.target.files[0]); e.target.value = ''; }} /></label>
+        </div>
+        <div style={{ border: '1px solid #e0dccf', borderRadius: 10, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}><input type="checkbox" checked={!!ed.drop} onChange={(e) => up({ drop: e.target.checked })} />This is a delivery drop-off place (people choose it in Follow-up &gt; Orders)</label>
+          {ed.drop && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span className="muted" style={{ fontSize: 13 }}>Who to call at this place:</span>
+              {(ed.phones || []).map((x, i) => (
+                <div key={i} style={{ display: 'flex', gap: 6 }}>
+                  <input className="ph-in" aria-label="Name" placeholder="Name, e.g. Gate guard" value={x.name} onChange={(e) => up({ phones: (ed.phones || []).map((y, j) => (j === i ? { ...y, name: e.target.value } : y)) })} style={{ flex: '1 1 140px', width: 'auto' }} />
+                  <input className="ph-in" aria-label="Phone" placeholder="Phone number" inputMode="tel" value={x.phone} onChange={(e) => up({ phones: (ed.phones || []).map((y, j) => (j === i ? { ...y, phone: e.target.value } : y)) })} style={{ flex: '1 1 140px', width: 'auto' }} />
+                  <button type="button" style={btn(false)} aria-label="Remove phone" onClick={() => up({ phones: (ed.phones || []).filter((_, j) => j !== i) })}>&times;</button>
+                </div>
+              ))}
+              <div><button type="button" style={btn(false)} onClick={() => up({ phones: [...(ed.phones || []), { name: '', phone: '' }] })}>+ Add a phone number</button></div>
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {TOOLS.map(([k, n]) => <button key={k} type="button" style={btn(tool === k)} onClick={() => setTool(tool === k ? '' : k)} disabled={k === 'start' && ed.base === 'image'} title={k === 'start' && ed.base === 'image' ? 'On a picture use the Start point box below' : undefined}>{k === 'start' ? <StartIcon /> : null}{n}</button>)}

@@ -36,6 +36,7 @@ export default function OrdersBar({ job }) {
   const [f, setF] = useState({ title: '', details: '', drop: '' });
   const [tr, setTr] = useState({});
   const [msg, setMsg] = useState('');
+  const [ed, setEd] = useState(null); // the order being edited: { id, title, details, drop }
   const load = () => fetch('/api/orders?job=' + encodeURIComponent(job), { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j.orders) setD(j); }).catch(() => {});
   useEffect(() => { load(); }, [job]);
   const call = async (method, body, qs) => {
@@ -49,6 +50,10 @@ export default function OrdersBar({ job }) {
     if (await call('POST', { job, ...f })) { setF({ title: '', details: '', drop: '' }); setAdd(false); load(); }
   };
   const saveTr = async (o) => { const t = (tr[o.id] ?? o.tracking ?? '').trim(); if (t === (o.tracking || '')) return; if (await call('PATCH', { job, id: o.id, tracking: t })) { setTr((x) => { const n = { ...x }; delete n[o.id]; return n; }); load(); } };
+  const saveEd = async () => {
+    if (!ed.title.trim()) { setMsg('Write what you ordered.'); return; }
+    if (await call('PATCH', { job, id: ed.id, title: ed.title, details: ed.details, drop: ed.drop })) { setEd(null); load(); }
+  };
   const del = async (o) => { if (await call('DELETE', null, '?job=' + encodeURIComponent(job) + '&id=' + o.id)) load(); };
   return (
     <div>
@@ -65,7 +70,7 @@ export default function OrdersBar({ job }) {
               <option value="">Choose a place</option>
               {d.drops.map((x) => <option key={x.token} value={x.token}>{x.name}</option>)}
             </select>
-          ) : <div style={{ fontSize: 12.5, color: '#9a9686', marginTop: 4 }}>No drop-off places yet. A manager adds them as Scenarios in Admin.</div>}
+          ) : <div style={{ fontSize: 12.5, color: '#9a9686', marginTop: 4 }}>No drop-off places yet. {d.admin ? <a href="/admin" style={{ color: '#1a6fd4' }}>Add one in Admin &gt; Projects &gt; your site &gt; Scenarios</a> : 'A manager adds them in Admin.'}</div>}
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
             <button type="button" onClick={create} style={{ border: 0, borderRadius: 16, padding: '7px 20px', background: OR, color: '#fff', font: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Save order</button>
             <button type="button" onClick={() => { setAdd(false); setMsg(''); }} style={{ border: '1px solid #d9d5c8', borderRadius: 16, padding: '7px 16px', background: '#fff', font: 'inherit', fontSize: 13.5, cursor: 'pointer' }}>Cancel</button>
@@ -82,14 +87,33 @@ export default function OrdersBar({ job }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, color: '#a86400', background: '#fff3dc', borderRadius: 5, padding: '2px 7px' }}>ORDER {num}</span>
               <b style={{ fontSize: 14.5, flex: 1, minWidth: 0 }}>{o.title}</b>
+              {mine && <button type="button" aria-label="Edit order" title="Edit" onClick={() => setEd(ed && ed.id === o.id ? null : { id: o.id, title: o.title, details: o.details || '', drop: o.drop_token || '' })} style={{ border: 0, background: 'none', color: '#9a9686', cursor: 'pointer', padding: 2, lineHeight: 0 }}><Ic d="M4 20h4L19 9l-4-4L4 16z M13.5 6.5l4 4" s={16} /></button>}
               {mine && <button type="button" aria-label="Remove order" onClick={() => del(o)} style={{ border: 0, background: 'none', color: '#9a9686', fontSize: 15, cursor: 'pointer', padding: 2 }}>{'✕'}</button>}
             </div>
+            {ed && ed.id === o.id && (
+              <div style={{ margin: '8px 0', border: '1.5px solid #f0cfa3', borderRadius: 10, padding: 8, background: '#fffaf2' }}>
+                <div style={lab}>What did you order</div>
+                <input value={ed.title} onChange={(e) => setEd({ ...ed, title: e.target.value })} style={inp} />
+                <div style={{ ...lab, marginTop: 8 }}>Notes</div>
+                <textarea value={ed.details} onChange={(e) => setEd({ ...ed, details: e.target.value })} rows={2} style={{ ...inp, resize: 'vertical' }} />
+                <div style={{ ...lab, marginTop: 8 }}>Drop-off</div>
+                <select value={ed.drop} onChange={(e) => setEd({ ...ed, drop: e.target.value })} style={inp}>
+                  <option value="">No drop-off chosen</option>
+                  {d.drops.map((x) => <option key={x.token} value={x.token}>{x.name}</option>)}
+                </select>
+                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <button type="button" onClick={saveEd} style={{ border: 0, borderRadius: 16, padding: '6px 18px', background: OR, color: '#fff', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Save</button>
+                  <button type="button" onClick={() => { setEd(null); setMsg(''); }} style={{ border: '1px solid #d9d5c8', borderRadius: 16, padding: '6px 14px', background: '#fff', font: 'inherit', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+                </div>
+              </div>
+            )}
             {o.details && <div style={{ fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-wrap', margin: '4px 0 0', color: '#3d3b33' }}>{o.details}</div>}
             <div style={{ fontSize: 12.5, color: '#6b675c', marginTop: 6, display: 'flex', gap: '2px 14px', flexWrap: 'wrap' }}>
               <span>Ordered by {o.author || 'admin'}</span>
               {o.drop_token ? <a href={'/scenario/' + o.drop_token} target="_blank" rel="noreferrer" style={{ color: '#1a6fd4' }}>Drop-off: {o.drop_name || 'Scenario'}</a> : <span>No drop-off chosen</span>}
               <span>{when(o.created_at)}</span>
             </div>
+            {(o.phones || []).length > 0 && <div style={{ fontSize: 12.5, marginTop: 4, display: 'flex', gap: '2px 14px', flexWrap: 'wrap' }}>{o.phones.map((p, k) => <a key={k} href={'tel:' + String(p.phone).replace(/[^\d+]/g, '')} style={{ color: '#1a6fd4', textDecoration: 'none' }}>{p.name ? p.name + ': ' : ''}{p.phone}</a>)}</div>}
             <div style={{ borderTop: '1px solid #efece3', marginTop: 8, paddingTop: 8 }}>
               <div style={lab}>Tracking</div>
               {mine ? (

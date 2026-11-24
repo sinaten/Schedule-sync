@@ -15,7 +15,11 @@ export async function GET(req) {
   if (!u || !job || !canJob(u, job)) return no();
   const sql = await ordersDb();
   const orders = await sql`select id, title, details, author, drop_token, drop_name, tracking, carrier, status, status_note, eta, last_scan, checked_at, created_at from orders where job = ${job} order by created_at desc, id desc`;
-  return Response.json({ me: nm(u), can: canEdit(u), admin: isAdmin(u) || !!u.legacy, orders, drops: await dropsOf(sql, job) });
+  const all = await dropsOf(sql, job);
+  const flagged = all.filter((x) => x.drop);
+  const drops = (flagged.length ? flagged : all).map((x) => ({ token: x.token, name: x.name }));
+  const rows = orders.map((o) => { const d = all.find((x) => x.token === o.drop_token); return { ...o, phones: d ? d.phones : [] }; });
+  return Response.json({ me: nm(u), can: canEdit(u), admin: isAdmin(u) || !!u.legacy, orders: rows, drops, marked: flagged.length > 0 });
 }
 export async function POST(req) {
   const b = await req.json().catch(() => ({}));
