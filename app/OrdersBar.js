@@ -72,6 +72,8 @@ export default function OrdersBar({ job }) {
     if (!ed.title.trim()) { setMsg('Write what you ordered.'); return; }
     if (await call('PATCH', { job, id: ed.id, title: ed.title, details: ed.details, drop: ed.drop, elements: ed.elements })) { setEd(null); load(); }
   };
+  const [chk, setChk] = useState(0);
+  const check = async (o) => { setChk(o.id); const ok = await call('POST', { job, id: o.id }, '/check'); setChk(0); if (ok) load(); };
   const del = async (o) => { if (await call('DELETE', null, '?job=' + encodeURIComponent(job) + '&id=' + o.id)) load(); };
   return (
     <div>
@@ -154,6 +156,7 @@ export default function OrdersBar({ job }) {
                     <div style={{ fontSize: 13.5, fontWeight: 600, color: s.c }}>{s.l}{o.eta ? ' — arrives ' + o.eta : ''}{o.carrier ? '' : ''}</div>
                     <div style={{ fontSize: 12, color: s.c, opacity: 0.85 }}>{o.carrier ? o.carrier : 'Carrier not recognised'}{o.last_scan ? ' · ' + o.last_scan : ''}{o.checked_at ? ' · updated ' + when(o.checked_at) : o.status === 'unknown' ? ' · not checked yet' : ''}</div>
                   </div>
+                  {d.can && o.status !== 'delivered' && <button type="button" onClick={() => check(o)} disabled={chk === o.id} style={{ border: '1px solid ' + s.c, background: 'rgba(255,255,255,0.6)', color: s.c, borderRadius: 14, padding: '3px 11px', font: 'inherit', fontSize: 12, cursor: 'pointer', flex: 'none' }}>{chk === o.id ? 'Checking\u2026' : 'Check now'}</button>}
                 </div>
               )}
             </div>

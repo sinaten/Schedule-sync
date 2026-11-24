@@ -7,6 +7,7 @@ import { authOn, readToken } from './lib/auth';
 export async function middleware(req) {
   const path = req.nextUrl.pathname;
   if (path.startsWith('/api/addin')) return;
+  if (path === '/api/orders/cron') return; // Vercel's daily cron: the route checks its own CRON_SECRET
   if (!authOn()) {
     if (req.method === 'GET' || req.method === 'HEAD') return;
     const h = req.headers.get('authorization') || '';
