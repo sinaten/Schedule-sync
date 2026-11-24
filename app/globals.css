@@ -90,6 +90,7 @@ tr.rowp td:first-child{box-shadow:inset 4px 0 var(--amber)}
 
 /* Issues / Follow-up switch under the phone top bar (only on a job page; stays put while scrolling) */
 .ms-tabs-wrap{display:none}
+.ms-strip{margin:6px 2px 0;padding:4px 10px;font-size:11.5px;color:#8a877b;background:#fff;border:1px solid #efece3;border-radius:10px;line-height:1.4;max-width:340px;margin-left:auto;margin-right:auto}
 @media (pointer:coarse) and (max-width:1024px){
   .ms-tabs-wrap{display:block;position:sticky;top:calc(max(env(safe-area-inset-top),10px) + 61px);z-index:45;background:#fff;padding:10px max(16px,env(safe-area-inset-right)) 8px max(16px,env(safe-area-inset-left))}
   .ms-tabs{display:flex;gap:3px;padding:3px;background:#f4f3ee;border-radius:14px}
@@ -97,10 +98,12 @@ tr.rowp td:first-child{box-shadow:inset 4px 0 var(--amber)}
   .ms-tab i{width:7px;height:7px;border-radius:50%;opacity:.55}
   .ms-tab-i i{background:#1a73e8}
   .ms-tab-f i{background:#1e9e5a}
+  .ms-tab-w i{background:#D97757}
   .ms-tab.on{background:#fff;box-shadow:0 1px 4px rgba(20,20,19,.15);font-weight:600}
   .ms-tab.on i{opacity:1}
   .ms-tab-i.on{color:#1a73e8}
   .ms-tab-f.on{color:#1e9e5a}
+  .ms-tab-w.on{color:#D97757}
   /* Issues tab: the page below is empty for now */
   body[data-ms-tab="follow"] > :not(header):not(nav):not(.ms-tabs-wrap):not(.ms-spacer):not(.ms-follow):not(.mp-root):not(script){position:fixed!important;left:-200vw!important;top:0!important;width:100vw!important;visibility:hidden!important;pointer-events:none!important}
 }
@@ -125,10 +128,12 @@ tr.rowp td:first-child{box-shadow:inset 4px 0 var(--amber)}
   .ms-tab i{width:7px;height:7px;border-radius:50%;opacity:.55}
   .ms-tab-i i{background:#1a73e8}
   .ms-tab-f i{background:#1e9e5a}
+  .ms-tab-w i{background:#D97757}
   .ms-tab.on{background:#fff;box-shadow:0 1px 3px rgba(20,20,19,.15);font-weight:600}
   .ms-tab.on i{opacity:1}
   .ms-tab-i.on{color:#1a73e8}
   .ms-tab-f.on{color:#1e9e5a}
+  .ms-tab-w.on{color:#D97757}
   body[data-ms-tab="follow"] > :not(header):not(nav):not(.ms-tabs-wrap):not(.ms-spacer):not(.ms-follow):not(.mp-root):not(script){position:fixed!important;left:-200vw!important;top:0!important;width:100vw!important;visibility:hidden!important;pointer-events:none!important}
 }
 

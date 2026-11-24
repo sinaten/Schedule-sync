@@ -44,7 +44,7 @@ export default function MobileShell({ name, role, admin }) {
       const j = decodeURIComponent(m[1]);
       setJob(j);
       const saved = ss.get('ms-tab:' + j);
-      if (saved === 'issues' || saved === 'follow') setTab(saved);
+      if (saved === 'issues' || saved === 'follow' || saved === 'work') setTab(saved);
       else if (!window.matchMedia('(pointer:coarse) and (max-width:1024px)').matches) setTab('issues'); // on a laptop the model page (Issues) is the one shown first
       ss.set('ms-last', location.pathname + location.search); // where "back" from Admin must return to
     }
@@ -143,10 +143,12 @@ export default function MobileShell({ name, role, admin }) {
           </>
         )}
       </header>
-      {job && (<div className="ms-tabs-wrap"><div className="ms-tabs" role="tablist" aria-label="Inspection and follow-up">
+      {job && (<div className="ms-tabs-wrap"><div className="ms-tabs" role="tablist" aria-label="Inspection, follow-up and my work">
         <button type="button" role="tab" aria-selected={tab === 'issues'} className={'ms-tab ms-tab-i' + (tab === 'issues' ? ' on' : '')} onClick={() => setTab('issues')}><i />Inspection</button>
         <button type="button" role="tab" aria-selected={tab === 'follow'} className={'ms-tab ms-tab-f' + (tab === 'follow' ? ' on' : '')} onClick={() => setTab('follow')}><i />Follow-up</button>
-      </div></div>)}
+        <button type="button" role="tab" aria-selected={tab === 'work'} className={'ms-tab ms-tab-w' + (tab === 'work' ? ' on' : '')} onClick={() => setTab('work')}><i />My Work</button>
+      </div>
+      <div className="ms-strip">{tab === 'work' ? 'Your tasks for today and tomorrow' : tab === 'follow' ? 'Plans, orders, safety and more' : 'Walk the model, tick stages'}</div></div>)}
       <div className="ms-spacer" />
       {job && <FollowUp job={job} />}
       <nav className={'ms-bot' + (job ? ' ms-job' : '')} aria-label="Quick actions">
