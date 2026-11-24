@@ -1,5 +1,5 @@
 import { currentUser, canJob, canEdit, isAdmin } from '../../../lib/user';
-import { ordersDb, carrierOf, dropsOf, siteOf, elsOf, cleanEls } from '../../../lib/orders';
+import { ordersDb, agentOn, carrierOf, dropsOf, siteOf, elsOf, cleanEls } from '../../../lib/orders';
 export const dynamic = 'force-dynamic';
 const nm = (u) => (u && u.name) || 'admin';
 const no = () => Response.json({ error: 'No access' }, { status: 403 });
@@ -25,7 +25,7 @@ export async function GET(req) {
   const flagged = all.filter((x) => x.drop);
   const drops = (flagged.length ? flagged : all).map((x) => ({ token: x.token, name: x.name }));
   const rows = orders.map((o) => { const d = all.find((x) => x.token === o.drop_token); return { ...o, elements: elsOf(o.elements), phones: d ? d.phones : [] }; });
-  return Response.json({ me: nm(u), can: canEdit(u), admin: isAdmin(u) || !!u.legacy, orders: rows, drops, marked: flagged.length > 0, dropWhy: all.length ? '' : (await siteOf(sql, job)) ? 'noscn' : 'nosite' });
+  return Response.json({ me: nm(u), can: canEdit(u), admin: isAdmin(u) || !!u.legacy, agentOn: (isAdmin(u) || !!u.legacy) ? await agentOn(sql) : undefined, orders: rows, drops, marked: flagged.length > 0, dropWhy: all.length ? '' : (await siteOf(sql, job)) ? 'noscn' : 'nosite' });
 }
 export async function POST(req) {
   const b = await req.json().catch(() => ({}));

@@ -1,4 +1,4 @@
-import { ordersDb } from '../../../../lib/orders';
+import { ordersDb, agentOn } from '../../../../lib/orders';
 import { checkTracking } from '../../../../lib/trackagent';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -9,6 +9,7 @@ export async function GET(req) {
   const sec = process.env.CRON_SECRET;
   if (!sec || req.headers.get('authorization') !== 'Bearer ' + sec) return Response.json({ error: 'No access' }, { status: 401 });
   const sql = await ordersDb();
+  if (!(await agentOn(sql))) return Response.json({ ok: true, off: true });
   const rows = await sql`select id, job, tracking, carrier from orders where tracking is not null and tracking <> '' and status <> 'delivered' and created_at > now() - interval '60 days' order by checked_at nulls first limit 30`;
   let done = 0, found = 0;
   for (const o of rows) {

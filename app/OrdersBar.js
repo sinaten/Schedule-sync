@@ -73,10 +73,12 @@ export default function OrdersBar({ job }) {
     if (await call('PATCH', { job, id: ed.id, title: ed.title, details: ed.details, drop: ed.drop, elements: ed.elements })) { setEd(null); load(); }
   };
   const [chk, setChk] = useState(0);
+  const flip = async () => { if (await call('POST', { on: !d.agentOn }, '/agent')) load(); };
   const check = async (o) => { setChk(o.id); const ok = await call('POST', { job, id: o.id }, '/check'); setChk(0); if (ok) load(); };
   const del = async (o) => { if (await call('DELETE', null, '?job=' + encodeURIComponent(job) + '&id=' + o.id)) load(); };
   return (
     <div>
+      {d.admin && <div style={{ margin: '6px 0 0', fontSize: 12.5, color: '#6f6a5a', display: 'flex', alignItems: 'center', gap: 8 }}>Tracking agent: <b style={{ color: d.agentOn ? '#2e8b57' : '#9a9686' }}>{d.agentOn ? 'On' : 'Off'}</b><button type="button" onClick={flip} style={{ border: '1px solid #d9d5c8', background: '#fff', borderRadius: 12, padding: '2px 10px', font: 'inherit', fontSize: 12, cursor: 'pointer' }}>{d.agentOn ? 'Turn off' : 'Turn on'}</button></div>}
       {d.can && !add && <div style={{ margin: '8px 0 4px' }}><button type="button" onClick={() => setAdd(true)} style={{ border: '1px solid ' + OR, background: '#fff', color: OR, borderRadius: 14, padding: '5px 14px', font: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ New</button></div>}
       {add && (
         <div style={{ margin: '8px 0', border: '1.5px solid #f0cfa3', borderRadius: 12, padding: 10, background: '#fffaf2' }}>

@@ -1,5 +1,5 @@
 import { currentUser, canJob, canEdit } from '../../../../lib/user';
-import { ordersDb } from '../../../../lib/orders';
+import { ordersDb, agentOn } from '../../../../lib/orders';
 import { checkTracking } from '../../../../lib/trackagent';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -12,6 +12,7 @@ export async function POST(req) {
   const u = await currentUser();
   if (!u || !job || !id || !canJob(u, job) || !canEdit(u)) return no();
   const sql = await ordersDb();
+  if (!(await agentOn(sql))) return Response.json({ error: 'The tracking agent is switched off (no tokens are used). An admin can turn it on.' }, { status: 409 });
   const [o] = await sql`select tracking, carrier, checked_at from orders where id = ${id} and job = ${job}`;
   if (!o || !o.tracking) return Response.json({ error: 'No tracking number yet.' }, { status: 400 });
   if (o.checked_at && Date.now() - new Date(o.checked_at).getTime() < 10 * 60 * 1000) return Response.json({ ok: true, skipped: true });
