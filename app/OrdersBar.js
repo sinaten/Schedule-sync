@@ -90,7 +90,7 @@ export default function OrdersBar({ job }) {
               <option value="">Choose a place</option>
               {d.drops.map((x) => <option key={x.token} value={x.token}>{x.name}</option>)}
             </select>
-          ) : <div style={{ fontSize: 12.5, color: '#9a9686', marginTop: 4 }}>No drop-off places yet. {d.admin ? <a href="/admin" style={{ color: '#1a6fd4' }}>Add one in Admin &gt; Projects &gt; your site &gt; Scenarios</a> : 'A manager adds them in Admin.'}</div>}
+          ) : <div style={{ fontSize: 12.5, color: '#9a9686', marginTop: 4 }}>{d.dropWhy === 'nosite' ? 'This project is not linked to a site yet (Admin > Projects).' : 'This site has no Scenarios yet.'} {d.admin ? <a href="/admin" style={{ color: '#1a6fd4' }}>Open Admin &gt; Projects &gt; your site &gt; Scenarios</a> : 'A manager adds them in Admin.'}</div>}
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
             <button type="button" onClick={create} style={{ border: 0, borderRadius: 16, padding: '7px 20px', background: OR, color: '#fff', font: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Save order</button>
             <button type="button" onClick={() => { setAdd(false); setMsg(''); }} style={{ border: '1px solid #d9d5c8', borderRadius: 16, padding: '7px 16px', background: '#fff', font: 'inherit', fontSize: 13.5, cursor: 'pointer' }}>Cancel</button>
