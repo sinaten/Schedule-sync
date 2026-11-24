@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import FollowUp from './FollowUp';
-import MyWork, { useMyWork } from './MyWork';
 // true = the gallery picture sits on the big middle button and the QR picture on the small one (sizes, places and links unchanged). false = back to the old pictures.
 const ICON_SWAP = true;
 
@@ -19,9 +18,7 @@ export default function MobileShell({ name, role, admin }) {
   const [tab, setTab] = useState('follow');
   const [pending, setPending] = useState(0);
   const [job, setJob] = useState('');
-  const mw = useMyWork(job);
-  const guest = !!(mw && mw.guest); // looking in only because of a work window: My Work is the only tab
-  useEffect(() => { if (guest && tab !== 'work') setTab('work'); }, [guest, tab]);
+  const guest = false; // My Work tab removed for now (code kept in MyWork.js)
   // the page below the tabs follows the choice: Issues shows the normal job page (model), Follow-up is empty for now and is the default
   useEffect(() => { if (job) ss.set('ms-tab:' + job, tab); }, [tab, job]);
   useEffect(() => {
@@ -48,7 +45,7 @@ export default function MobileShell({ name, role, admin }) {
       const j = decodeURIComponent(m[1]);
       setJob(j);
       const saved = ss.get('ms-tab:' + j);
-      if (saved === 'issues' || saved === 'follow' || saved === 'work') setTab(saved);
+      if (saved === 'issues' || saved === 'follow') setTab(saved);
       else if (!window.matchMedia('(pointer:coarse) and (max-width:1024px)').matches) setTab('issues'); // on a laptop the model page (Issues) is the one shown first
       ss.set('ms-last', location.pathname + location.search); // where "back" from Admin must return to
     }
@@ -150,12 +147,10 @@ export default function MobileShell({ name, role, admin }) {
       {job && (<div className="ms-tabs-wrap"><div className="ms-tabs" role="tablist" aria-label="Inspection, follow-up and my work">
         {!guest && <button type="button" role="tab" aria-selected={tab === 'follow'} className={'ms-tab ms-tab-f' + (tab === 'follow' ? ' on' : '')} onClick={() => setTab('follow')}><i />Follow-up</button>}
         {!guest && <button type="button" role="tab" aria-selected={tab === 'issues'} className={'ms-tab ms-tab-i' + (tab === 'issues' ? ' on' : '')} onClick={() => setTab('issues')}><i />Inspection</button>}
-        <button type="button" role="tab" aria-selected={tab === 'work'} className={'ms-tab ms-tab-w' + (tab === 'work' ? ' on' : '')} onClick={() => setTab('work')}><i />My Work</button>
       </div>
-      <div className="ms-strip">{tab === 'work' ? (mw ? (mw.err ? 'Could not load' : mw.today.length || mw.tomorrow.length ? mw.today.length + ' today \u00B7 ' + mw.tomorrow.length + ' tomorrow' : 'Nothing planned today') : 'Your tasks for today and tomorrow') : tab === 'follow' ? 'Plans, orders, safety and more' : 'Walk the model, tick stages'}</div></div>)}
+      <div className="ms-strip">{tab === 'follow' ? 'Plans, orders, safety and more' : 'Walk the model, tick stages'}</div></div>)}
       <div className="ms-spacer" />
       {job && <FollowUp job={job} />}
-      {job && tab === 'work' && <MyWork data={mw} />}
       <nav className={'ms-bot' + (job ? ' ms-job' : '')} aria-label="Quick actions">
         <button type="button" className="ms-sm" aria-label="Refresh this page from the website" onClick={() => location.reload()} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer', opacity: job ? 1 : 0.4 }}>
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={siteOk === false ? '#d64545' : '#2e9e5b'} strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><g><path d="M1.66 8.24A11.0 11.0 0 0 1 21.01 5.69" /><path d="M21.27 2.70L21.01 5.69L18.11 4.91" /><path d="M22.34 15.76A11.0 11.0 0 0 1 2.99 18.31" /><path d="M2.73 21.30L2.99 18.31L5.89 19.09" /></g><path d="M6.4 11.8L12 6.2l5.6 5.6M7.8 11v6.6h8.4V11" /></svg>
