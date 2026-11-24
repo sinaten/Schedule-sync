@@ -402,6 +402,7 @@ export default function Viewer3D({ job = '', kiosk = null }) {
   const goCam = async (cv) => {
     const vw = viewer.current;
     if (!vw || !vw.model || !cv || !cv.cam) return;
+    if (window.__ssWalk) { window.__ssWalk = false; try { vw.setActiveNavigationTool('orbit'); } catch (e) {} }
     if (cv.view && cv.view !== (window.__ssView || '')) { try { await switchView(cv.view); await new Promise((r) => setTimeout(r, 700)); } catch (e) {} }
     try {
       const T = window.THREE, c = cv.cam, n = vw.navigation;
@@ -427,6 +428,35 @@ export default function Viewer3D({ job = '', kiosk = null }) {
       return { x: x0 - 6, y: y0 - 6, w: x1 - x0 + 12, h: y1 - y0 + 12 };
     } catch (e) { return null; }
   };
+  // person view: the camera stands on the floor next to the element at eye height and looks at it (the viewer's walk mode); if anything fails the usual fly-to stays
+  const walkTo = async (vw, d) => {
+    const T = window.THREE;
+    const tree = vw.model.getInstanceTree(), fl = vw.model.getFragmentList();
+    const bb = new T.Box3(), tmp = new T.Box3();
+    tree.enumNodeFragments(d, (f) => { fl.getWorldBounds(f, tmp); bb.union(tmp); }, true);
+    if (bb.isEmpty()) return;
+    const ext = await vw.loadExtension('Autodesk.FirstPerson');
+    if (!ext || frameFor.current !== d) return;
+    const uv = vw.model.getUpVector ? vw.model.getUpVector() : null;
+    const up = uv ? new T.Vector3(uv.x != null ? uv.x : uv[0], uv.y != null ? uv.y : uv[1], uv.z != null ? uv.z : uv[2]) : new T.Vector3(0, 0, 1);
+    const ax = ['x', 'y', 'z'].reduce((a, k) => (Math.abs(up[k]) > Math.abs(up[a]) ? k : a), 'x');
+    const sg = up[ax] >= 0 ? 1 : -1;
+    const m = 1 / ((vw.model.getUnitScale && vw.model.getUnitScale()) || 1); // model units in one metre
+    const c = bb.getCenter(new T.Vector3()), size = bb.getSize(new T.Vector3());
+    const base = sg > 0 ? bb.min[ax] : bb.max[ax];
+    const p0 = vw.navigation.getPosition();
+    const dir = new T.Vector3(c.x - p0.x, c.y - p0.y, c.z - p0.z); dir[ax] = 0;
+    if (dir.length() < 1e-6) { dir.set(1, 0, 0); dir[ax] = 0; if (dir.length() < 1e-6) dir.set(0, 1, 0); }
+    dir.normalize();
+    const flat = Math.max(...['x', 'y', 'z'].filter((k) => k !== ax).map((k) => size[k]));
+    const dist = Math.max(3 * m, flat * 1.5);
+    const pos = c.clone().sub(dir.clone().multiplyScalar(dist)); pos[ax] = base + sg * 1.7 * m;
+    window.__ssWalk = true;
+    vw.setActiveNavigationTool('firstperson');
+    vw.navigation.setCameraUpVector(up);
+    vw.navigation.setView(pos, c);
+    vw.impl.invalidate(true, true, true);
+  };
   const goElement = (n) => {
     const vw = viewer.current;
     const id = String(n == null ? '' : n).trim();
@@ -438,6 +468,7 @@ export default function Viewer3D({ job = '', kiosk = null }) {
     if (!vis) return { ok: false, msg: 'Element ' + id + ' is not shown in this view.' };
     frameFor.current = d;
     try { vw.fitToView([d], vw.model, false); } catch (e) {}
+    setTimeout(() => { walkTo(vw, d).catch(() => {}); }, 450);
     setTimeout(() => { if (frameFor.current === d) setFrame(elemRect(vw, d)); }, 900);
     return { ok: true };
   };
