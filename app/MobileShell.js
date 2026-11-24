@@ -152,7 +152,7 @@ export default function MobileShell({ name, role, admin }) {
         {!guest && <button type="button" role="tab" aria-selected={tab === 'issues'} className={'ms-tab ms-tab-i' + (tab === 'issues' ? ' on' : '')} onClick={() => setTab('issues')}><i />Inspection</button>}
         <button type="button" role="tab" aria-selected={tab === 'work'} className={'ms-tab ms-tab-w' + (tab === 'work' ? ' on' : '')} onClick={() => setTab('work')}><i />My Work</button>
       </div>
-      <div className="ms-strip">{tab === 'work' ? (mw ? (mw.today.length || mw.tomorrow.length ? mw.today.length + ' today \u00B7 ' + mw.tomorrow.length + ' tomorrow' : 'Nothing planned today') : 'Your tasks for today and tomorrow') : tab === 'follow' ? 'Plans, orders, safety and more' : 'Walk the model, tick stages'}</div></div>)}
+      <div className="ms-strip">{tab === 'work' ? (mw ? (mw.err ? 'Could not load' : mw.today.length || mw.tomorrow.length ? mw.today.length + ' today \u00B7 ' + mw.tomorrow.length + ' tomorrow' : 'Nothing planned today') : 'Your tasks for today and tomorrow') : tab === 'follow' ? 'Plans, orders, safety and more' : 'Walk the model, tick stages'}</div></div>)}
       <div className="ms-spacer" />
       {job && <FollowUp job={job} />}
       {job && tab === 'work' && <MyWork data={mw} />}

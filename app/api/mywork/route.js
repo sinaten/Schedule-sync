@@ -20,7 +20,7 @@ export async function GET(req) {
   const tomorrow = plus1(today);
   const mine = rows.filter((a) => me && Array.isArray(a.assignees) && a.assignees.some((x) => x && x.u && x.n === me)).map((a) => {
     const e = day(a.end_date), s = day(a.start_date) || e;
-    return { element_id: a.element_id, jobNo: a.job_no || jobNo(a.no), card: cardNo(a.issue_no), title: String(a.description || '').split('\n')[0].slice(0, 120), how: String(a.body || '').slice(0, 160), status: a.status, start: s, end: e || s };
+    return { project: job, element_id: a.element_id, jobNo: a.job_no || jobNo(a.no), card: cardNo(a.issue_no), title: String(a.description || '').split('\n')[0].slice(0, 120), how: String(a.body || '').slice(0, 160), status: a.status, start: s, end: e || s };
   }).filter((a) => a.start);
   const cover = (a, d) => a.start <= d && d <= a.end;
   const t0 = mine.filter((a) => cover(a, today)), t1 = mine.filter((a) => cover(a, tomorrow));

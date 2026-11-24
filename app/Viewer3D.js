@@ -473,6 +473,31 @@ export default function Viewer3D({ job = '', kiosk = null }) {
     return { ok: true };
   };
   if (typeof window !== 'undefined') window.__ssGoElement = goElement;
+  // Opens an element from a card: in the current 3D view when it is shown there, otherwise in the first Revit 3D view of the job that shows it (the view is switched first)
+  const openElement = async (n) => {
+    let r = goElement(n);
+    if (r.ok) return r;
+    const num = parseInt(String(n), 10);
+    const mdl = (info && info.model) || {};
+    const views = Array.isArray(mdl.views) ? mdl.views : [];
+    const cur = curView || mdl.view || views[0] || '';
+    for (const name of views) {
+      if (name === cur) continue;
+      try {
+        const rr = await fetch('/api/aps?look=1&job=' + encodeURIComponent(job) + '&view=' + encodeURIComponent(name), { cache: 'no-store' });
+        const lk = rr.ok ? await rr.json() : null;
+        if (lk && Array.isArray(lk.visible) && lk.visible.includes(num)) {
+          await switchView(name);
+          await new Promise((res) => setTimeout(res, 900));
+          r = goElement(n);
+          if (!r.ok) { await new Promise((res) => setTimeout(res, 900)); r = goElement(n); }
+          return r;
+        }
+      } catch (e) { /* try the next view */ }
+    }
+    return r;
+  };
+  if (typeof window !== 'undefined') window.__ssOpenElement = openElement;
   useEffect(() => { const f = (e) => setMsg(String(e.detail || '')); window.addEventListener('ss-elem-msg', f); return () => window.removeEventListener('ss-elem-msg', f); }, []);
   useEffect(() => {
     if (!frame) return;
