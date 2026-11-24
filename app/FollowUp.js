@@ -6,6 +6,7 @@ import WeatherCapsules from './WeatherCapsules';
 import ModelSlot from './ModelSlot';
 import { linkNums, useModelIds, goPart } from './ElemLinks';
 import HseBar from './HseBar';
+import OrdersBar from './OrdersBar';
 import { StatusChip, PriorityTag, AssigneeChip, FullBtn, fullBox, useWide, bodyBox, halfStyle } from './IssueList';
 import { SWAP } from './layoutSwap';
 
@@ -113,6 +114,7 @@ export default function FollowUp({ job }) {
               {o && (
                 <div style={{ padding: '6px 12px 12px', borderTop: '1px solid #efece3' }}>
                   {bar === 'HSE' && <HseBar job={job} />}
+                  {bar === 'Orders' && <OrdersBar job={job} />}
                   {bar === 'Weather' && <WeatherTab job={job} bare />}
                   {bar === 'Action Plan' && aps.length === 0 && <div style={{ padding: '10px 2px', fontSize: 13, color: '#9a9686' }}>No action plans for you yet. A manager or an editor makes them from an issue.</div>}
                   {bar === 'Action Plan' && aps.map((a) => {
@@ -166,14 +168,14 @@ export default function FollowUp({ job }) {
                       </div>
                     );
                   })}
-                  {bar !== 'Action Plan' && bar !== 'HSE' && bar !== 'Weather' && adding === bar && (
+                  {bar !== 'Action Plan' && bar !== 'HSE' && bar !== 'Weather' && bar !== 'Orders' && adding === bar && (
                     <div style={{ display: 'flex', gap: 8, margin: '8px 0' }}>
                       <input autoFocus value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') add(bar); }} placeholder={'Add to ' + bar + '…'} style={{ flex: 1, minWidth: 0, height: 36, border: '1.5px solid #e0dccf', borderRadius: 18, padding: '0 14px', font: 'inherit', fontSize: 14, outline: 'none' }} />
                       <button type="button" onClick={() => add(bar)} disabled={!text.trim()} style={{ border: 0, borderRadius: 18, padding: '0 16px', background: text.trim() ? '#e8710a' : '#e7e3d8', color: '#fff', font: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: text.trim() ? 'pointer' : 'default' }}>Add</button>
                     </div>
                   )}
-                  {bar !== 'Action Plan' && bar !== 'HSE' && bar !== 'Weather' && list.length === 0 && adding !== bar && <div style={{ padding: '10px 2px', fontSize: 13, color: '#9a9686' }}>Nothing here yet.</div>}
-                  {bar !== 'Action Plan' && bar !== 'HSE' && bar !== 'Weather' && list.map((x) => (
+                  {bar !== 'Action Plan' && bar !== 'HSE' && bar !== 'Weather' && bar !== 'Orders' && list.length === 0 && adding !== bar && <div style={{ padding: '10px 2px', fontSize: 13, color: '#9a9686' }}>Nothing here yet.</div>}
+                  {bar !== 'Action Plan' && bar !== 'HSE' && bar !== 'Weather' && bar !== 'Orders' && list.map((x) => (
                     <div key={x.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '9px 10px', marginTop: 6, borderRadius: 10, background: '#f7f5ef' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: '#141413' }}>{x.body}</div>
