@@ -246,7 +246,7 @@ export default function IssueList({ job }) {
   if (!newest) list = list.slice().reverse();
   const chip = (k, label) => <button key={k} type="button" onClick={() => setF(k)} style={{ border: 0, borderRadius: 14, padding: '5px 12px', font: 'inherit', fontSize: 12.5, cursor: 'pointer', background: f === k ? 'rgba(20,20,19,.82)' : '#f4f3ee', color: f === k ? '#fff' : '#141413', fontWeight: f === k ? 600 : 500 }}>{label}</button>;
   return (
-    <section style={{ margin: '18px 0', maxWidth: 560 }}>
+    <section className="ss-issuelist" style={{ margin: '18px 0', maxWidth: 560 }}>
       {job && <SecondViewer job={job} />}
       {src && (
         <div aria-disabled="true" title="Choose the Issue bar under the model to use the issues" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', border: '1px solid #e7e3d8', borderRadius: 14, background: '#f1f0ec', color: '#a8a496', cursor: 'default' }}>
@@ -254,7 +254,7 @@ export default function IssueList({ job }) {
           <span style={{ fontSize: 12 }}>Choose the Issue bar</span>
         </div>
       )}
-      {!src && <>
+      {!src && <div className="ss-issues-body">
       <button type="button" onClick={() => setOpen((o) => !o)} style={{ display: 'flex', width: '100%', alignItems: 'baseline', justifyContent: 'space-between', border: 0, background: 'none', padding: '0 2px', font: 'inherit', cursor: 'pointer', color: '#141413' }}>
         <span style={{ fontSize: 17, fontWeight: 600 }}>Issues</span>
         <span style={{ fontSize: 12.5, color: '#8a8576' }}>{list.length} of {rows.length} {open ? '▴' : '▾'}</span>
@@ -363,7 +363,7 @@ export default function IssueList({ job }) {
           <IssuePanel key={pan.element + pan.sheet + (pan.cam ? 'c' : '') + (pan.scope || '')} job={job} element={pan.element} scope={pan.scope || 'issue'} initialSheet={pan.sheet} autoCam={!!pan.cam} onMsg={() => {}} onClose={() => { setPan(null); load(); }} />
         </div>
       )}
-      </>}
+      </div>}
     </section>
   );
 }

@@ -146,3 +146,7 @@ body[data-ms-tab="follow"] .ms-follow{display:block}
 .v3-wrap.in-slot .v3-sheet{display:none!important}
 .v3-wrap.in-slot > div:has(> .v3-box){flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
 .v3-wrap.in-slot .v3-box{flex:1 1 auto;height:auto!important;min-height:0!important}
+
+/* My Work tab: the normal Issues list is not shown there (only the model and the person's own work) */
+body[data-ms-tab="work"] .ss-issues-body{display:none}
+body[data-ms-tab="work"] .ss-issuelist > div[aria-disabled="true"]{display:none}
