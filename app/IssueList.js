@@ -77,7 +77,20 @@ export function AssigneeChip({ a }) {
   if (a.u) return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 14, background: '#f4f3ee', padding: '2px 10px 2px 3px', fontSize: 12.5 }}><span style={{ width: 22, height: 22, borderRadius: 11, background: '#e8710a', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600 }}>{a.n[0].toUpperCase()}</span>{a.n}</span>;
   return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 14, border: '1px dashed #cfcab9', padding: '2px 10px 2px 3px', fontSize: 12.5 }}><span style={{ width: 22, height: 22, borderRadius: 11, background: '#f4f3ee', color: '#6b675c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>?</span>{a.n}<span style={{ fontSize: 10, color: '#6b675c', border: '1px solid #e7e3d8', borderRadius: 6, padding: '0 5px' }}>NOT A USER</span></span>;
 }
-function ActionPlan({ job, r, can, post, reload, openPan, forceOpen }) {
+// text with [[view:ID]] drawn as its camera icon (click: scroll to the model and go to the view) and element numbers as blue links
+function richView(t, key, cvs) {
+  const out = []; let last = 0, m, k = 0;
+  const re = new RegExp(TOKEN.source, 'gi');
+  while ((m = re.exec(t))) {
+    if (m.index > last) out.push(<span key={k++}>{linkNums(t.slice(last, m.index), key + 'a' + k)}</span>);
+    const v = (cvs || []).find((x) => x.id === m[1]);
+    out.push(v ? <button key={k++} type="button" title={v.name} onClick={() => { try { const b = document.querySelector('.v3-box'); if (b) b.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (x) { /* ignore */ } window.dispatchEvent(new CustomEvent('ss-goto-view', { detail: { id: v.id } })); }} style={{ display: 'inline', border: 0, background: 'none', padding: 0, font: 'inherit', cursor: 'pointer' }}><CamIcon n={v.n} /></button> : <span key={k++} title="This view was deleted" style={{ opacity: 0.4 }}>{'\u{1F6AB}'}</span>);
+    last = m.index + m[0].length;
+  }
+  if (last < t.length) out.push(<span key={k++}>{linkNums(t.slice(last), key + 'z' + k)}</span>);
+  return out;
+}
+function ActionPlan({ job, r, can, post, reload, openPan, forceOpen, cvs }) {
   const ap = r.ap;
   const [o, setO] = useState(false);
   const [body, setBody] = useState(ap ? ap.body : '');
@@ -131,9 +144,10 @@ function ActionPlan({ job, r, can, post, reload, openPan, forceOpen }) {
             ))}
           </div>
           <div style={lab}>How to solve it</div>
-          {can ? (
-            <textarea value={body} onChange={(e) => setBody(e.target.value)} onBlur={() => { if (body !== ap.body) save({ body }); }} rows={3} placeholder="How should this be solved?" style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #cfe9d6', borderRadius: 10, padding: 8, margin: '4px 0 10px', font: 'inherit', fontSize: 14, resize: 'vertical', outline: 'none', background: '#fff' }} />
-          ) : <div style={{ fontSize: 14, lineHeight: 1.55, whiteSpace: 'pre-wrap', margin: '4px 0 10px' }}>{ap.body ? linkNums(ap.body, 'ap' + r.no) : <span style={{ color: '#9a9686' }}>Not written yet.</span>}</div>}
+          {can ? (<>
+            <textarea value={camToEdit(body, cvs)} onChange={(e) => setBody(camFromEdit(e.target.value, cvs))} onBlur={() => { if (body !== ap.body) save({ body }); }} rows={3} placeholder="How should this be solved?" style={{ display: 'block', width: '100%', boxSizing: 'border-box', border: '1.5px solid #cfe9d6', borderRadius: 10, padding: 8, margin: '4px 0 10px', font: 'inherit', fontSize: 14, resize: 'vertical', outline: 'none', background: '#fff' }} />
+            {/\[\[view:/.test(body) && <div style={{ fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-wrap', margin: '0 0 8px', color: '#6b675c' }}>{richView(body, 'apv' + r.no, cvs)}</div>}
+           </>) : <div style={{ fontSize: 14, lineHeight: 1.55, whiteSpace: 'pre-wrap', margin: '4px 0 10px' }}>{ap.body ? richView(ap.body, 'ap' + r.no, cvs) : <span style={{ color: '#9a9686' }}>Not written yet.</span>}</div>}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={lab}>Assigned to</span>
             {can && <button type="button" onClick={openPick} style={{ border: '1px solid #d9d5c8', background: '#fff', borderRadius: 12, padding: '2px 12px', font: 'inherit', fontSize: 12, cursor: 'pointer' }}>Assign</button>}
@@ -330,7 +344,7 @@ export default function IssueList({ job }) {
                   </div>
                   </div>
                   <div style={SWAP ? { ...fsHalf(full === r.element_id, wide, 'ap'), background: '#eef8f0', borderTop: '3px solid #2e9e5b' } : halfStyle(full === r.element_id, wide, 'ap')}>
-                  <ActionPlan job={job} r={r} can={who.can} post={apPost(r)} reload={load} forceOpen={full === r.element_id} openPan={(x) => setPan({ element: r.element_id, scope: 'ap', ...x })} />
+                  <ActionPlan cvs={cvs} job={job} r={r} can={who.can} post={apPost(r)} reload={load} forceOpen={full === r.element_id} openPan={(x) => setPan({ element: r.element_id, scope: 'ap', ...x })} />
                   </div>
                   </div>
                   {SWAP && full === r.element_id && <ModelSlot element={r.element_id} style={wide ? {} : { flex: '1.15 1 0' }} />}

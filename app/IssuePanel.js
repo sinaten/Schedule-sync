@@ -317,7 +317,7 @@ export default function IssuePanel({ job, element, onMsg, initialSheet = '', aut
               <div key={c.id} style={{ display: 'flex', flexDirection: 'column', alignItems: mine ? 'flex-end' : 'flex-start', marginBottom: 10 }}>
                 <div style={{ fontSize: 11.5, color: nw ? '#c0392b' : '#8a8576', fontWeight: nw ? 700 : 400, margin: '0 6px 2px' }}>{c.author} {'·'} {new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                 <div onDoubleClick={() => (mine ? del(c.id) : null)} style={{ outline: nw ? '2px solid #c0392b' : 'none', outlineOffset: 1, maxWidth: '80%', padding: c.kind === 'comment' ? '8px 12px' : 4, borderRadius: 16, background: mine ? OR : '#eeece5', color: mine ? '#fff' : '#141413', fontSize: 14, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                  {c.kind === 'comment' ? linkNums(c.body, 'c' + c.id) : /^video\//.test(c.content_type || '') ? (
+                  {c.kind === 'comment' ? rich(c.body) : /^video\//.test(c.content_type || '') ? (
                     <button type="button" onClick={() => setView({ kind: 'video', pathname: c.pathname })} style={{ display: 'block', position: 'relative', padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}>
                       <video src={url(c.pathname) + '#t=0.1'} preload="metadata" muted playsInline style={{ display: 'block', width: 180, maxWidth: '100%', borderRadius: 12, background: '#141413' }} />
                       <span style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: 34, height: 34, borderRadius: 17, background: 'rgba(20,20,19,.6)', color: '#fff', lineHeight: '34px', fontSize: 13 }}>{'▶'}</span>
