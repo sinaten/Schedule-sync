@@ -146,8 +146,8 @@ export default function MobileShell({ name, role, admin }) {
         )}
       </header>
       {job && (<div className="ms-tabs-wrap"><div className="ms-tabs" role="tablist" aria-label="Inspection, follow-up and my work">
-        <button type="button" role="tab" aria-selected={tab === 'issues'} className={'ms-tab ms-tab-i' + (tab === 'issues' ? ' on' : '')} onClick={() => setTab('issues')}><i />Inspection</button>
         <button type="button" role="tab" aria-selected={tab === 'follow'} className={'ms-tab ms-tab-f' + (tab === 'follow' ? ' on' : '')} onClick={() => setTab('follow')}><i />Follow-up</button>
+        <button type="button" role="tab" aria-selected={tab === 'issues'} className={'ms-tab ms-tab-i' + (tab === 'issues' ? ' on' : '')} onClick={() => setTab('issues')}><i />Inspection</button>
         <button type="button" role="tab" aria-selected={tab === 'work'} className={'ms-tab ms-tab-w' + (tab === 'work' ? ' on' : '')} onClick={() => setTab('work')}><i />My Work</button>
       </div>
       <div className="ms-strip">{tab === 'work' ? (mw ? (mw.today.length || mw.tomorrow.length ? mw.today.length + ' today \u00B7 ' + mw.tomorrow.length + ' tomorrow' : 'Nothing planned today') : 'Your tasks for today and tomorrow') : tab === 'follow' ? 'Plans, orders, safety and more' : 'Walk the model, tick stages'}</div></div>)}
