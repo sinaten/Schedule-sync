@@ -498,6 +498,16 @@ export default function Viewer3D({ job = '', kiosk = null }) {
     return r;
   };
   if (typeof window !== 'undefined') window.__ssOpenElement = openElement;
+  // arriving from the Home work list: the address ends with #el=ELEMENT, so open that element (the right Revit 3D view is chosen) once the model is shown
+  const hashDone = useRef(false);
+  useEffect(() => {
+    if (hashDone.current || !(info && info.model && info.model.status === 'success')) return;
+    const mm = /[#&]el=(\d+)/.exec(typeof location !== 'undefined' ? location.hash : '');
+    if (!mm) return;
+    hashDone.current = true;
+    const t = setTimeout(() => { openElement(mm[1]).catch(() => {}); }, 2500);
+    return () => clearTimeout(t);
+  }, [info && info.model && info.model.status]);
   useEffect(() => { const f = (e) => setMsg(String(e.detail || '')); window.addEventListener('ss-elem-msg', f); return () => window.removeEventListener('ss-elem-msg', f); }, []);
   useEffect(() => {
     if (!frame) return;
