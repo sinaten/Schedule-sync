@@ -1,4 +1,4 @@
-import { currentUser, canJob } from '../../../lib/user';
+import { currentUser, canSee, isGuest } from '../../../lib/user';
 import { issuesDb, cardNo, jobNo } from '../../../lib/issues';
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +11,7 @@ export async function GET(req) {
   const p = new URL(req.url).searchParams;
   const job = p.get('job') || '', today = day(p.get('d'));
   const u = await currentUser();
-  if (!u || !job || !today || !canJob(u, job)) return Response.json({ error: 'No access' }, { status: 403 });
+  if (!u || !job || !today || !canSee(u, job)) return Response.json({ error: 'No access' }, { status: 403 });
   const me = (u && u.name) || '';
   const sql = await issuesDb();
   const rows = await sql`select a.element_id, a.no, a.job_no, a.body, a.status, a.assignees, a.start_date, a.end_date, i.no as issue_no, i.description
@@ -26,5 +26,5 @@ export async function GET(req) {
   const t0 = mine.filter((a) => cover(a, today)), t1 = mine.filter((a) => cover(a, tomorrow));
   const later = mine.filter((a) => a.start > tomorrow).sort((a, b) => a.start.localeCompare(b.start));
   const next = t0.length ? null : (t1.length ? null : later[0] || null);
-  return Response.json({ today: t0, tomorrow: t1, next });
+  return Response.json({ today: t0, tomorrow: t1, next, guest: isGuest(u, job) });
 }

@@ -1,5 +1,5 @@
 import { db } from '../../../lib/db';
-import { currentUser, canJob, canEdit } from '../../../lib/user';
+import { currentUser, canJob, canEdit, canSee } from '../../../lib/user';
 export const dynamic = 'force-dynamic';
 
 // The section box kept for an element (the small model window beside a card): { [elementId]: { min:[x,y,z], max:[x,y,z], by, at } }. Editors and admins save or reset it.
@@ -11,7 +11,7 @@ const v3 = (a) => Array.isArray(a) && a.length === 3 && a.every((x) => Number.is
 export async function GET(req) {
   const job = new URL(req.url).searchParams.get('job') || '';
   const u = await currentUser();
-  if (!u || !canJob(u, job)) return Response.json({ error: 'No access' }, { status: 403 });
+  if (!u || !canSee(u, job)) return Response.json({ error: 'No access' }, { status: 403 });
   return Response.json({ boxes: await read(await db(), job), can: !!canEdit(u) });
 }
 export async function POST(req) {

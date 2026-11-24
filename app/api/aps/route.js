@@ -1,5 +1,5 @@
 import { db, isAddin, deny } from '../../../lib/db';
-import { currentUser, canJob } from '../../../lib/user';
+import { currentUser, canJob, canSee } from '../../../lib/user';
 import { bumpRev } from '../../../lib/rev';
 import { blocked } from '../../../lib/jobstate';
 export const dynamic = 'force-dynamic';
@@ -62,7 +62,7 @@ async function settings() {
 }
 
 export async function GET(req) {
-  if (!canJob(await currentUser(), new URL(req.url).searchParams.get('job') || '')) return Response.json({ error: 'No access' }, { status: 403 });
+  if (!canSee(await currentUser(), new URL(req.url).searchParams.get('job') || '')) return Response.json({ error: 'No access' }, { status: 403 });
   if (new URL(req.url).searchParams.get('look')) {
     const lj = new URL(req.url).searchParams.get('job') || '';
     const lsql = await settings();
