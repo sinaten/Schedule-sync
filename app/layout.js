@@ -3,6 +3,7 @@ import { currentUser, isAdmin, canEdit } from '../lib/user';
 import AiGlobal from './AiGlobal';
 import MobileShell from './MobileShell';
 import IdScanner from './IdScanner';
+import GuidePanel from './GuidePanel';
 export const metadata = {
   title: 'Schedule Sync',
   robots: { index: false, follow: false },
@@ -29,6 +30,7 @@ export default async function Layout({ children }) {
         )}
         {u && !u.legacy && <MobileShell name={u.name} role={u.role} admin={isAdmin(u)} />}
         {isAdmin(u) && <IdScanner />}
+        <GuidePanel />
         <AiGlobal edit={canEdit(u)} />
         {children}
         <script dangerouslySetInnerHTML={{ __html: REGISTER_SW }} />
