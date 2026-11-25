@@ -1,9 +1,6 @@
 import { db } from '../lib/db';
 import HomeSites from './HomeSites';
-import { currentUser, canEdit } from '../lib/user';
-import { issuesDb } from '../lib/issues';
-import { homeWork } from '../lib/homework';
-import HomeWork from './HomeWork';
+import { currentUser } from '../lib/user';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
@@ -11,12 +8,6 @@ export const fetchCache = 'force-no-store';
 export default async function Home() {
   const u = await currentUser();
   const sql = await db();
-  // a regular user (not admin, not editor) sees only the sites where he has work; admins and editors keep the full Sites page
-  if (u && !canEdit(u)) {
-    let w = { sites: [] };
-    try { w = await homeWork(sql, await issuesDb(), u.name); } catch (e) { w = { sites: [] }; }
-    return (<main className="wide"><h1>My work</h1><HomeWork sites={w.sites} /></main>);
-  }
   const sched = await sql`select coalesce(job,'') as job, count(*)::int as n from schedules group by 1`;
   const models = await sql`select case when key='model' then '' else substr(key, 7) end as job from settings where key='model' or key like 'model:%'`;
   const st = await sql`select substr(key, 10) as job, value from settings where key like 'jobstate:%'`;
