@@ -36,8 +36,8 @@ export default function GuidePanel() {
     setBusy(false);
   };
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(20,20,19,.35)', display: 'flex', alignItems: 'flex-end' }} onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
-      <div style={{ width: '100%', maxWidth: 560, margin: '0 auto', background: '#fff', borderRadius: '16px 16px 0 0', display: 'flex', flexDirection: 'column', height: 'min(78vh, 560px)', boxShadow: '0 -8px 30px rgba(20,20,19,.18)' }}>
+    <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 2000, pointerEvents: 'none' }}>
+      <div style={{ pointerEvents: 'auto', width: '100%', maxWidth: 560, margin: '0 auto', background: '#fff', borderRadius: '16px 16px 0 0', display: 'flex', flexDirection: 'column', height: 'min(46vh, 380px)', border: '1px solid #e5e2d8', borderBottom: 0, boxShadow: '0 -6px 24px rgba(20,20,19,.14)' }}>
         <div style={{ display: 'flex', alignItems: 'center', padding: '12px 14px', borderBottom: '1px solid #efece3' }}>
           <b style={{ fontSize: 15 }}>Guide</b>
           <span style={{ flex: 1 }} />
