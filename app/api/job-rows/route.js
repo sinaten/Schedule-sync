@@ -1,5 +1,5 @@
 import { db } from '../../../lib/db';
-import { currentUser, canJob, canEdit, canSee } from '../../../lib/user';
+import { currentUser, canJob, canEdit } from '../../../lib/user';
 import { getColPerms, allowedCols } from '../../../lib/colperms';
 const nk = (s) => String(s ?? '').toLowerCase().replace(/[\s\-_]/g, '');
 export const dynamic = 'force-dynamic';
@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(req) {
   const u = new URL(req.url);
   const job = u.searchParams.get('job') || '';
-  if (!canSee(await currentUser(), job)) return Response.json({ error: 'No access' }, { status: 403 });
+  if (!canJob(await currentUser(), job)) return Response.json({ error: 'No access' }, { status: 403 });
   const ids = (u.searchParams.get('ids') || '').split(',').filter(Boolean).slice(0, 50);
   if (!ids.length) { const um = await currentUser(); return Response.json([], { headers: { 'x-me': encodeURIComponent((um && (um.name || um.email)) || 'Admin') } }); }
   const sql = await db();

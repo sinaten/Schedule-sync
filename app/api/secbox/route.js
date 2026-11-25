@@ -1,5 +1,5 @@
 import { db } from '../../../lib/db';
-import { currentUser, canJob, canEdit, canSee } from '../../../lib/user';
+import { currentUser, canJob, canEdit } from '../../../lib/user';
 export const dynamic = 'force-dynamic';
 
 // Saved section boxes of a job: [{ id, name, planes:[[x,y,z,w] x 6], by, at }]. Everyone with access to the job can show them; editors and admins make and delete them.
@@ -11,7 +11,7 @@ const okPlanes = (p) => Array.isArray(p) && p.length >= 1 && p.length <= 12 && p
 export async function GET(req) {
   const job = new URL(req.url).searchParams.get('job') || '';
   const u = await currentUser();
-  if (!u || !canSee(u, job)) return Response.json({ error: 'No access' }, { status: 403 });
+  if (!u || !canJob(u, job)) return Response.json({ error: 'No access' }, { status: 403 });
   const sql = await db();
   return Response.json({ boxes: await read(sql, job), can: !!canEdit(u) });
 }

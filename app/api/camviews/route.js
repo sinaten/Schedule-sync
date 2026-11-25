@@ -1,5 +1,5 @@
 import { db } from '../../../lib/db';
-import { currentUser, canJob, canEdit, isAdmin, canSee } from '../../../lib/user';
+import { currentUser, canJob, canEdit, isAdmin } from '../../../lib/user';
 import { getCamViews, putCamViews, CAM_ICONS } from '../../../lib/camviews';
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +13,7 @@ const freeN = (list) => { const used = new Set(list.map((v) => v.n).filter(Boole
 export async function GET(req) {
   const job = new URL(req.url).searchParams.get('job') || '';
   const u = await currentUser();
-  if (!u || !canSee(u, job)) return Response.json({ error: 'No access' }, { status: 403 });
+  if (!u || !canJob(u, job)) return Response.json({ error: 'No access' }, { status: 403 });
   const sql = await db();
   const list = await getCamViews(sql, job);
   if (list.some((v) => !v.n)) { for (const v of list) if (!v.n) v.n = freeN(list); await putCamViews(sql, job, list); }

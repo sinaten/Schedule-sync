@@ -175,9 +175,7 @@ function orient(vw, cam, origin) {
 }
 
 // Recreates what the chosen Revit 3D view shows: only its elements, with the colours set in that view.
-const dbg = (k) => { try { const d = (window.__ssDbg = window.__ssDbg || {}); d[k] = (d[k] || 0) + 1; d.last = k; } catch (e) { /* ignore */ } };
 async function applyLook(vw, job, layer, keepView) {
-  dbg('applyLook' + (keepView === true ? '(poll)' : keepView === 'iso' ? '(iso)' : ''));
   try {
     const r = await fetch('/api/aps?look=1&job=' + encodeURIComponent(job) + (window.__ssView ? '&view=' + encodeURIComponent(window.__ssView) : ''), { cache: 'no-store' });
     let look = await r.json();
@@ -390,7 +388,7 @@ export default function Viewer3D({ job = '', kiosk = null }) {
   }, [job]);
 
   useEffect(() => {
-    const f = () => { dbg('reload-look-event'); const vw = viewer.current; if (vw && vw.model) { resetLook(vw); applyLook(vw, job, modeRef.current === 'user' ? layerRef.current : null, 'iso'); } };
+    const f = () => { const vw = viewer.current; if (vw && vw.model) { resetLook(vw); applyLook(vw, job, modeRef.current === 'user' ? layerRef.current : null, 'iso'); } };
     window.addEventListener('ss-reload-look', f);
     return () => window.removeEventListener('ss-reload-look', f);
   }, [job]);
@@ -475,44 +473,6 @@ export default function Viewer3D({ job = '', kiosk = null }) {
     return { ok: true };
   };
   if (typeof window !== 'undefined') window.__ssGoElement = goElement;
-  // Opens an element from a card: in the current 3D view when it is shown there, otherwise in the first Revit 3D view of the job that shows it (the view is switched first)
-  const openElement = async (n, noViews) => {
-    dbg('openElement');
-    let r = goElement(n);
-    if (r.ok || noViews) { if (!r.ok) setMsg(r.msg); return r; }
-    const num = parseInt(String(n), 10);
-    const mdl = (info && info.model) || {};
-    const views = Array.isArray(mdl.views) ? mdl.views : [];
-    const cur = curView || mdl.view || views[0] || '';
-    for (const name of views) {
-      if (name === cur) continue;
-      try {
-        const rr = await fetch('/api/aps?look=1&job=' + encodeURIComponent(job) + '&view=' + encodeURIComponent(name), { cache: 'no-store' });
-        const lk = rr.ok ? await rr.json() : null;
-        if (lk && Array.isArray(lk.visible) && lk.visible.includes(num)) {
-          await switchView(name);
-          await new Promise((res) => setTimeout(res, 900));
-          r = goElement(n);
-          if (!r.ok) { await new Promise((res) => setTimeout(res, 900)); r = goElement(n); }
-          return r;
-        }
-      } catch (e) { /* try the next view */ }
-    }
-    return r;
-  };
-  if (typeof window !== 'undefined') window.__ssOpenElement = openElement;
-  // arriving from the Home work list: the address ends with #el=ELEMENT, so open that element (the right Revit 3D view is chosen) once the model is shown
-  const hashDone = useRef(false);
-  useEffect(() => {
-    if (hashDone.current || !(info && info.model && info.model.status === 'success')) return;
-    const mm = /[#&]el=(\d+)/.exec(typeof location !== 'undefined' ? location.hash : '');
-    if (!mm) return;
-    hashDone.current = true;
-    // once only: the address is cleaned first, so if the phone's browser restarts the page (a crash), the action is not repeated in a loop
-    try { const k = 'ss-el-done:' + location.pathname + '#' + mm[1]; const was = sessionStorage.getItem(k); sessionStorage.setItem(k, '1'); history.replaceState(null, '', location.pathname + location.search); if (was) return; } catch (e) { /* ignore */ }
-    const t = setTimeout(() => { openElement(mm[1], true).catch(() => {}); }, 2500);
-    return () => clearTimeout(t);
-  }, [info && info.model && info.model.status]);
   useEffect(() => { const f = (e) => setMsg(String(e.detail || '')); window.addEventListener('ss-elem-msg', f); return () => window.removeEventListener('ss-elem-msg', f); }, []);
   useEffect(() => {
     if (!frame) return;
@@ -597,7 +557,6 @@ export default function Viewer3D({ job = '', kiosk = null }) {
 
   // pick another Revit 3D view of this job. The model on the site is the whole building; a view is recreated from what it shows and its colours.
   async function switchView(name) {
-    dbg('switchView');
     setVOpen(false); setVq('');
     const vw = viewer.current;
     if (!vw || !vw.model) return;
@@ -650,7 +609,6 @@ export default function Viewer3D({ job = '', kiosk = null }) {
     if (!info || !info.model || info.model.status !== 'success' || !info.token) return;
     if (shownUrn.current === info.model.urn) return;
     shownUrn.current = info.model.urn;
-    dbg('viewerInit');
     let dead = false;
     loadAssets()
       .then(

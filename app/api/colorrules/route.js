@@ -1,5 +1,5 @@
 import { db } from '../../../lib/db';
-import { currentUser, canJob, isAdmin, canSee } from '../../../lib/user';
+import { currentUser, canJob, isAdmin } from '../../../lib/user';
 import { getColorRules, putColorRules, fromLook, computeColors } from '../../../lib/colorrules';
 import { bumpRev } from '../../../lib/rev';
 import { getLayer } from '../../../lib/layer';
@@ -12,7 +12,7 @@ async function lookOf(sql, job) { const [r] = await sql`select value from settin
 export async function GET(req) {
   const u = new URL(req.url);
   const job = u.searchParams.get('job') || '';
-  if (!job || !canSee(await currentUser(), job)) return Response.json({ error: 'No access' }, { status: 403 });
+  if (!job || !canJob(await currentUser(), job)) return Response.json({ error: 'No access' }, { status: 403 });
   const sql = await db();
   let rules = await getColorRules(sql, job);
   if (!rules) {

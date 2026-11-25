@@ -18,7 +18,6 @@ export default function MobileShell({ name, role, admin }) {
   const [tab, setTab] = useState('follow');
   const [pending, setPending] = useState(0);
   const [job, setJob] = useState('');
-  const guest = false; // My Work tab removed for now (code kept in MyWork.js)
   // the page below the tabs follows the choice: Issues shows the normal job page (model), Follow-up is empty for now and is the default
   useEffect(() => { if (job) ss.set('ms-tab:' + job, tab); }, [tab, job]);
   useEffect(() => {
@@ -144,11 +143,10 @@ export default function MobileShell({ name, role, admin }) {
           </>
         )}
       </header>
-      {job && (<div className="ms-tabs-wrap"><div className="ms-tabs" role="tablist" aria-label="Inspection, follow-up and my work">
-        {!guest && <button type="button" role="tab" aria-selected={tab === 'follow'} className={'ms-tab ms-tab-f' + (tab === 'follow' ? ' on' : '')} onClick={() => setTab('follow')}><i />Follow-up</button>}
-        {!guest && <button type="button" role="tab" aria-selected={tab === 'issues'} className={'ms-tab ms-tab-i' + (tab === 'issues' ? ' on' : '')} onClick={() => setTab('issues')}><i />Inspection</button>}
-      </div>
-      <div className="ms-strip">{tab === 'follow' ? 'Plans, orders, safety and more' : 'Walk the model, tick stages'}</div></div>)}
+      {job && (<div className="ms-tabs-wrap"><div className="ms-tabs" role="tablist" aria-label="Inspection and follow-up">
+        <button type="button" role="tab" aria-selected={tab === 'issues'} className={'ms-tab ms-tab-i' + (tab === 'issues' ? ' on' : '')} onClick={() => setTab('issues')}><i />Inspection</button>
+        <button type="button" role="tab" aria-selected={tab === 'follow'} className={'ms-tab ms-tab-f' + (tab === 'follow' ? ' on' : '')} onClick={() => setTab('follow')}><i />Follow-up</button>
+      </div></div>)}
       <div className="ms-spacer" />
       {job && <FollowUp job={job} />}
       <nav className={'ms-bot' + (job ? ' ms-job' : '')} aria-label="Quick actions">
