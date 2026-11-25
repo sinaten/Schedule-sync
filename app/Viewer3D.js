@@ -476,10 +476,10 @@ export default function Viewer3D({ job = '', kiosk = null }) {
   };
   if (typeof window !== 'undefined') window.__ssGoElement = goElement;
   // Opens an element from a card: in the current 3D view when it is shown there, otherwise in the first Revit 3D view of the job that shows it (the view is switched first)
-  const openElement = async (n) => {
+  const openElement = async (n, noViews) => {
     dbg('openElement');
     let r = goElement(n);
-    if (r.ok) return r;
+    if (r.ok || noViews) { if (!r.ok) setMsg(r.msg); return r; }
     const num = parseInt(String(n), 10);
     const mdl = (info && info.model) || {};
     const views = Array.isArray(mdl.views) ? mdl.views : [];
@@ -510,7 +510,7 @@ export default function Viewer3D({ job = '', kiosk = null }) {
     hashDone.current = true;
     // once only: the address is cleaned first, so if the phone's browser restarts the page (a crash), the action is not repeated in a loop
     try { const k = 'ss-el-done:' + location.pathname + '#' + mm[1]; const was = sessionStorage.getItem(k); sessionStorage.setItem(k, '1'); history.replaceState(null, '', location.pathname + location.search); if (was) return; } catch (e) { /* ignore */ }
-    const t = setTimeout(() => { openElement(mm[1]).catch(() => {}); }, 2500);
+    const t = setTimeout(() => { openElement(mm[1], true).catch(() => {}); }, 2500);
     return () => clearTimeout(t);
   }, [info && info.model && info.model.status]);
   useEffect(() => { const f = (e) => setMsg(String(e.detail || '')); window.addEventListener('ss-elem-msg', f); return () => window.removeEventListener('ss-elem-msg', f); }, []);
