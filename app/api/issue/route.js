@@ -225,6 +225,13 @@ export async function POST(req) {
     let as = cur.assignees;
     if (Array.isArray(b.assignees)) as = b.assignees.slice(0, 30).map((a) => ({ n: String((a && a.n) || '').trim().slice(0, 80), u: a && a.u ? 1 : 0 })).filter((a) => a.n);
     await sql`update action_plans set body = ${body}, status = ${status}, job_no = ${jno}, start_date = ${sd}, end_date = ${ed}, assignees = ${JSON.stringify(as)}::jsonb, updated_at = now(), updated_by = ${nm(u)} where job = ${job} and element_id = ${el}`;
+    // everybody who is a site user on this card gets the project in his normal access list (Admin shows it too); typed names (not users) are skipped
+    try {
+      for (const a of as) {
+        if (!a.u) continue;
+        await sql`update users set jobs = coalesce(jobs, '[]'::jsonb) || to_jsonb(${job}::text) where username = ${a.n} and role <> 'admin' and not (coalesce(jobs, '[]'::jsonb) @> to_jsonb(${job}::text))`;
+      }
+    } catch (e) { /* the card is saved anyway; access can still be given in Admin */ }
     return Response.json({ ok: true });
   }
   if (b.action === 'priority') {
