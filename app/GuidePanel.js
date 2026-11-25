@@ -16,6 +16,7 @@ export default function GuidePanel() {
     return () => window.removeEventListener('ss-guide', f);
   }, []);
   useEffect(() => { if (end.current) end.current.scrollIntoView({ block: 'end' }); }, [msgs, busy, open]);
+  useEffect(() => { document.body.classList.toggle('ss-guide-busy', busy); return () => document.body.classList.remove('ss-guide-busy'); }, [busy]);
   if (!open) return null;
   const flip = async () => {
     const r = await fetch('/api/guide', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ toggle: !(st && st.on) }) });
