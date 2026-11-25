@@ -43,6 +43,6 @@ export async function POST(req) {
     cards = ir.filter((c) => names.includes(c.job)).slice(0, 250).map((c) => ({ job: c.job, card: 'ISS-' + String(c.no || 0).padStart(4, '0'), title: String(c.description || '').split('\n')[0].slice(0, 60) }));
   } catch (e) { cards = []; }
   const r = await guideReply(u, projects, cards, Array.isArray(b.messages) ? b.messages : []);
-  if (!r.ok) return Response.json({ error: r.reason === 'nokey' ? 'The guide has no key yet.' : 'The guide could not answer now.' }, { status: 502 });
+  if (!r.ok) return Response.json({ error: r.reason === 'nokey' ? 'Sina has no key yet.' : 'Sina could not answer now.' }, { status: 502 });
   return Response.json({ reply: r.reply, open: r.open });
 }
