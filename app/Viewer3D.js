@@ -508,6 +508,8 @@ export default function Viewer3D({ job = '', kiosk = null }) {
     const mm = /[#&]el=(\d+)/.exec(typeof location !== 'undefined' ? location.hash : '');
     if (!mm) return;
     hashDone.current = true;
+    // once only: the address is cleaned first, so if the phone's browser restarts the page (a crash), the action is not repeated in a loop
+    try { const k = 'ss-el-done:' + location.pathname + '#' + mm[1]; const was = sessionStorage.getItem(k); sessionStorage.setItem(k, '1'); history.replaceState(null, '', location.pathname + location.search); if (was) return; } catch (e) { /* ignore */ }
     const t = setTimeout(() => { openElement(mm[1]).catch(() => {}); }, 2500);
     return () => clearTimeout(t);
   }, [info && info.model && info.model.status]);
