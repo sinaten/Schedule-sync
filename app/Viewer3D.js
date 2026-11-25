@@ -175,7 +175,9 @@ function orient(vw, cam, origin) {
 }
 
 // Recreates what the chosen Revit 3D view shows: only its elements, with the colours set in that view.
+const dbg = (k) => { try { const d = (window.__ssDbg = window.__ssDbg || {}); d[k] = (d[k] || 0) + 1; d.last = k; } catch (e) { /* ignore */ } };
 async function applyLook(vw, job, layer, keepView) {
+  dbg('applyLook' + (keepView === true ? '(poll)' : keepView === 'iso' ? '(iso)' : ''));
   try {
     const r = await fetch('/api/aps?look=1&job=' + encodeURIComponent(job) + (window.__ssView ? '&view=' + encodeURIComponent(window.__ssView) : ''), { cache: 'no-store' });
     let look = await r.json();
@@ -388,7 +390,7 @@ export default function Viewer3D({ job = '', kiosk = null }) {
   }, [job]);
 
   useEffect(() => {
-    const f = () => { const vw = viewer.current; if (vw && vw.model) { resetLook(vw); applyLook(vw, job, modeRef.current === 'user' ? layerRef.current : null, 'iso'); } };
+    const f = () => { dbg('reload-look-event'); const vw = viewer.current; if (vw && vw.model) { resetLook(vw); applyLook(vw, job, modeRef.current === 'user' ? layerRef.current : null, 'iso'); } };
     window.addEventListener('ss-reload-look', f);
     return () => window.removeEventListener('ss-reload-look', f);
   }, [job]);
@@ -475,6 +477,7 @@ export default function Viewer3D({ job = '', kiosk = null }) {
   if (typeof window !== 'undefined') window.__ssGoElement = goElement;
   // Opens an element from a card: in the current 3D view when it is shown there, otherwise in the first Revit 3D view of the job that shows it (the view is switched first)
   const openElement = async (n) => {
+    dbg('openElement');
     let r = goElement(n);
     if (r.ok) return r;
     const num = parseInt(String(n), 10);
@@ -592,6 +595,7 @@ export default function Viewer3D({ job = '', kiosk = null }) {
 
   // pick another Revit 3D view of this job. The model on the site is the whole building; a view is recreated from what it shows and its colours.
   async function switchView(name) {
+    dbg('switchView');
     setVOpen(false); setVq('');
     const vw = viewer.current;
     if (!vw || !vw.model) return;
@@ -644,6 +648,7 @@ export default function Viewer3D({ job = '', kiosk = null }) {
     if (!info || !info.model || info.model.status !== 'success' || !info.token) return;
     if (shownUrn.current === info.model.urn) return;
     shownUrn.current = info.model.urn;
+    dbg('viewerInit');
     let dead = false;
     loadAssets()
       .then(
