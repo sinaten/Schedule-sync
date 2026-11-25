@@ -17,7 +17,7 @@ function Site({ s, open, onToggle }) {
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8a877b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
       </button>
       {open && s.cards.map((c) => (
-        <a key={c.job + '|' + c.element} href={'/j/' + encodeURIComponent(c.job) + '#el=' + encodeURIComponent(c.element)} style={{ display: 'block', padding: '10px 14px', borderTop: '1px solid #efece3', textDecoration: 'none', color: 'inherit' }}>
+        <a key={c.job + '|' + c.element} href={'/j/' + encodeURIComponent(c.job)} style={{ display: 'block', padding: '10px 14px', borderTop: '1px solid #efece3', textDecoration: 'none', color: 'inherit' }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12 }}><b style={{ color: '#D97757', fontWeight: 600 }}>{c.card}<span style={{ color: '#8a877b', fontWeight: 500 }}> {'–'} {short(c.job)}</span></b><span style={{ marginLeft: 'auto', color: '#8a877b' }}>{range(c.start, c.end)}</span></div>
           <div style={{ fontSize: 14, marginTop: 2 }}>{c.title || 'Element ' + c.element}</div>
         </a>
