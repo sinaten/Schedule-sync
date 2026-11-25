@@ -163,7 +163,8 @@ export default function MobileShell({ name, role, admin }) {
           )}
         </button>
         <button type="button" className="ms-qr ms-sina" aria-label="Open Sina" onClick={() => window.dispatchEvent(new Event('ss-guide'))} style={{ padding: 0, cursor: 'pointer' }}>
-          <img src="/sina-ai.png" alt="" width="100%" height="100%" draggable="false" style={{ width: '100%', height: '100%', borderRadius: '50%', display: 'block' }} />
+          <img className="sina-still" src="/sina-ai.png" alt="" width="100%" height="100%" draggable="false" style={{ width: '100%', height: '100%', borderRadius: '50%', display: 'block' }} />
+          <img className="sina-live" src="/sina-live.gif" alt="" width="100%" height="100%" draggable="false" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
         </button>
         <a className="ms-sm" href="/scan" aria-label="Scan QR code" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D97757" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1" /><rect x="13.5" y="3.5" width="7" height="7" rx="1" /><rect x="3.5" y="13.5" width="7" height="7" rx="1" /><path d="M14 14h2.5v2.5H14zM18 18h2.5M18 14h2.5v1" /></svg>

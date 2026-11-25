@@ -144,6 +144,6 @@ body[data-ms-tab="follow"] .ms-follow{display:block}
 
 /* Sina button: the picture is the button; while Sina is answering it breathes (a light animation only then) */
 .ms-qr.ms-sina{border:0;background:transparent;box-shadow:0 6px 16px rgba(20,20,19,.16)}
-@keyframes ssBreath{0%,100%{transform:scale(1);filter:brightness(1)}50%{transform:scale(1.06);filter:brightness(1.12) saturate(1.15)}}
-body.ss-guide-busy .ms-sina img{animation:ssBreath 1.1s ease-in-out infinite}
-@media (prefers-reduced-motion:reduce){body.ss-guide-busy .ms-sina img{animation:none}}
+.ms-sina .sina-live{display:none}
+body.ss-guide-live .ms-sina .sina-live{display:block}
+body.ss-guide-live .ms-sina .sina-still{display:none}
