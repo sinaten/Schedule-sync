@@ -44,5 +44,5 @@ export async function POST(req) {
   } catch (e) { cards = []; }
   const r = await guideReply(u, projects, cards, Array.isArray(b.messages) ? b.messages : [], b.lang);
   if (!r.ok) return Response.json({ error: r.reason === 'nokey' ? 'Sina has no key yet.' : 'Sina could not answer now.' }, { status: 502 });
-  return Response.json({ reply: r.reply, open: r.open });
+  return Response.json({ reply: r.reply, open: r.open, choices: r.choices || [] });
 }

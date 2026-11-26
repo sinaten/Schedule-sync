@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 // Sina (the phone's big middle button). Press once: Sina is on (the button shows the moving picture), the phone listens, Sina answers in text and aloud.
 // Press again (or the X): everything stops and the button goes back to the still picture.
@@ -21,6 +22,8 @@ export default function GuidePanel() {
   const [lang, setLang] = useState('en');
   const [hear, setHear] = useState(false);
   const [voice, setVoice] = useState(false);
+  const [pick, setPick] = useState(-1);
+  const router = useRouter();
   const end = useRef(null);
   const R = useRef({ open: false, on: null, busy: false, speaking: false, msgs: [], lang: 'en', rec: null, hearing: false, timer: 0, voice: false, sv: false, svOk: false, stream: null, mr: null, ctx: null, audio: null, svTimer: 0, svAbort: false });
   R.current.lang = lang;
@@ -137,7 +140,7 @@ export default function GuidePanel() {
     try {
       const res = await fetch('/api/guide', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ lang: r.lang, messages: next.map((m) => ({ role: m.role, content: m.content })) }) });
       const j = await res.json().catch(() => ({}));
-      if (res.ok) { reply = j.reply || ''; setMsgs([...next, { role: 'assistant', content: reply, open: j.open || null }]); }
+      if (res.ok) { reply = j.reply || ''; setPick(-1); setMsgs([...next, { role: 'assistant', content: reply, open: j.open || null, choices: Array.isArray(j.choices) ? j.choices : [] }]); }
       else if (j.error === 'off') { setSt((s) => ({ ...(s || {}), on: false })); } else setErr(j.error || 'No answer');
     } catch (e) { setErr('No connection'); }
     setBusy(false); r.busy = false;
@@ -169,6 +172,11 @@ export default function GuidePanel() {
   };
   useEffect(() => {
     setLang(pickLang());
+    try {
+      const v = JSON.parse(sessionStorage.getItem('sina-chat') || 'null');
+      if (v && Array.isArray(v.msgs)) setMsgs(v.msgs.slice(-20));
+      if (v && v.open) { R.current.open = true; setOpen(true); fetch('/api/guide', { cache: 'no-store' }).then((x) => (x.ok ? x.json() : null)).then((j) => { if (j) { setSt(j); R.current.on = j.on; R.current.svOk = !!j.voice; } }).catch(() => {}); }
+    } catch (e) { /* ignore */ }
     const f = () => {
       const r = R.current;
       if (r.open) { close(); return; }
@@ -179,6 +187,7 @@ export default function GuidePanel() {
     window.addEventListener('ss-guide', f);
     return () => { window.removeEventListener('ss-guide', f); stopHear(); stopSv(true); };
   }, []);
+  useEffect(() => { try { sessionStorage.setItem('sina-chat', JSON.stringify({ open, msgs: msgs.slice(-20) })); } catch (e) { /* ignore */ } }, [open, msgs]);
   const [bot, setBot] = useState(0);
   useEffect(() => {
     if (!open) return undefined;
@@ -217,7 +226,18 @@ export default function GuidePanel() {
               {m.role === 'user' ? <div style={{ fontSize: 11, fontWeight: 500, color: '#6b675c', textAlign: 'right', marginBottom: 2 }}>{(st && st.name) || 'You'}</div> : <div style={{ fontSize: 11, fontWeight: 500, marginBottom: 2, background: 'linear-gradient(90deg,#7F5AF0,#3B82F6)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', width: 'fit-content' }}>Sina AI</div>}
               <div style={{ maxWidth: '85%', background: m.role === 'user' ? '#f4f3ee' : '#fff', border: m.role === 'user' ? '0' : '1.5px solid #7F5AF0', borderRadius: 12, padding: '8px 11px', fontSize: 14, whiteSpace: 'pre-wrap' }}>
                 {m.content}
-                {m.open && <a href={'/j/' + encodeURIComponent(m.open)} style={{ display: 'block', marginTop: 8, textAlign: 'center', background: '#D97757', color: '#fff', borderRadius: 8, padding: '7px 10px', textDecoration: 'none', fontSize: 13.5 }}>Open {m.open}</a>}
+                {m.open && <a href={'/j/' + encodeURIComponent(m.open)} onClick={(e) => { e.preventDefault(); router.push('/j/' + encodeURIComponent(m.open)); }} style={{ display: 'block', marginTop: 8, textAlign: 'center', background: '#D97757', color: '#fff', borderRadius: 8, padding: '7px 10px', textDecoration: 'none', fontSize: 13.5 }}>Open {m.open}</a>}
+                {m.choices && m.choices.length > 0 && i === msgs.length - 1 && !busy && (
+                  <div style={{ marginTop: 8 }}>
+                    {m.choices.map((c, k) => (
+                      <button key={k} type="button" onClick={() => setPick(k)} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, width: '100%', textAlign: 'left', border: '1.5px solid ' + (pick === k ? '#7F5AF0' : '#e5e2d8'), background: pick === k ? '#F0EBFF' : '#fff', color: pick === k ? '#4B2FB5' : 'inherit', borderRadius: 10, padding: '7px 9px', marginBottom: 6, cursor: 'pointer', fontSize: 14 }}>
+                        <span style={{ flex: 'none', width: 18, height: 18, borderRadius: 5, border: '1.5px solid ' + (pick === k ? '#7F5AF0' : '#b9b5a8'), background: pick === k ? '#7F5AF0' : '#fff', color: '#fff', fontSize: 12, lineHeight: '15px', textAlign: 'center' }}>{pick === k ? '\u2713' : ''}</span>
+                        <span><b style={{ fontWeight: 600 }}>{c.label}</b>{c.note ? <span style={{ display: 'block', fontSize: 12.5, opacity: 0.75 }}>{c.note}</span> : null}</span>
+                      </button>
+                    ))}
+                    <button type="button" onClick={() => { const c = m.choices[pick]; if (c) send(c.label + (c.note ? ' (' + c.note + ')' : '')); }} style={{ width: '100%', border: 0, borderRadius: 9, padding: '8px 10px', background: pick >= 0 ? 'linear-gradient(135deg,#7F5AF0,#3B82F6)' : '#d9d6cb', color: '#fff', fontSize: 14, cursor: 'pointer' }}>Enter {'\u21b5'}</button>
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -228,7 +248,7 @@ export default function GuidePanel() {
         {(!st || st.on) && (
           <div className="sina-in" style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '8px 10px 10px', background: '#f4f3ee', borderRadius: 22, padding: '5px 6px 5px 10px' }}>
             <button type="button" aria-label="Add file" onClick={() => setErr('Files and photos are coming soon.')} style={{ border: 0, background: 'none', fontSize: 24, lineHeight: 1, cursor: 'pointer', color: '#6b675c', padding: 0 }}>+</button>
-            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') send(text); }} placeholder="Write to Sina" maxLength={500} style={{ flex: 1, minWidth: 0, border: 0, background: 'transparent', outline: 'none', padding: '6px 2px', fontSize: 16 }} />
+            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { const lm = msgs[msgs.length - 1]; if (!text.trim() && pick >= 0 && lm && lm.choices && lm.choices[pick]) send(lm.choices[pick].label + (lm.choices[pick].note ? ' (' + lm.choices[pick].note + ')' : '')); else send(text); } }} placeholder="Write to Sina" maxLength={500} style={{ flex: 1, minWidth: 0, border: 0, background: 'transparent', outline: 'none', padding: '6px 2px', fontSize: 16 }} />
             {text.trim() ? (
               <button type="button" aria-label="Send" onClick={() => send(text)} disabled={busy} style={{ width: 34, height: 34, border: 0, borderRadius: '50%', background: 'linear-gradient(135deg,#7F5AF0,#3B82F6)', color: '#fff', fontSize: 18, cursor: 'pointer', flex: 'none' }}>{'\u2191'}</button>
             ) : (
