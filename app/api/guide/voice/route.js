@@ -24,7 +24,7 @@ export async function POST(req) {
   if (file.size > 3500000) return Response.json({ error: 'Clip too long' }, { status: 413 });
   const out = new FormData();
   out.append('file', file, file.name || 'clip.m4a');
-  out.append('model', process.env.VOICE_STT_MODEL || 'gpt-4o-transcribe');
+  out.append('model', process.env.VOICE_STT_MODEL || 'gpt-4o-mini-transcribe');
   const l = CODES[String(fd.get('lang') || '')];
   if (l) out.append('language', l);
   const res = await fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { authorization: 'Bearer ' + key }, body: out });

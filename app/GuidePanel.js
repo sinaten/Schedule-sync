@@ -45,7 +45,7 @@ export default function GuidePanel() {
 
   // Server voice: the phone only records and plays; the server turns speech into text and text into speech.
   const stopSv = (killStream) => {
-    const r = R.current; clearInterval(r.svTimer); r.svTimer = 0; r.svAbort = true;
+    const r = R.current; clearInterval(r.svTimer); r.svTimer = 0; r.svAbort = true; r.spk = (r.spk || 0) + 1;
     try { if (r.mr && r.mr.state !== 'inactive') r.mr.stop(); } catch (e) { /* ignore */ }
     r.mr = null; setHear(false);
     try { if (r.audio) { r.audio.pause(); r.audio.onended = null; } } catch (e) { /* ignore */ }
@@ -87,24 +87,28 @@ export default function GuidePanel() {
         let m = 0; for (let i = 0; i < buf.length; i++) { const v = Math.abs(buf[i] - 128) / 128; if (v > m) m = v; }
         const now = Date.now();
         if (m > 0.06) { talked = true; lastLoud = now; }
-        if ((talked && now - lastLoud > 1400) || now - t0 > 25000 || (!talked && now - t0 > 12000)) { try { if (mr.state !== 'inactive') mr.stop(); } catch (e) { /* ignore */ } }
+        if ((talked && now - lastLoud > 900) || now - t0 > 25000 || (!talked && now - t0 > 12000)) { try { if (mr.state !== 'inactive') mr.stop(); } catch (e) { /* ignore */ } }
       }, 100);
     } catch (e) { setErr('Could not start recording'); r.voice = false; setVoice(false); }
   };
   const svSpeak = async (t) => {
     const r = R.current;
+    const my = (r.spk = (r.spk || 0) + 1);
+    const parts = []; { const raw = String(t).match(/[^.!?؟۔。！？\n]+[.!?؟۔。！？]*/g) || [String(t)]; let cur = ''; raw.forEach((x) => { cur += x; if (cur.trim().length >= 45) { parts.push(cur.trim()); cur = ''; } }); if (cur.trim()) parts.push(cur.trim()); }
+    const grab = async (x) => { const res = await fetch('/api/guide/speak', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: x }) }); if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || 'Could not speak'); } return URL.createObjectURL(await res.blob()); };
+    const play = (url) => new Promise((done) => { const a = r.audio || (r.audio = new Audio()); a.onended = () => { try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ } done(); }; a.onerror = a.onended; a.src = url; const pr = a.play(); if (pr && pr.catch) pr.catch(() => done()); });
     try {
       r.speaking = true; setHear(false);
-      const res = await fetch('/api/guide/speak', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: t }) });
-      if (!res.ok) { r.speaking = false; const j = await res.json().catch(() => ({})); setErr(j.error || 'Could not speak'); if (r.open && r.voice) svListen(); return; }
-      const url = URL.createObjectURL(await res.blob());
-      const a = r.audio || (r.audio = new Audio());
-      a.onended = () => { r.speaking = false; try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ } if (r.open && r.voice) svListen(); };
-      a.onerror = a.onended;
-      a.src = url;
-      if (!r.open || !r.voice) { r.speaking = false; return; }
-      await a.play();
-    } catch (e) { r.speaking = false; setErr('The phone did not play the sound'); if (r.open && r.voice) svListen(); }
+      let nextP = grab(parts[0]);
+      for (let i = 0; i < parts.length; i++) {
+        const url = await nextP;
+        if (i + 1 < parts.length) nextP = grab(parts[i + 1]);
+        if (r.spk !== my || !r.open || !r.voice) { try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ } break; }
+        await play(url);
+        if (r.spk !== my) break;
+      }
+    } catch (e) { setErr(String((e && e.message) || 'The phone did not play the sound')); }
+    if (r.spk === my) { r.speaking = false; if (r.open && r.voice) svListen(); }
   };
   const resume = () => { if (R.current.sv) svListen(); else startHear(); };
   const speak = (t) => {
@@ -131,7 +135,7 @@ export default function GuidePanel() {
     setMsgs(next); setText(''); setBusy(true); r.busy = true; setErr(''); stopHear(); stopSv(false);
     let reply = '';
     try {
-      const res = await fetch('/api/guide', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ messages: next.map((m) => ({ role: m.role, content: m.content })) }) });
+      const res = await fetch('/api/guide', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ lang: r.lang, messages: next.map((m) => ({ role: m.role, content: m.content })) }) });
       const j = await res.json().catch(() => ({}));
       if (res.ok) { reply = j.reply || ''; setMsgs([...next, { role: 'assistant', content: reply, open: j.open || null }]); }
       else if (j.error === 'off') { setSt((s) => ({ ...(s || {}), on: false })); } else setErr(j.error || 'No answer');
@@ -191,7 +195,7 @@ export default function GuidePanel() {
     const j = await r.json().catch(() => ({}));
     if (r.ok) { setSt((s) => ({ ...s, on: j.on })); R.current.on = j.on; if (!j.on) { stopHear(); stopSv(true); R.current.voice = false; setVoice(false); } } else setErr(j.error || 'Could not change');
   };
-  const chLang = (l) => { setLang(l); R.current.lang = l; try { localStorage.setItem('sina-lang', l); } catch (e) { /* ignore */ } stopHear(); if (R.current.voice && !R.current.sv) setTimeout(startHear, 200); };
+  const chLang = (l) => { setLang(l); R.current.lang = l; setMsgs([]); R.current.msgs = []; setErr(''); try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) { /* ignore */ } R.current.speaking = false; if (R.current.sv) { stopSv(false); if (R.current.voice) setTimeout(svListen, 250); } try { localStorage.setItem('sina-lang', l); } catch (e) { /* ignore */ } stopHear(); if (R.current.voice && !R.current.sv) setTimeout(startHear, 200); };
   return (
     <div className="sina-wrap" style={{ position: 'fixed', left: 0, right: 0, bottom: bot ? bot : 'calc(var(--ms-sm, 44px) + 28px + env(safe-area-inset-bottom))', zIndex: 2000, pointerEvents: 'none' }}>
       <div className="sina-box" style={{ pointerEvents: 'auto', width: '100%', maxWidth: 560, background: '#fff', borderRadius: 16, display: 'flex', flexDirection: 'column', height: '46vh', minHeight: 280, border: '1px solid #e5e2d8', boxShadow: '0 -6px 24px rgba(20,20,19,.14)', margin: '0 auto 6px' }}>
