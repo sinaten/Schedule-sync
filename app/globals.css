@@ -184,3 +184,9 @@ body.ss-guide-live .ms-sina .sina-still{display:none!important}
   .sina-in button[aria-label="Add file"]{font-size:30px!important}
   .sina-in button[aria-label="Send"],.sina-in button.sina-wave{width:44px!important;height:44px!important}
 }
+
+.ms-ai{display:none}
+body[data-ms-tab="ai"] .ms-ai{display:block}
+body[data-ms-tab="ai"] > :not(header):not(nav):not(.ms-tabs-wrap):not(.ms-spacer):not(.ms-ai):not(.mp-root):not(script){position:fixed!important;left:-200vw!important;top:0!important;width:100vw!important;visibility:hidden!important;pointer-events:none!important}
+.ms-tab-a i{background:#7F5AF0}
+.ms-tab-a.on{color:#7F5AF0}
