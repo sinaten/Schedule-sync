@@ -147,3 +147,11 @@ body[data-ms-tab="follow"] .ms-follow{display:block}
 .ms-sina .sina-live{display:none}
 body.ss-guide-live .ms-sina .sina-live{display:block}
 body.ss-guide-live .ms-sina .sina-still{display:none}
+
+.sina-wave b{display:block;width:3px;height:8px;background:#fff;border-radius:2px}
+.sina-wave.on{box-shadow:0 0 0 3px #CFC3F8}
+.sina-wave.on b{animation:ssWave .9s ease-in-out infinite}
+.sina-wave.on b:nth-child(2){animation-delay:.15s}.sina-wave.on b:nth-child(3){animation-delay:.3s}.sina-wave.on b:nth-child(4){animation-delay:.45s}
+@keyframes ssWave{0%,100%{height:6px}50%{height:16px}}
+@media (max-width:760px){body.ss-guide-open .ms-bot .ms-qr{width:var(--ms-sm);height:var(--ms-sm)}}
+@media (prefers-reduced-motion:reduce){.sina-wave.on b{animation:none}}

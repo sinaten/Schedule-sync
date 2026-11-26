@@ -20,8 +20,9 @@ export default function GuidePanel() {
   const [err, setErr] = useState('');
   const [lang, setLang] = useState('en');
   const [hear, setHear] = useState(false);
+  const [voice, setVoice] = useState(false);
   const end = useRef(null);
-  const R = useRef({ open: false, on: null, busy: false, speaking: false, msgs: [], lang: 'en', rec: null, hearing: false, timer: 0 });
+  const R = useRef({ open: false, on: null, busy: false, speaking: false, msgs: [], lang: 'en', rec: null, hearing: false, timer: 0, voice: false });
   R.current.lang = lang;
   R.current.on = st ? st.on : null;
   R.current.busy = busy;
@@ -31,13 +32,13 @@ export default function GuidePanel() {
   const stopHear = () => { const r = R.current; clearTimeout(r.timer); r.hearing = false; setHear(false); try { if (r.rec) { r.rec.onend = null; r.rec.onresult = null; r.rec.onerror = null; r.rec.abort(); } } catch (e) { /* ignore */ } r.rec = null; };
   const startHear = () => {
     const r = R.current, C = SR();
-    if (!C || !r.open || r.speaking || r.busy || r.on === false || r.hearing) return;
+    if (!C || !r.open || !r.voice || r.speaking || r.busy || r.on === false || r.hearing) return;
     try {
       const rec = new C();
       rec.lang = LANGS[r.lang] || 'en-US'; rec.continuous = false; rec.interimResults = false; rec.maxAlternatives = 1;
       rec.onresult = (e) => { const t = e.results && e.results[0] && e.results[0][0] && e.results[0][0].transcript; if (t) send(String(t)); };
       rec.onerror = (e) => { r.hearing = false; setHear(false); if (e && (e.error === 'not-allowed' || e.error === 'service-not-allowed')) { r.open && setErr('The microphone is not allowed. You can still write.'); r.rec = null; return; } };
-      rec.onend = () => { r.hearing = false; setHear(false); r.rec = null; if (r.open && !r.speaking && !r.busy) r.timer = setTimeout(startHear, 400); };
+      rec.onend = () => { r.hearing = false; setHear(false); r.rec = null; if (r.open && r.voice && !r.speaking && !r.busy) r.timer = setTimeout(startHear, 400); };
       r.rec = rec; r.hearing = true; setHear(true); rec.start();
     } catch (e) { r.hearing = false; setHear(false); }
   };
@@ -53,7 +54,7 @@ export default function GuidePanel() {
       if (v) u.voice = v;
       u.lang = lc;
       r.speaking = true; stopHear();
-      u.onend = u.onerror = () => { r.speaking = false; if (r.open) startHear(); };
+      u.onend = u.onerror = () => { r.speaking = false; if (r.open && r.voice) startHear(); };
       ss.cancel(); ss.speak(u);
     } catch (e) { r.speaking = false; startHear(); }
   };
@@ -71,12 +72,21 @@ export default function GuidePanel() {
       else if (j.error === 'off') { setSt((s) => ({ ...(s || {}), on: false })); } else setErr(j.error || 'No answer');
     } catch (e) { setErr('No connection'); }
     setBusy(false); r.busy = false;
-    if (R.current.open) { if (reply) speak(reply); else startHear(); }
+    if (R.current.open && R.current.voice) { if (reply) speak(reply); else startHear(); }
   }
   const close = () => {
     const r = R.current; r.open = false;
     stopHear(); try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) { /* ignore */ }
-    r.speaking = false; setOpen(false);
+    r.speaking = false; r.voice = false; setVoice(false); setOpen(false);
+  };
+  const toggleVoice = () => {
+    const r = R.current;
+    if (r.voice) { r.voice = false; setVoice(false); stopHear(); try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) { /* ignore */ } r.speaking = false; return; }
+    if (r.on === false) return;
+    if (!SR()) { setErr('This phone cannot listen in the browser. You can write.'); return; }
+    r.voice = true; setVoice(true); setErr('');
+    try { const ss = window.speechSynthesis; if (ss) { ss.cancel(); ss.getVoices(); } } catch (e) { /* ignore */ }
+    startHear();
   };
   useEffect(() => {
     setLang(pickLang());
@@ -85,24 +95,23 @@ export default function GuidePanel() {
       if (r.open) { close(); return; }
       r.open = true; setOpen(true);
       try { const ss = window.speechSynthesis; if (ss) { ss.cancel(); ss.getVoices(); } } catch (e) { /* ignore */ }
-      startHear(); // inside the tap, so the phone allows the microphone
-      fetch('/api/guide', { cache: 'no-store' }).then((x) => (x.ok ? x.json() : null)).then((j) => { if (j) { setSt(j); R.current.on = j.on; if (j.on === false) stopHear(); } }).catch(() => {});
+      fetch('/api/guide', { cache: 'no-store' }).then((x) => (x.ok ? x.json() : null)).then((j) => { if (j) { setSt(j); R.current.on = j.on; if (j.on === false) { stopHear(); R.current.voice = false; setVoice(false); } } }).catch(() => {});
     };
     window.addEventListener('ss-guide', f);
     return () => { window.removeEventListener('ss-guide', f); stopHear(); };
   }, []);
-  useEffect(() => { document.body.classList.toggle('ss-guide-live', open); return () => document.body.classList.remove('ss-guide-live'); }, [open]);
+  useEffect(() => { document.body.classList.toggle('ss-guide-open', open); document.body.classList.toggle('ss-guide-live', open && voice); return () => { document.body.classList.remove('ss-guide-open'); document.body.classList.remove('ss-guide-live'); }; }, [open, voice]);
   useEffect(() => { if (end.current) end.current.scrollIntoView({ block: 'end' }); }, [msgs, busy, open]);
   if (!open) return null;
   const flip = async () => {
     const r = await fetch('/api/guide', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ toggle: !(st && st.on) }) });
     const j = await r.json().catch(() => ({}));
-    if (r.ok) { setSt((s) => ({ ...s, on: j.on })); R.current.on = j.on; if (j.on) startHear(); else stopHear(); } else setErr(j.error || 'Could not change');
+    if (r.ok) { setSt((s) => ({ ...s, on: j.on })); R.current.on = j.on; if (!j.on) { stopHear(); R.current.voice = false; setVoice(false); } } else setErr(j.error || 'Could not change');
   };
-  const chLang = (l) => { setLang(l); R.current.lang = l; try { localStorage.setItem('sina-lang', l); } catch (e) { /* ignore */ } stopHear(); setTimeout(startHear, 200); };
+  const chLang = (l) => { setLang(l); R.current.lang = l; try { localStorage.setItem('sina-lang', l); } catch (e) { /* ignore */ } stopHear(); if (R.current.voice) setTimeout(startHear, 200); };
   return (
-    <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 2000, pointerEvents: 'none' }}>
-      <div style={{ pointerEvents: 'auto', width: '100%', maxWidth: 560, margin: '0 auto', background: '#fff', borderRadius: '16px 16px 0 0', display: 'flex', flexDirection: 'column', height: '33vh', minHeight: 230, border: '1px solid #e5e2d8', borderBottom: 0, boxShadow: '0 -6px 24px rgba(20,20,19,.14)' }}>
+    <div style={{ position: 'fixed', left: 0, right: 0, bottom: 'calc(var(--ms-sm, 44px) + 28px + env(safe-area-inset-bottom))', zIndex: 2000, pointerEvents: 'none' }}>
+      <div style={{ pointerEvents: 'auto', width: '100%', maxWidth: 560, background: '#fff', borderRadius: 16, display: 'flex', flexDirection: 'column', height: '46vh', minHeight: 280, border: '1px solid #e5e2d8', boxShadow: '0 -6px 24px rgba(20,20,19,.14)', margin: '0 auto 6px' }}>
         <div style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', borderBottom: '1px solid #efece3', gap: 8 }}>
           <b style={{ fontSize: 15 }}>Sina</b>
           <span style={{ fontSize: 12, color: hear ? '#1e7a46' : '#8a877b' }}>{hear ? 'listening…' : ''}</span>
@@ -117,8 +126,9 @@ export default function GuidePanel() {
           {st && st.on === false && <div style={{ fontSize: 13.5, color: '#6b675c' }}>Sina is switched off.{st.admin ? ' Tap "Turn on" above to use it (it uses tokens).' : ' An admin can turn it on.'}</div>}
           {st && st.on && !msgs.length && <div style={{ fontSize: 13.5, color: '#6b675c' }}>Speak or write, for example: I want to log an issue in Mechanical Room.</div>}
           {msgs.map((m, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 8 }}>
-              <div style={{ maxWidth: '85%', background: m.role === 'user' ? '#f4f3ee' : '#fff', border: m.role === 'user' ? '0' : '1px solid #efece3', borderRadius: 12, padding: '8px 11px', fontSize: 14, whiteSpace: 'pre-wrap' }}>
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: m.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 8 }}>
+              {m.role === 'user' ? <div style={{ fontSize: 11, fontWeight: 500, color: '#6b675c', textAlign: 'right', marginBottom: 2 }}>{(st && st.name) || 'You'}</div> : <div style={{ fontSize: 11, fontWeight: 500, marginBottom: 2, background: 'linear-gradient(90deg,#7F5AF0,#3B82F6)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', width: 'fit-content' }}>Sina AI</div>}
+              <div style={{ maxWidth: '85%', background: m.role === 'user' ? '#f4f3ee' : '#fff', border: m.role === 'user' ? '0' : '1.5px solid #7F5AF0', borderRadius: 12, padding: '8px 11px', fontSize: 14, whiteSpace: 'pre-wrap' }}>
                 {m.content}
                 {m.open && <a href={'/j/' + encodeURIComponent(m.open)} style={{ display: 'block', marginTop: 8, textAlign: 'center', background: '#D97757', color: '#fff', borderRadius: 8, padding: '7px 10px', textDecoration: 'none', fontSize: 13.5 }}>Open {m.open}</a>}
               </div>
@@ -129,9 +139,14 @@ export default function GuidePanel() {
           <div ref={end} />
         </div>
         {(!st || st.on) && (
-          <div style={{ display: 'flex', gap: 8, padding: '10px 12px', borderTop: '1px solid #efece3' }}>
-            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') send(text); }} placeholder="Or write to Sina" maxLength={500} style={{ flex: 1, minWidth: 0, border: '1px solid #e5e2d8', borderRadius: 10, padding: '9px 11px', fontSize: 16 }} />
-            <button type="button" onClick={() => send(text)} disabled={busy} style={{ border: 0, background: '#D97757', color: '#fff', borderRadius: 10, padding: '0 14px', fontSize: 14, cursor: 'pointer' }}>Send</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '8px 10px 10px', background: '#f4f3ee', borderRadius: 22, padding: '5px 6px 5px 10px' }}>
+            <button type="button" aria-label="Add file" onClick={() => setErr('Files and photos are coming soon.')} style={{ border: 0, background: 'none', fontSize: 24, lineHeight: 1, cursor: 'pointer', color: '#6b675c', padding: 0 }}>+</button>
+            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') send(text); }} placeholder="Write to Sina" maxLength={500} style={{ flex: 1, minWidth: 0, border: 0, background: 'transparent', outline: 'none', padding: '6px 2px', fontSize: 16 }} />
+            {text.trim() ? (
+              <button type="button" aria-label="Send" onClick={() => send(text)} disabled={busy} style={{ width: 34, height: 34, border: 0, borderRadius: '50%', background: 'linear-gradient(135deg,#7F5AF0,#3B82F6)', color: '#fff', fontSize: 18, cursor: 'pointer', flex: 'none' }}>{'\u2191'}</button>
+            ) : (
+              <button type="button" aria-label={voice ? 'Stop voice' : 'Start voice'} onClick={toggleVoice} className={voice ? 'sina-wave on' : 'sina-wave'} style={{ width: 34, height: 34, border: 0, borderRadius: '50%', background: 'linear-gradient(135deg,#7F5AF0,#3B82F6)', cursor: 'pointer', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, padding: 0 }}><b /><b /><b /><b /></button>
+            )}
           </div>
         )}
       </div>
