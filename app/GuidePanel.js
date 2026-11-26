@@ -193,8 +193,8 @@ export default function GuidePanel() {
   };
   const chLang = (l) => { setLang(l); R.current.lang = l; try { localStorage.setItem('sina-lang', l); } catch (e) { /* ignore */ } stopHear(); if (R.current.voice && !R.current.sv) setTimeout(startHear, 200); };
   return (
-    <div style={{ position: 'fixed', left: 0, right: 0, bottom: bot ? bot : 'calc(var(--ms-sm, 44px) + 28px + env(safe-area-inset-bottom))', zIndex: 2000, pointerEvents: 'none' }}>
-      <div style={{ pointerEvents: 'auto', width: '100%', maxWidth: 560, background: '#fff', borderRadius: 16, display: 'flex', flexDirection: 'column', height: '46vh', minHeight: 280, border: '1px solid #e5e2d8', boxShadow: '0 -6px 24px rgba(20,20,19,.14)', margin: '0 auto 6px' }}>
+    <div className="sina-wrap" style={{ position: 'fixed', left: 0, right: 0, bottom: bot ? bot : 'calc(var(--ms-sm, 44px) + 28px + env(safe-area-inset-bottom))', zIndex: 2000, pointerEvents: 'none' }}>
+      <div className="sina-box" style={{ pointerEvents: 'auto', width: '100%', maxWidth: 560, background: '#fff', borderRadius: 16, display: 'flex', flexDirection: 'column', height: '46vh', minHeight: 280, border: '1px solid #e5e2d8', boxShadow: '0 -6px 24px rgba(20,20,19,.14)', margin: '0 auto 6px' }}>
         <div style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', borderBottom: '1px solid #efece3', gap: 8 }}>
           <b style={{ fontSize: 15 }}>Sina</b>
           <span style={{ fontSize: 12, color: hear ? '#1e7a46' : '#8a877b' }}>{hear ? 'listening…' : ''}</span>
@@ -222,7 +222,7 @@ export default function GuidePanel() {
           <div ref={end} />
         </div>
         {(!st || st.on) && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '8px 10px 10px', background: '#f4f3ee', borderRadius: 22, padding: '5px 6px 5px 10px' }}>
+          <div className="sina-in" style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '8px 10px 10px', background: '#f4f3ee', borderRadius: 22, padding: '5px 6px 5px 10px' }}>
             <button type="button" aria-label="Add file" onClick={() => setErr('Files and photos are coming soon.')} style={{ border: 0, background: 'none', fontSize: 24, lineHeight: 1, cursor: 'pointer', color: '#6b675c', padding: 0 }}>+</button>
             <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') send(text); }} placeholder="Write to Sina" maxLength={500} style={{ flex: 1, minWidth: 0, border: 0, background: 'transparent', outline: 'none', padding: '6px 2px', fontSize: 16 }} />
             {text.trim() ? (

@@ -165,3 +165,17 @@ body.ss-guide-live .ms-sina .sina-still{display:none!important}
   body[data-ms-job] main{width:min(1180px,calc(100% - 48px))}
   body[data-ms-job] .v3-box{height:min(640px,calc(100vh - 340px))!important}
 }
+
+/* Laptop / tablet sideways, Sina open: the five buttons go back to the left column; the thin bottom bar becomes Sina's chat bar (96px, 50% taller). Undo: delete this block. */
+@media not all and (pointer:coarse) and (max-width:1024px){
+  body.ss-guide-open .ms-bot.ms-job{left:14px;right:auto;bottom:auto;top:50%;transform:translateY(-50%);flex-direction:column;height:auto;padding:0;background:transparent;border:0;box-shadow:none;gap:16px;--ms-sm:46px;--ms-big:84px}
+  body.ss-guide-open .ms-bot.ms-job .ms-sm,body.ss-guide-open .ms-bot.ms-job .ms-qr{box-shadow:0 3px 10px rgba(20,20,19,.07)}
+  body.ss-guide-open .ms-bot.ms-job .ms-toast{left:96px;transform:none;bottom:auto;top:50%}
+  body.ss-guide-open[data-ms-job] main{width:min(1180px,calc(100% - 220px))}
+  body.ss-guide-open{padding-bottom:110px}
+  .sina-wrap{bottom:102px!important}
+  .sina-in{position:fixed!important;left:0!important;right:0!important;bottom:0!important;height:96px!important;margin:0!important;border-radius:0!important;background:#fff!important;border-top:1px solid #e5e2d8;box-shadow:0 -2px 10px rgba(20,20,19,.05);box-sizing:border-box;padding:0 max(24px,calc(50% - 380px))!important;gap:12px!important;z-index:2001;pointer-events:auto}
+  .sina-in input{background:#f4f3ee!important;border-radius:26px!important;padding:16px 20px!important}
+  .sina-in button[aria-label="Add file"]{font-size:30px!important}
+  .sina-in button[aria-label="Send"],.sina-in button.sina-wave{width:44px!important;height:44px!important}
+}
