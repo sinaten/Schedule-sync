@@ -22,7 +22,7 @@ export default function GuidePanel() {
   const [hear, setHear] = useState(false);
   const [voice, setVoice] = useState(false);
   const end = useRef(null);
-  const R = useRef({ open: false, on: null, busy: false, speaking: false, msgs: [], lang: 'en', rec: null, hearing: false, timer: 0, voice: false });
+  const R = useRef({ open: false, on: null, busy: false, speaking: false, msgs: [], lang: 'en', rec: null, hearing: false, timer: 0, voice: false, sv: false, svOk: false, stream: null, mr: null, ctx: null, audio: null, svTimer: 0, svAbort: false });
   R.current.lang = lang;
   R.current.on = st ? st.on : null;
   R.current.busy = busy;
@@ -42,28 +42,93 @@ export default function GuidePanel() {
       r.rec = rec; r.hearing = true; setHear(true); rec.start();
     } catch (e) { r.hearing = false; setHear(false); }
   };
+
+  // Server voice: the phone only records and plays; the server turns speech into text and text into speech.
+  const stopSv = (killStream) => {
+    const r = R.current; clearInterval(r.svTimer); r.svTimer = 0; r.svAbort = true;
+    try { if (r.mr && r.mr.state !== 'inactive') r.mr.stop(); } catch (e) { /* ignore */ }
+    r.mr = null; setHear(false);
+    try { if (r.audio) { r.audio.pause(); r.audio.onended = null; } } catch (e) { /* ignore */ }
+    if (killStream) { try { r.stream && r.stream.getTracks().forEach((t) => t.stop()); } catch (e) { /* ignore */ } r.stream = null; try { r.ctx && r.ctx.close(); } catch (e) { /* ignore */ } r.ctx = null; }
+  };
+  const svListen = () => {
+    const r = R.current;
+    if (!r.open || !r.voice || !r.sv || r.busy || r.speaking || r.mr || !r.stream) return;
+    try {
+      const types = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm'];
+      const mt = types.find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) || '';
+      const mr = new MediaRecorder(r.stream, mt ? { mimeType: mt } : undefined);
+      const chunks = []; let talked = false, lastLoud = 0; const t0 = Date.now();
+      r.svAbort = false;
+      const an = r.ctx.createAnalyser(); an.fftSize = 1024;
+      const src = r.ctx.createMediaStreamSource(r.stream); src.connect(an);
+      const buf = new Uint8Array(an.fftSize);
+      mr.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+      mr.onstop = async () => {
+        clearInterval(r.svTimer); r.svTimer = 0; try { src.disconnect(); } catch (e) { /* ignore */ }
+        r.mr = null; setHear(false);
+        if (r.svAbort || !r.open || !r.voice) return;
+        if (!talked) { if (r.open && r.voice) setTimeout(svListen, 200); return; }
+        const blob = new Blob(chunks, { type: mr.mimeType || mt || 'audio/mp4' });
+        const fd = new FormData(); fd.append('audio', blob, 'clip.' + (/webm/.test(blob.type) ? 'webm' : 'm4a')); fd.append('lang', r.lang);
+        setBusy(true); r.busy = true;
+        let t = '';
+        try {
+          const res = await fetch('/api/guide/voice', { method: 'POST', body: fd });
+          const j = await res.json().catch(() => ({}));
+          if (res.ok) t = String(j.text || ''); else if (j.error === 'novoicekey') { setErr('Server voice is not set up yet (needs OPENAI_API_KEY in Vercel).'); r.sv = false; r.voice = false; setVoice(false); } else setErr(j.error || 'Could not hear');
+        } catch (e) { setErr('No connection'); }
+        setBusy(false); r.busy = false;
+        if (t.trim()) send(t); else if (r.open && r.voice) setTimeout(svListen, 200);
+      };
+      mr.start(); r.mr = mr; setHear(true);
+      r.svTimer = setInterval(() => {
+        an.getByteTimeDomainData(buf);
+        let m = 0; for (let i = 0; i < buf.length; i++) { const v = Math.abs(buf[i] - 128) / 128; if (v > m) m = v; }
+        const now = Date.now();
+        if (m > 0.06) { talked = true; lastLoud = now; }
+        if ((talked && now - lastLoud > 1400) || now - t0 > 25000 || (!talked && now - t0 > 12000)) { try { if (mr.state !== 'inactive') mr.stop(); } catch (e) { /* ignore */ } }
+      }, 100);
+    } catch (e) { setErr('Could not start recording'); r.voice = false; setVoice(false); }
+  };
+  const svSpeak = async (t) => {
+    const r = R.current;
+    try {
+      r.speaking = true; setHear(false);
+      const res = await fetch('/api/guide/speak', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: t }) });
+      if (!res.ok) { r.speaking = false; const j = await res.json().catch(() => ({})); setErr(j.error || 'Could not speak'); if (r.open && r.voice) svListen(); return; }
+      const url = URL.createObjectURL(await res.blob());
+      const a = r.audio || (r.audio = new Audio());
+      a.onended = () => { r.speaking = false; try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ } if (r.open && r.voice) svListen(); };
+      a.onerror = a.onended;
+      a.src = url;
+      if (!r.open || !r.voice) { r.speaking = false; return; }
+      await a.play();
+    } catch (e) { r.speaking = false; setErr('The phone did not play the sound'); if (r.open && r.voice) svListen(); }
+  };
+  const resume = () => { if (R.current.sv) svListen(); else startHear(); };
   const speak = (t) => {
     const r = R.current;
     try {
       const ss = window.speechSynthesis;
-      if (!ss || !t) { startHear(); return; }
+      if (!ss || !t) { resume(); return; }
       const lc = LANGS[r.lang] || 'en-US';
       const v = ss.getVoices().find((x) => x.lang && x.lang.toLowerCase().replace('_', '-').startsWith(lc.slice(0, 2).toLowerCase()));
-      if (!v && ss.getVoices().length) { startHear(); return; } // no voice on this phone for the language: the answer stays text
+      if (!v && ss.getVoices().length) { resume(); return; } // no voice on this phone for the language: the answer stays text
       const u = new SpeechSynthesisUtterance(t);
       if (v) u.voice = v;
       u.lang = lc;
       r.speaking = true; stopHear();
-      u.onend = u.onerror = () => { r.speaking = false; if (r.open && r.voice) startHear(); };
+      u.onend = u.onerror = () => { r.speaking = false; if (r.open && r.voice) resume(); };
       ss.cancel(); ss.speak(u);
-    } catch (e) { r.speaking = false; startHear(); }
+    } catch (e) { r.speaking = false; resume(); }
   };
   async function send(raw) {
     const t = String(raw || '').trim();
     const r = R.current;
     if (!t || r.busy) return;
     const next = [...r.msgs, { role: 'user', content: t }];
-    setMsgs(next); setText(''); setBusy(true); r.busy = true; setErr(''); stopHear();
+    setMsgs(next); setText(''); setBusy(true); r.busy = true; setErr(''); stopHear(); stopSv(false);
     let reply = '';
     try {
       const res = await fetch('/api/guide', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ messages: next.map((m) => ({ role: m.role, content: m.content })) }) });
@@ -72,19 +137,29 @@ export default function GuidePanel() {
       else if (j.error === 'off') { setSt((s) => ({ ...(s || {}), on: false })); } else setErr(j.error || 'No answer');
     } catch (e) { setErr('No connection'); }
     setBusy(false); r.busy = false;
-    if (R.current.open && R.current.voice) { if (reply) speak(reply); else startHear(); }
+    if (R.current.open && R.current.voice) { if (reply) { if (R.current.sv) svSpeak(reply); else speak(reply); } else resume(); }
   }
   const close = () => {
     const r = R.current; r.open = false;
-    stopHear(); try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) { /* ignore */ }
+    stopHear(); stopSv(true); try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) { /* ignore */ }
     r.speaking = false; r.voice = false; setVoice(false); setOpen(false);
   };
   const toggleVoice = () => {
     const r = R.current;
-    if (r.voice) { r.voice = false; setVoice(false); stopHear(); try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) { /* ignore */ } r.speaking = false; return; }
+    if (r.voice) { r.voice = false; setVoice(false); stopHear(); stopSv(true); try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) { /* ignore */ } r.speaking = false; return; }
     if (r.on === false) return;
+    setErr('');
+    if (r.svOk && navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder) {
+      // server voice: unlock the sound player and open the microphone inside this tap
+      r.voice = true; setVoice(true); r.sv = true;
+      try { const a = r.audio || (r.audio = new Audio()); a.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA='; const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* ignore */ }
+      try { const AC = window.AudioContext || window.webkitAudioContext; r.ctx = new AC(); if (r.ctx.resume) r.ctx.resume(); } catch (e) { /* ignore */ }
+      navigator.mediaDevices.getUserMedia({ audio: true }).then((stm) => { r.stream = stm; if (r.voice) svListen(); else stm.getTracks().forEach((t) => t.stop()); }).catch((e) => { r.voice = false; setVoice(false); r.sv = false; setErr('The phone did not give the microphone (' + (e && e.name ? e.name : 'blocked') + ').'); });
+      return;
+    }
+    r.sv = false;
     if (!SR()) { setErr('This phone cannot listen in the browser. You can write.'); return; }
-    r.voice = true; setVoice(true); setErr('');
+    r.voice = true; setVoice(true);
     try { const ss = window.speechSynthesis; if (ss) { ss.cancel(); ss.getVoices(); } } catch (e) { /* ignore */ }
     startHear();
   };
@@ -95,10 +170,10 @@ export default function GuidePanel() {
       if (r.open) { close(); return; }
       r.open = true; setOpen(true);
       try { const ss = window.speechSynthesis; if (ss) { ss.cancel(); ss.getVoices(); } } catch (e) { /* ignore */ }
-      fetch('/api/guide', { cache: 'no-store' }).then((x) => (x.ok ? x.json() : null)).then((j) => { if (j) { setSt(j); R.current.on = j.on; if (j.on === false) { stopHear(); R.current.voice = false; setVoice(false); } } }).catch(() => {});
+      fetch('/api/guide', { cache: 'no-store' }).then((x) => (x.ok ? x.json() : null)).then((j) => { if (j) { setSt(j); R.current.on = j.on; R.current.svOk = !!j.voice; if (j.on === false) { stopHear(); stopSv(true); R.current.voice = false; setVoice(false); } } }).catch(() => {});
     };
     window.addEventListener('ss-guide', f);
-    return () => { window.removeEventListener('ss-guide', f); stopHear(); };
+    return () => { window.removeEventListener('ss-guide', f); stopHear(); stopSv(true); };
   }, []);
   const [bot, setBot] = useState(0);
   useEffect(() => {
@@ -114,9 +189,9 @@ export default function GuidePanel() {
   const flip = async () => {
     const r = await fetch('/api/guide', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ toggle: !(st && st.on) }) });
     const j = await r.json().catch(() => ({}));
-    if (r.ok) { setSt((s) => ({ ...s, on: j.on })); R.current.on = j.on; if (!j.on) { stopHear(); R.current.voice = false; setVoice(false); } } else setErr(j.error || 'Could not change');
+    if (r.ok) { setSt((s) => ({ ...s, on: j.on })); R.current.on = j.on; if (!j.on) { stopHear(); stopSv(true); R.current.voice = false; setVoice(false); } } else setErr(j.error || 'Could not change');
   };
-  const chLang = (l) => { setLang(l); R.current.lang = l; try { localStorage.setItem('sina-lang', l); } catch (e) { /* ignore */ } stopHear(); if (R.current.voice) setTimeout(startHear, 200); };
+  const chLang = (l) => { setLang(l); R.current.lang = l; try { localStorage.setItem('sina-lang', l); } catch (e) { /* ignore */ } stopHear(); if (R.current.voice && !R.current.sv) setTimeout(startHear, 200); };
   return (
     <div style={{ position: 'fixed', left: 0, right: 0, bottom: bot ? bot : 'calc(var(--ms-sm, 44px) + 28px + env(safe-area-inset-bottom))', zIndex: 2000, pointerEvents: 'none' }}>
       <div style={{ pointerEvents: 'auto', width: '100%', maxWidth: 560, background: '#fff', borderRadius: 16, display: 'flex', flexDirection: 'column', height: '46vh', minHeight: 280, border: '1px solid #e5e2d8', boxShadow: '0 -6px 24px rgba(20,20,19,.14)', margin: '0 auto 6px' }}>

@@ -11,7 +11,7 @@ export async function GET() {
   const u = await currentUser();
   if (!u) return Response.json({ error: 'Sign in' }, { status: 401 });
   const sql = await db();
-  return Response.json({ on: await isOn(sql), admin: isAdmin(u), name: u.name || '' });
+  return Response.json({ on: await isOn(sql), admin: isAdmin(u), name: u.name || '', voice: !!process.env.OPENAI_API_KEY });
 }
 export async function POST(req) {
   const u = await currentUser();
