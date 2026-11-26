@@ -22,7 +22,7 @@ export async function POST(req) {
   const res = await fetch('https://api.openai.com/v1/audio/speech', {
     method: 'POST',
     headers: { authorization: 'Bearer ' + key, 'content-type': 'application/json' },
-    body: JSON.stringify({ model: process.env.VOICE_TTS_MODEL || 'gpt-4o-mini-tts', voice: process.env.VOICE_NAME || 'alloy', input: text, response_format: 'mp3' }),
+    body: JSON.stringify({ model: process.env.VOICE_TTS_MODEL || 'gpt-4o-mini-tts', voice: process.env.VOICE_NAME || 'alloy', input: text, instructions: 'Speak quickly, briskly and energetically.', response_format: 'mp3' }),
   });
   if (!res.ok) return Response.json({ error: 'Could not speak (' + res.status + ')' }, { status: 502 });
   return new Response(res.body, { headers: { 'content-type': 'audio/mpeg', 'cache-control': 'no-store' } });

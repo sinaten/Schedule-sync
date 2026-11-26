@@ -99,7 +99,7 @@ export default function GuidePanel() {
     const my = (r.spk = (r.spk || 0) + 1);
     const parts = []; { const raw = String(t).match(/[^.!?؟۔。！？\n]+[.!?؟۔。！？]*/g) || [String(t)]; let cur = ''; raw.forEach((x) => { cur += x; if (cur.trim().length >= 45) { parts.push(cur.trim()); cur = ''; } }); if (cur.trim()) parts.push(cur.trim()); }
     const grab = async (x) => { const res = await fetch('/api/guide/speak', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: x }) }); if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || 'Could not speak'); } return URL.createObjectURL(await res.blob()); };
-    const play = (url) => new Promise((done) => { const a = r.audio || (r.audio = new Audio()); a.onended = () => { try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ } done(); }; a.onerror = a.onended; a.src = url; const pr = a.play(); if (pr && pr.catch) pr.catch(() => done()); });
+    const play = (url) => new Promise((done) => { const a = r.audio || (r.audio = new Audio()); a.onended = () => { try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ } done(); }; a.onerror = a.onended; a.src = url; try { a.playbackRate = 1.3; a.defaultPlaybackRate = 1.3; a.preservesPitch = true; } catch (e) { /* ignore */ } const pr = a.play(); if (pr && pr.catch) pr.catch(() => done()); });
     try {
       r.speaking = true; setHear(false);
       let nextP = grab(parts[0]);
