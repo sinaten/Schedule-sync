@@ -145,8 +145,8 @@ body[data-ms-tab="follow"] .ms-follow{display:block}
 /* Sina button: the picture is the button; while Sina is answering it breathes (a light animation only then) */
 .ms-qr.ms-sina{border:0;background:transparent;box-shadow:0 6px 16px rgba(20,20,19,.16)}
 .ms-sina .sina-live{display:none}
-body.ss-guide-live .ms-sina .sina-live{display:block}
-body.ss-guide-live .ms-sina .sina-still{display:none}
+body.ss-guide-live .ms-sina .sina-live{display:block!important}
+body.ss-guide-live .ms-sina .sina-still{display:none!important}
 
 .sina-wave b{display:block;width:3px;height:8px;background:#fff;border-radius:2px}
 .sina-wave.on{box-shadow:0 0 0 3px #CFC3F8}

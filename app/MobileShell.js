@@ -163,7 +163,7 @@ export default function MobileShell({ name, role, admin }) {
           )}
         </button>
         <button type="button" className="ms-qr ms-sina" aria-label="Open Sina" onClick={() => window.dispatchEvent(new Event('ss-guide'))} style={{ padding: 0, cursor: 'pointer' }}>
-          <img className="sina-still" src="/sina-ai.png" alt="" width="100%" height="100%" draggable="false" style={{ width: '100%', height: '100%', borderRadius: '50%', display: 'block' }} />
+          <img className="sina-still" src="/sina-ai.png" alt="" width="100%" height="100%" draggable="false" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
           <img className="sina-live" src="/sina-live.gif" alt="" width="100%" height="100%" draggable="false" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
         </button>
         <a className="ms-sm" href="/scan" aria-label="Scan QR code" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

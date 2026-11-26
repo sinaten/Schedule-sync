@@ -37,7 +37,7 @@ export default function GuidePanel() {
       const rec = new C();
       rec.lang = LANGS[r.lang] || 'en-US'; rec.continuous = false; rec.interimResults = false; rec.maxAlternatives = 1;
       rec.onresult = (e) => { const t = e.results && e.results[0] && e.results[0][0] && e.results[0][0].transcript; if (t) send(String(t)); };
-      rec.onerror = (e) => { r.hearing = false; setHear(false); if (e && (e.error === 'not-allowed' || e.error === 'service-not-allowed')) { r.open && setErr('The microphone is not allowed. You can still write.'); r.rec = null; return; } };
+      rec.onerror = (e) => { r.hearing = false; setHear(false); const c = e && e.error; if (c === 'not-allowed' || c === 'service-not-allowed' || c === 'audio-capture') { r.voice = false; setVoice(false); r.rec = null; setErr(c === 'service-not-allowed' ? 'Voice typing is off on this iPhone. Settings > General > Keyboard > turn on Enable Dictation (and Siri). Code: ' + c : c === 'audio-capture' ? 'No microphone found. Code: ' + c : 'The phone blocked the microphone. Code: ' + c); } else if (c && c !== 'no-speech' && c !== 'aborted') setErr('Voice error: ' + c); };
       rec.onend = () => { r.hearing = false; setHear(false); r.rec = null; if (r.open && r.voice && !r.speaking && !r.busy) r.timer = setTimeout(startHear, 400); };
       r.rec = rec; r.hearing = true; setHear(true); rec.start();
     } catch (e) { r.hearing = false; setHear(false); }
@@ -100,6 +100,14 @@ export default function GuidePanel() {
     window.addEventListener('ss-guide', f);
     return () => { window.removeEventListener('ss-guide', f); stopHear(); };
   }, []);
+  const [bot, setBot] = useState(0);
+  useEffect(() => {
+    if (!open) return undefined;
+    const m = () => { const b = document.querySelector('.ms-bot'); if (b && getComputedStyle(b).display !== 'none') { const t = b.getBoundingClientRect().top; setBot(Math.max(0, Math.round(window.innerHeight - t + 6))); } else setBot(0); };
+    m(); const t1 = setTimeout(m, 80), t2 = setTimeout(m, 400);
+    window.addEventListener('resize', m);
+    return () => { clearTimeout(t1); clearTimeout(t2); window.removeEventListener('resize', m); };
+  }, [open]);
   useEffect(() => { document.body.classList.toggle('ss-guide-open', open); document.body.classList.toggle('ss-guide-live', open && voice); return () => { document.body.classList.remove('ss-guide-open'); document.body.classList.remove('ss-guide-live'); }; }, [open, voice]);
   useEffect(() => { if (end.current) end.current.scrollIntoView({ block: 'end' }); }, [msgs, busy, open]);
   if (!open) return null;
@@ -110,7 +118,7 @@ export default function GuidePanel() {
   };
   const chLang = (l) => { setLang(l); R.current.lang = l; try { localStorage.setItem('sina-lang', l); } catch (e) { /* ignore */ } stopHear(); if (R.current.voice) setTimeout(startHear, 200); };
   return (
-    <div style={{ position: 'fixed', left: 0, right: 0, bottom: 'calc(var(--ms-sm, 44px) + 28px + env(safe-area-inset-bottom))', zIndex: 2000, pointerEvents: 'none' }}>
+    <div style={{ position: 'fixed', left: 0, right: 0, bottom: bot ? bot : 'calc(var(--ms-sm, 44px) + 28px + env(safe-area-inset-bottom))', zIndex: 2000, pointerEvents: 'none' }}>
       <div style={{ pointerEvents: 'auto', width: '100%', maxWidth: 560, background: '#fff', borderRadius: 16, display: 'flex', flexDirection: 'column', height: '46vh', minHeight: 280, border: '1px solid #e5e2d8', boxShadow: '0 -6px 24px rgba(20,20,19,.14)', margin: '0 auto 6px' }}>
         <div style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', borderBottom: '1px solid #efece3', gap: 8 }}>
           <b style={{ fontSize: 15 }}>Sina</b>
