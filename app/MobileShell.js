@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import FollowUp from './FollowUp';
+import AiIssue from './AiIssue';
 
 // Phone-only chrome (hidden by CSS on laptops): back / home / avatar on top, QR button at the bottom.
 function initials(n) {
@@ -148,7 +149,7 @@ export default function MobileShell({ name, role, admin }) {
       </div></div>)}
       <div className="ms-spacer" />
       {job && <FollowUp job={job} />}
-      {job && <div className="ms-ai"><div style={{ padding: '40px 20px', textAlign: 'center', color: '#8a8676', fontSize: 15 }}>AI</div></div>}
+      {job && <div className="ms-ai"><AiIssue job={job} /></div>}
       <nav className={'ms-bot' + (job ? ' ms-job' : '')} aria-label="Quick actions">
         <button type="button" className="ms-sm" aria-label="Refresh this page from the website" onClick={() => location.reload()} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer', opacity: job ? 1 : 0.4 }}>
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={siteOk === false ? '#d64545' : '#2e9e5b'} strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><g><path d="M1.66 8.24A11.0 11.0 0 0 1 21.01 5.69" /><path d="M21.27 2.70L21.01 5.69L18.11 4.91" /><path d="M22.34 15.76A11.0 11.0 0 0 1 2.99 18.31" /><path d="M2.73 21.30L2.99 18.31L5.89 19.09" /></g><path d="M6.4 11.8L12 6.2l5.6 5.6M7.8 11v6.6h8.4V11" /></svg>
