@@ -160,7 +160,7 @@ export default function GuidePanel() {
     setMsgs(next); setText(''); setBusy(true); r.busy = true; setErr(''); stopHear(); stopSv(false);
     let reply = '';
     try {
-      const res = await fetch('/api/guide', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ lang: r.lang, onJob: document.body.hasAttribute('data-ms-job'), messages: next.map((m) => ({ role: m.role, content: m.content })) }) });
+      const res = await fetch('/api/guide', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ lang: r.lang, onJob: document.body.hasAttribute('data-ms-job'), tab: document.body.getAttribute('data-ms-tab') || '', path: location.pathname, messages: next.map((m) => ({ role: m.role, content: m.content })) }) });
       const j = await res.json().catch(() => ({}));
       if (res.ok) { reply = j.reply || ''; if (j.issue) { try { window.dispatchEvent(new CustomEvent('ss-ai-fill', { detail: j.issue })); } catch (e) { /* ignore */ } }
       setPick(-1); setMsgs([...next, { role: 'assistant', content: reply, open: j.open || null, choices: Array.isArray(j.choices) ? j.choices : [] }]); }
