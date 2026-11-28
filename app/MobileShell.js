@@ -16,6 +16,7 @@ export default function MobileShell({ name, role, admin }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState('follow');
   const [pending, setPending] = useState(0);
+  useEffect(() => { const f = () => setTab('ai'); window.addEventListener('ss-ai-fill', f); return () => window.removeEventListener('ss-ai-fill', f); }, []);
   const [job, setJob] = useState('');
   // the page below the tabs follows the choice: Issues shows the normal job page (model), Follow-up is empty for now and is the default
   useEffect(() => { if (job) ss.set('ms-tab:' + job, tab); }, [tab, job]);

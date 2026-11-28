@@ -99,7 +99,7 @@ export default function GuidePanel() {
     const my = (r.spk = (r.spk || 0) + 1);
     const parts = []; { const raw = String(t).match(/[^.!?؟۔。！？\n]+[.!?؟۔。！？]*/g) || [String(t)]; let cur = ''; raw.forEach((x) => { cur += x; if (cur.trim().length >= 45) { parts.push(cur.trim()); cur = ''; } }); if (cur.trim()) parts.push(cur.trim()); }
     const grab = async (x) => { const res = await fetch('/api/guide/speak', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: x }) }); if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || 'Could not speak'); } return URL.createObjectURL(await res.blob()); };
-    const play = (url) => new Promise((done) => { const a = r.audio || (r.audio = new Audio()); a.onended = () => { try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ } done(); }; a.onerror = a.onended; a.src = url; try { a.playbackRate = 1.3; a.defaultPlaybackRate = 1.3; a.preservesPitch = true; } catch (e) { /* ignore */ } const pr = a.play(); if (pr && pr.catch) pr.catch(() => done()); });
+    const play = (url) => new Promise((done) => { const a = r.audio || (r.audio = new Audio()); a.onended = () => { try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ } done(); }; a.onerror = a.onended; a.src = url; try { a.playbackRate = 1.6; a.defaultPlaybackRate = 1.6; a.preservesPitch = true; } catch (e) { /* ignore */ } const pr = a.play(); if (pr && pr.catch) pr.catch(() => done()); });
     try {
       r.speaking = true; setHear(false);
       // barge-in: the microphone stays on while Sina talks; if the person speaks over her, she stops and listens
@@ -160,9 +160,10 @@ export default function GuidePanel() {
     setMsgs(next); setText(''); setBusy(true); r.busy = true; setErr(''); stopHear(); stopSv(false);
     let reply = '';
     try {
-      const res = await fetch('/api/guide', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ lang: r.lang, messages: next.map((m) => ({ role: m.role, content: m.content })) }) });
+      const res = await fetch('/api/guide', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ lang: r.lang, onJob: document.body.hasAttribute('data-ms-job'), messages: next.map((m) => ({ role: m.role, content: m.content })) }) });
       const j = await res.json().catch(() => ({}));
-      if (res.ok) { reply = j.reply || ''; setPick(-1); setMsgs([...next, { role: 'assistant', content: reply, open: j.open || null, choices: Array.isArray(j.choices) ? j.choices : [] }]); }
+      if (res.ok) { reply = j.reply || ''; if (j.issue) { try { window.dispatchEvent(new CustomEvent('ss-ai-fill', { detail: j.issue })); } catch (e) { /* ignore */ } }
+      setPick(-1); setMsgs([...next, { role: 'assistant', content: reply, open: j.open || null, choices: Array.isArray(j.choices) ? j.choices : [] }]); }
       else if (j.error === 'off') { setSt((s) => ({ ...(s || {}), on: false })); } else setErr(j.error || 'No answer');
     } catch (e) { setErr('No connection'); }
     setBusy(false); r.busy = false;

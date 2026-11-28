@@ -42,7 +42,7 @@ export async function POST(req) {
     const ir = await isql`select job, no, description from issues order by updated_at desc limit 400`;
     cards = ir.filter((c) => names.includes(c.job)).slice(0, 250).map((c) => ({ job: c.job, card: 'ISS-' + String(c.no || 0).padStart(4, '0'), title: String(c.description || '').split('\n')[0].slice(0, 60) }));
   } catch (e) { cards = []; }
-  const r = await guideReply(u, projects, cards, Array.isArray(b.messages) ? b.messages : [], b.lang);
+  const r = await guideReply(u, projects, cards, Array.isArray(b.messages) ? b.messages : [], b.lang, !!b.onJob);
   if (!r.ok) return Response.json({ error: r.reason === 'nokey' ? 'Sina has no key yet.' : 'Sina could not answer now.' }, { status: 502 });
-  return Response.json({ reply: r.reply, open: r.open, choices: r.choices || [] });
+  return Response.json({ reply: r.reply, open: r.open, choices: r.choices || [], issue: r.issue || null });
 }

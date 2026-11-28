@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // The AI tab: a clean "new issue" page. It only holds the fields that are needed (what is wrong, how urgent).
 // Saving uses the same safe route as the old New-issue form (/api/issue, action create). Nothing old is changed or hidden.
@@ -9,6 +9,11 @@ export default function AiIssue({ job }) {
   const [pr, setPr] = useState('noncritical');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  useEffect(() => {
+    const f = (e) => { const d = e.detail || {}; if (typeof d.text === 'string') setText(d.text); setPr(d.priority === 'critical' ? 'critical' : 'noncritical'); setMsg(''); };
+    window.addEventListener('ss-ai-fill', f);
+    return () => window.removeEventListener('ss-ai-fill', f);
+  }, []);
   const ok = text.trim().length > 0 && !busy;
   const save = async () => {
     if (!ok) return;
