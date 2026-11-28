@@ -102,6 +102,27 @@ export default function GuidePanel() {
     const play = (url) => new Promise((done) => { const a = r.audio || (r.audio = new Audio()); a.onended = () => { try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ } done(); }; a.onerror = a.onended; a.src = url; try { a.playbackRate = 1.3; a.defaultPlaybackRate = 1.3; a.preservesPitch = true; } catch (e) { /* ignore */ } const pr = a.play(); if (pr && pr.catch) pr.catch(() => done()); });
     try {
       r.speaking = true; setHear(false);
+      // barge-in: the microphone stays on while Sina talks; if the person speaks over her, she stops and listens
+      clearInterval(r.bgTimer); r.bgTimer = 0;
+      try {
+        if (r.ctx && r.stream) {
+          const an2 = r.ctx.createAnalyser(); an2.fftSize = 1024;
+          const src2 = r.ctx.createMediaStreamSource(r.stream); src2.connect(an2);
+          const b2 = new Uint8Array(an2.fftSize); let hits = 0;
+          r.bgTimer = setInterval(() => {
+            if (r.spk !== my || !r.speaking) { clearInterval(r.bgTimer); r.bgTimer = 0; try { src2.disconnect(); } catch (e) { /* ignore */ } return; }
+            an2.getByteTimeDomainData(b2);
+            let m = 0; for (let i = 0; i < b2.length; i++) { const v = Math.abs(b2[i] - 128) / 128; if (v > m) m = v; }
+            hits = m > 0.3 ? hits + 1 : 0;
+            if (hits >= 3) {
+              clearInterval(r.bgTimer); r.bgTimer = 0; try { src2.disconnect(); } catch (e) { /* ignore */ }
+              r.spk = (r.spk || 0) + 1; r.speaking = false;
+              try { if (r.audio) { r.audio.pause(); } } catch (e) { /* ignore */ }
+              if (r.open && r.voice) svListen();
+            }
+          }, 100);
+        }
+      } catch (e) { /* ignore */ }
       let nextP = grab(parts[0]);
       for (let i = 0; i < parts.length; i++) {
         const url = await nextP;
@@ -111,6 +132,7 @@ export default function GuidePanel() {
         if (r.spk !== my) break;
       }
     } catch (e) { setErr(String((e && e.message) || 'The phone did not play the sound')); }
+    clearInterval(r.bgTimer); r.bgTimer = 0;
     if (r.spk === my) { r.speaking = false; if (r.open && r.voice) svListen(); }
   };
   const resume = () => { if (R.current.sv) svListen(); else startHear(); };
@@ -161,7 +183,7 @@ export default function GuidePanel() {
       r.voice = true; setVoice(true); r.sv = true;
       try { const a = r.audio || (r.audio = new Audio()); a.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA='; const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* ignore */ }
       try { const AC = window.AudioContext || window.webkitAudioContext; r.ctx = new AC(); if (r.ctx.resume) r.ctx.resume(); } catch (e) { /* ignore */ }
-      navigator.mediaDevices.getUserMedia({ audio: true }).then((stm) => { r.stream = stm; if (r.voice) svListen(); else stm.getTracks().forEach((t) => t.stop()); }).catch((e) => { r.voice = false; setVoice(false); r.sv = false; setErr('The phone did not give the microphone (' + (e && e.name ? e.name : 'blocked') + ').'); });
+      navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }).then((stm) => { r.stream = stm; if (r.voice) svListen(); else stm.getTracks().forEach((t) => t.stop()); }).catch((e) => { r.voice = false; setVoice(false); r.sv = false; setErr('The phone did not give the microphone (' + (e && e.name ? e.name : 'blocked') + ').'); });
       return;
     }
     r.sv = false;
